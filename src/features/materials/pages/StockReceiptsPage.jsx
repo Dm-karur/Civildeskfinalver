@@ -137,19 +137,44 @@ export function StockReceiptsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects & API Data
+  // Load Projects & API Data safely
   useEffect(() => {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
-      materialManagementApi.receipts.list().catch(() => ({ data: [] }))
+      materialManagementApi.receipts?.list ? materialManagementApi.receipts.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
     ]).then(([projRes, recRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
-      const rList = recRes?.data?.material_receipts ?? recRes?.data?.data ?? [];
+      const rList = recRes?.data?.material_receipts ?? recRes?.data?.receipts ?? recRes?.data?.data ?? [];
       if (Array.isArray(rList) && rList.length > 0) {
-        setReceipts(rList);
+        const normalized = rList.map((r, idx) => ({
+          id: r.id || idx + 1,
+          project_id: r.project_id || 1,
+          project_code: r.project_code || 'PRJ-2026-001',
+          project_name: r.project_name || 'Civil Project',
+          site_name: r.site_name || 'Main Central Yard',
+          receipt_no: r.receipt_no || `GRN-2026-${String(idx + 1).padStart(3, '0')}`,
+          receipt_date: r.receipt_date || new Date().toISOString().split('T')[0],
+          supplier_name: r.supplier_name || 'Supplier Partner',
+          supplier_challan_no: r.supplier_challan_no || '—',
+          invoice_no: r.invoice_no || '—',
+          vehicle_no: r.vehicle_no || '—',
+          material_code: r.material_code || 'MAT-GEN-001',
+          material_name: r.material_name || 'Construction Material',
+          received_qty: Number(r.received_qty || r.quantity || 0),
+          uom: r.uom || r.unit_name || 'Nos',
+          unit_rate: Number(r.unit_rate || 0),
+          total_amount: Number(r.total_amount || (Number(r.received_qty || r.quantity || 0) * Number(r.unit_rate || 0))),
+          quality_status: r.quality_status || r.status_name || 'Accepted (QC Passed)',
+          status_name: r.status_name || 'Received & Stored',
+          inspected_by: r.inspected_by || 'QC Engineer',
+          notes: r.notes || '',
+        }));
+        setReceipts(normalized);
       }
+    }).catch(() => {
+      // Keep DEFAULT_RECEIPTS on API error
     }).finally(() => setLoading(false));
   }, []);
 
@@ -276,18 +301,18 @@ export function StockReceiptsPage() {
     window.print();
   };
 
-  // Filtered List
+  // Safe Filtered List
   const filtered = useMemo(() => {
     return receipts.filter(r => {
       if (selectedProjectId !== 'all' && String(r.project_id) !== String(selectedProjectId)) return false;
-      if (statusFilter !== 'all' && r.quality_status !== statusFilter) return false;
+      if (statusFilter !== 'all' && String(r.quality_status || '') !== statusFilter) return false;
       if (search) {
         const q = search.toLowerCase();
-        const no = (r.receipt_no || '').toLowerCase();
-        const sup = (r.supplier_name || '').toLowerCase();
-        const mat = (r.material_name || '').toLowerCase();
-        const ch = (r.supplier_challan_no || '').toLowerCase();
-        const veh = (r.vehicle_no || '').toLowerCase();
+        const no = String(r.receipt_no || '').toLowerCase();
+        const sup = String(r.supplier_name || '').toLowerCase();
+        const mat = String(r.material_name || '').toLowerCase();
+        const ch = String(r.supplier_challan_no || '').toLowerCase();
+        const veh = String(r.vehicle_no || '').toLowerCase();
         if (!no.includes(q) && !sup.includes(q) && !mat.includes(q) && !ch.includes(q) && !veh.includes(q)) return false;
       }
       return true;
@@ -297,9 +322,20 @@ export function StockReceiptsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
-  // Metrics
+  // Metrics with safe fallbacks
   const totalInwardValue = useMemo(() => receipts.reduce((acc, r) => acc + Number(r.total_amount || 0), 0), [receipts]);
-  const qcPassedCount = useMemo(() => receipts.filter(r => r.quality_status.includes('Accepted') || r.quality_status.includes('Passed')).length, [receipts]);
+  const qcPassedCount = useMemo(() => receipts.filter(r => {
+    const q = String(r.quality_status || '').toLowerCase();
+    return q.includes('accept') || q.includes('pass');
+  }).length, [receipts]);
+
+  const getQualityVariant = (status) => {
+    const s = String(status || '').toLowerCase();
+    if (s.includes('accept') || s.includes('pass')) return 'success';
+    if (s.includes('inspect') || s.includes('pending')) return 'warning';
+    if (s.includes('reject') || s.includes('defect')) return 'error';
+    return 'neutral';
+  };
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
@@ -363,6 +399,7 @@ export function StockReceiptsPage() {
                 options={[
                   { value: 'all', label: 'All Quality Status' },
                   { value: 'Accepted (QC Passed)', label: 'Accepted (QC Passed)' },
+                  { value: 'Under Inspection', label: 'Under Inspection' },
                   { value: 'Rejected', label: 'Rejected (Defective)' },
                 ]}
                 value={statusFilter}
@@ -487,10 +524,10 @@ export function StockReceiptsPage() {
                       </td>
                       <td className="px-3 py-2 text-center">
                         <Badge
-                          variant="success"
+                          variant={getQualityVariant(r.quality_status)}
                           className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
                         >
-                          {r.quality_status}
+                          {r.quality_status || 'Accepted'}
                         </Badge>
                       </td>
                       <td className="px-3 py-2">
@@ -513,6 +550,15 @@ export function StockReceiptsPage() {
                           >
                             <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            title="Delete"
+                            onClick={() => setDeleteItem(r)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -534,10 +580,10 @@ export function StockReceiptsPage() {
                   <span className="text-[11px] text-text-muted">{r.supplier_name}</span>
                 </div>
                 <Badge
-                  variant="success"
+                  variant={getQualityVariant(r.quality_status)}
                   className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
                 >
-                  QC Passed
+                  {r.quality_status || 'Accepted'}
                 </Badge>
               </div>
 
