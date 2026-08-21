@@ -74,7 +74,17 @@ import { DeliveryChallansPage } from '../../features/materials/pages/DeliveryCha
 import { MaterialConsumptionPage } from '../../features/materials/pages/MaterialConsumptionPage';
 import { StockLedgerPage } from '../../features/materials/pages/StockLedgerPage';
 // Phase 2 — Procurement
-import { PurchaseOrdersPage, PurchaseRequisitionsPage } from '../../features/procurement/pages/ProcurementPages';
+import { PurchaseRequisitionsPage } from '../../features/procurement/pages/PurchaseRequisitionsPage';
+import { RequisitionApprovalPage } from '../../features/procurement/pages/RequisitionApprovalPage';
+import { RfqPage } from '../../features/procurement/pages/RfqPage';
+import { VendorQuotationsPage } from '../../features/procurement/pages/VendorQuotationsPage';
+import { QuotationComparisonPage } from '../../features/procurement/pages/QuotationComparisonPage';
+import { PurchaseOrdersPage } from '../../features/procurement/pages/PurchaseOrdersPage';
+import { PurchaseOrderApprovalPage } from '../../features/procurement/pages/PurchaseOrderApprovalPage';
+import { ProcurementGoodsReceiptPage } from '../../features/procurement/pages/ProcurementGoodsReceiptPage';
+import { VendorInvoicesPage } from '../../features/procurement/pages/VendorInvoicesPage';
+import { ProcurementReturnsPage } from '../../features/procurement/pages/ProcurementReturnsPage';
+import { ProcurementTrackingPage } from '../../features/procurement/pages/ProcurementTrackingPage';
 // Phase 2 — Daily Site Operations
 import { DailyWorkReportPage } from '../../features/daily-operations/pages/DailyWorkReportPage';
 // Phase 2 — Subcontract Management
@@ -187,16 +197,16 @@ export const router = createBrowserRouter([
 
           // ─── 7. Procurement ───────────────────────────────
           { path: 'procurement/requisitions', element: R('purchase_orders.view', PurchaseRequisitionsPage) },
-          { path: 'procurement/requisition-approval', element: R('purchase_orders.approve', PurchaseRequisitionsPage) },
-          { path: 'procurement/rfq', element: R('purchase_orders.view', PurchaseRequisitionsPage) },
-          { path: 'procurement/quotations', element: R('purchase_orders.view', PurchaseRequisitionsPage) },
-          { path: 'procurement/comparison', element: R('purchase_orders.view', PurchaseRequisitionsPage) },
+          { path: 'procurement/requisition-approval', element: R('purchase_orders.approve', RequisitionApprovalPage) },
+          { path: 'procurement/rfq', element: R('purchase_orders.view', RfqPage) },
+          { path: 'procurement/quotations', element: R('purchase_orders.view', VendorQuotationsPage) },
+          { path: 'procurement/comparison', element: R('purchase_orders.view', QuotationComparisonPage) },
           { path: 'procurement/purchase-orders', element: R('purchase_orders.view', PurchaseOrdersPage) },
-          { path: 'procurement/purchase-order-approval', element: R('purchase_orders.approve', PurchaseOrdersPage) },
-          { path: 'procurement/goods-receipt', element: R('material_receipts.view', StockReceiptsPage) },
-          { path: 'procurement/vendor-invoices', element: R('expenses.view', ExpenseBillsPage) },
-          { path: 'procurement/returns', element: R('purchase_orders.view', MaterialReturnsPage) },
-          { path: 'procurement/tracking', element: R('purchase_orders.view', PurchaseOrdersPage) },
+          { path: 'procurement/purchase-order-approval', element: R('purchase_orders.approve', PurchaseOrderApprovalPage) },
+          { path: 'procurement/goods-receipt', element: R('material_receipts.view', ProcurementGoodsReceiptPage) },
+          { path: 'procurement/vendor-invoices', element: R('purchase_orders.view', VendorInvoicesPage) },
+          { path: 'procurement/returns', element: R('purchase_orders.view', ProcurementReturnsPage) },
+          { path: 'procurement/tracking', element: R('purchase_orders.view', ProcurementTrackingPage) },
 
           // ─── 8. Daily Site Operations ─────────────────────
           { path: 'daily-operations/reports', element: R('daily_reports.view', DailyWorkReportPage) },
