@@ -9,8 +9,8 @@ export function ProjectProgressCard({ data }) {
     <Card className="flex flex-col h-full">
       <h3 className="text-base font-semibold text-text-primary mb-4">Project Progress</h3>
       
-      <div className="flex-1 flex flex-col md:flex-row items-center gap-6">
-        <div className="w-full md:w-1/2 h-[200px] relative">
+      <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-6 py-2">
+        <div className="w-full md:w-1/2 min-h-[220px] relative">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie

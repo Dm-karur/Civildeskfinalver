@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card } from '../../../components/ui/Card';
 
 export function CostOverviewCard({ data, totalBudget }) {
@@ -18,7 +18,7 @@ export function CostOverviewCard({ data, totalBudget }) {
         </div>
       </div>
       
-      <div className="flex-1 min-h-[220px]">
+      <div className="flex-1 min-h-[260px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--color-border)" />
@@ -32,7 +32,7 @@ export function CostOverviewCard({ data, totalBudget }) {
               axisLine={false} 
               tickLine={false} 
               tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} 
-              width={80}
+              width={110}
             />
             <Tooltip 
               cursor={{ fill: 'var(--color-surface-muted)' }}
@@ -50,7 +50,11 @@ export function CostOverviewCard({ data, totalBudget }) {
               radius={[0, 4, 4, 0]} 
               barSize={24}
               label={{ position: 'right', fill: 'var(--color-text-primary)', fontSize: 12, formatter: (val) => `₹${val}` }}
-            />
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.fill || 'var(--color-primary)'} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>

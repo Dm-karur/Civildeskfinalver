@@ -76,7 +76,7 @@ export function DashboardPage() {
         <PageHeader title="Dashboard" description="Overview of your projects and key performance." actions={renderHeaderActions()} />
         <div className="flex flex-col gap-6">
           {/* KPI Skeleton Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6 gap-4 md:gap-6">
             {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
           </div>
           {/* Primary Analytics Skeleton Grid */}
@@ -123,7 +123,7 @@ export function DashboardPage() {
 
       <div className="flex flex-col gap-6">
         {/* KPI Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6 gap-4 md:gap-6">
           <KpiCard
             label="Total Projects"
             value={kpis.totalProjects.value}

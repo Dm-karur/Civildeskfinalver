@@ -28,7 +28,7 @@ export function KpiCard({
 
   if (loading) {
     return (
-      <Card className={cn("animate-pulse flex items-center gap-3 h-[100px] p-4", className)}>
+      <Card className={cn("animate-pulse flex items-center gap-3 min-h-[100px] p-4", className)}>
         <div className="w-9 h-9 rounded-lg bg-surface-muted flex-shrink-0"></div>
         <div className="flex-1 min-w-0">
           <div className="h-3 bg-surface-muted rounded w-1/2 mb-2"></div>
@@ -40,8 +40,8 @@ export function KpiCard({
   }
 
   return (
-    <Card className={cn("flex flex-row items-center gap-2 h-[100px] p-3 sm:p-3", className)}>
-      <div className={cn("w-8 h-8 rounded-lg flex flex-shrink-0 items-center justify-center [&>svg]:w-4 [&>svg]:h-4", iconBgClasses[status])}>
+    <Card className={cn("flex flex-row items-center gap-3 min-h-[100px] p-4", className)}>
+      <div className={cn("w-10 h-10 rounded-lg flex flex-shrink-0 items-center justify-center [&>svg]:w-5 [&>svg]:h-5", iconBgClasses[status])}>
         {icon}
       </div>
       
@@ -53,7 +53,7 @@ export function KpiCard({
         {/* Flex layout to keep description and trend horizontally aligned even when tight */}
         <div className="flex items-center justify-between gap-1 mt-1 min-w-0">
           {description && (
-            <span className="text-[10px] text-text-secondary truncate block">
+            <span className="text-[11px] text-text-secondary truncate block">
               {description}
             </span>
           )}
