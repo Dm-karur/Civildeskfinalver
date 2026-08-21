@@ -23,6 +23,7 @@ import { ErrorBoundary } from '../../components/layout/ErrorBoundary';
 import { SitesListPage } from '../../features/sites/pages/SitesListPage';
 import { SiteZonesPage } from '../../features/sites/pages/SiteZonesPage';
 import { WorkLocationsPage } from '../../features/sites/pages/WorkLocationsPage';
+import { SiteTeamPage } from '../../features/sites/pages/SiteTeamPage';
 import { ProjectTypesPage } from '../../features/masters/pages/ProjectTypesPage';
 import { FinancialYearsPage } from '../../features/masters/pages/FinancialYearsPage';
 import { UnitsOfMeasurementPage } from '../../features/masters/pages/UnitsOfMeasurementPage';
@@ -97,7 +98,7 @@ export const router = createBrowserRouter([
           { path: 'sites', element: R('site.view', SitesListPage) },
           { path: 'sites/zones', element: R('site.view', SiteZonesPage) },
           { path: 'sites/work-locations', element: R('site.view', WorkLocationsPage) },
-          { path: 'sites/team', element: R('site.view', SitesListPage) },
+          { path: 'sites/team', element: R('site.view', SiteTeamPage) },
           { path: 'sites/instructions', element: R('site.view', SitesListPage) },
           { path: 'sites/documents', element: R('site.view', SitesListPage) },
           { path: 'project-masters/sites', element: R('site.view', SitesListPage) },
