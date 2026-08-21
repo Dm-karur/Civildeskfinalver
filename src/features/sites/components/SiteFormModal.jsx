@@ -51,6 +51,8 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
       site_type_id: String(site.site_type_id ?? ''),
       site_status_id: String(site.site_status_id ?? ''),
       branch_id: String(site.branch_id ?? ''),
+      start_date: site.start_date ? site.start_date.split(' ')[0] : '',
+      expected_completion_date: site.expected_completion_date ? site.expected_completion_date.split(' ')[0] : '',
     } : EMPTY_FORM);
     setErrors({});
     setLoadingMasters(true);
@@ -90,13 +92,22 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
     try {
       const nullableNumber = (value) => value === '' ? null : Number(value);
       const payload = {
-        ...form,
+        site_code: form.site_code,
+        site_name: form.site_name,
         project_id: Number(form.project_id),
         site_type_id: nullableNumber(form.site_type_id),
         site_status_id: nullableNumber(form.site_status_id),
         branch_id: nullableNumber(form.branch_id),
-        latitude: form.latitude ? Number(form.latitude) : null,
-        longitude: form.longitude ? Number(form.longitude) : null,
+        location: form.location,
+        address: form.address,
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode,
+        latitude: form.latitude !== '' && form.latitude != null ? Number(form.latitude) : null,
+        longitude: form.longitude !== '' && form.longitude != null ? Number(form.longitude) : null,
+        start_date: form.start_date || null,
+        expected_completion_date: form.expected_completion_date || null,
+        description: form.description,
       };
       if (isEditing) await sitesApi.update(site.id, payload);
       else await sitesApi.create(payload);
@@ -130,22 +141,24 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
           </EntityEditModal.Section>
           <EntityEditModal.Section title="Location">
             <EntityEditModal.Grid>
-              <FormField label="Address"><Input value={form.address} onChange={(e) => change('address', e.target.value)} /></FormField>
-              <FormField label="City"><Input value={form.city} onChange={(e) => change('city', e.target.value)} /></FormField>
-              <FormField label="State"><Input value={form.state} onChange={(e) => change('state', e.target.value)} /></FormField>
-              <FormField label="Pincode"><Input value={form.pincode} onChange={(e) => change('pincode', e.target.value)} /></FormField>
-              <FormField label="Latitude"><Input type="number" step="any" value={form.latitude} onChange={(e) => change('latitude', e.target.value)} /></FormField>
-              <FormField label="Longitude"><Input type="number" step="any" value={form.longitude} onChange={(e) => change('longitude', e.target.value)} /></FormField>
+              <FormField label="Address" error={errors.address}><Input value={form.address} onChange={(e) => change('address', e.target.value)} /></FormField>
+              <FormField label="City" error={errors.city}><Input value={form.city} onChange={(e) => change('city', e.target.value)} /></FormField>
+              <FormField label="State" error={errors.state}><Input value={form.state} onChange={(e) => change('state', e.target.value)} /></FormField>
+              <FormField label="Pincode" error={errors.pincode}><Input value={form.pincode} onChange={(e) => change('pincode', e.target.value)} /></FormField>
+              <FormField label="Latitude" error={errors.latitude}><Input type="number" step="any" value={form.latitude} onChange={(e) => change('latitude', e.target.value)} /></FormField>
+              <FormField label="Longitude" error={errors.longitude}><Input type="number" step="any" value={form.longitude} onChange={(e) => change('longitude', e.target.value)} /></FormField>
             </EntityEditModal.Grid>
           </EntityEditModal.Section>
           <EntityEditModal.Section title="Schedule">
             <EntityEditModal.Grid>
-              <FormField label="Start Date"><Input type="date" value={form.start_date} onChange={(e) => change('start_date', e.target.value)} /></FormField>
+              <FormField label="Start Date" error={errors.start_date}><Input type="date" value={form.start_date} onChange={(e) => change('start_date', e.target.value)} /></FormField>
               <FormField label="Expected Completion" error={errors.expected_completion_date}><Input type="date" value={form.expected_completion_date} onChange={(e) => change('expected_completion_date', e.target.value)} /></FormField>
             </EntityEditModal.Grid>
           </EntityEditModal.Section>
           <EntityEditModal.Section title="Description" noBorder>
-            <Textarea value={form.description} onChange={(e) => change('description', e.target.value)} rows={3} />
+            <FormField error={errors.description}>
+              <Textarea value={form.description} onChange={(e) => change('description', e.target.value)} rows={3} />
+            </FormField>
           </EntityEditModal.Section>
         </EntityEditModal.Body>
         <EntityEditModal.Footer formId="site-form" submitLabel={isEditing ? 'Update Site' : 'Create Site'} onCancel={onClose} isSubmitting={saving || loadingMasters} />
