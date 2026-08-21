@@ -34,6 +34,7 @@ import { BoqListPage } from '../../features/boq/pages/BoqListPage';
 import { BoqSectionsPage } from '../../features/boq/pages/BoqSectionsPage';
 import { BoqItemsPage } from '../../features/boq/pages/BoqItemsPage';
 import { DrawingTakeoffPage } from '../../features/boq/pages/DrawingTakeoffPage';
+import { TakeoffReviewPage } from '../../features/boq/pages/TakeoffReviewPage';
 import { BudgetListPage } from '../../features/budgets/pages/BudgetListPage';
 import { BudgetRevisionsPage } from '../../features/budgets/pages/BudgetRevisionsPage';
 import { BudgetVariationsPage } from '../../features/budgets/pages/BudgetVariationsPage';
@@ -122,7 +123,7 @@ export const router = createBrowserRouter([
           { path: 'budgets/variations', element: R('budget.view', BudgetVariationsPage) },
           { path: 'budgets/approvals', element: R('budget.view', BudgetApprovalsPage) },
           { path: 'takeoff', element: R('boq.view', DrawingTakeoffPage) },
-          { path: 'takeoff/review', element: R('boq.view', BoqListPage) },
+          { path: 'takeoff/review', element: R('boq.view', TakeoffReviewPage) },
           { path: 'takeoff/convert', element: R('boq.view', BoqListPage) },
 
           // ─── 4. Project Planning ─────────────────────────
