@@ -120,7 +120,20 @@ import { OutstandingReceivablesPage } from '../../features/receivables/pages/Out
 import { ClientRetentionPage } from '../../features/receivables/pages/ClientRetentionPage';
 import { ClientStatementsPage } from '../../features/receivables/pages/ClientStatementsPage';
 // Phase 3 — Finance & Cost Control
-import { ExpenseRequestsPage, ExpenseBillsPage, ExpensePaymentsPage, ProjectCostSummaryPage } from '../../features/finance/pages/FinancePages';
+import { ProjectCostPage } from '../../features/finance/pages/ProjectCostPage';
+import { BudgetVsActualPage } from '../../features/finance/pages/BudgetVsActualPage';
+import { MaterialCostsPage } from '../../features/finance/pages/MaterialCostsPage';
+import { LabourCostsPage } from '../../features/finance/pages/LabourCostsPage';
+import { SubcontractCostsPage } from '../../features/finance/pages/SubcontractCostsPage';
+import { EquipmentCostsPage } from '../../features/finance/pages/EquipmentCostsPage';
+import { OtherExpensesPage } from '../../features/finance/pages/OtherExpensesPage';
+import { ProjectIncomePage } from '../../features/finance/pages/ProjectIncomePage';
+import { MasterExpensesPage } from '../../features/finance/pages/MasterExpensesPage';
+import { VendorPayablesPage } from '../../features/finance/pages/VendorPayablesPage';
+import { FinancePaymentsPage } from '../../features/finance/pages/FinancePaymentsPage';
+import { ProjectProfitabilityPage } from '../../features/finance/pages/ProjectProfitabilityPage';
+import { CashFlowPage } from '../../features/finance/pages/CashFlowPage';
+import { ExpenseRequestsPage } from '../../features/finance/pages/FinancePages';
 // Phase 3 — Reports & Analytics
 import { ProjectProgressReportPage, BudgetVsActualReportPage, MaterialReportPage, ExpenseReportPage } from '../../features/reports/pages/ReportPages';
 import { SubcontractReportPage } from '../../features/reports/pages/SubcontractReportPage';
@@ -278,19 +291,19 @@ export const router = createBrowserRouter([
           { path: 'receivables/statements', element: R('report.view', ClientStatementsPage) },
 
           // ─── 11. Finance & Cost Control ───────────────────
-          { path: 'finance/project-cost', element: R('project_cost.view', ProjectCostSummaryPage) },
-          { path: 'finance/budget-vs-actual', element: R('budget.view', BudgetVsActualReportPage) },
-          { path: 'finance/material-costs', element: R('project_cost.view', MaterialReportPage) },
-          { path: 'finance/labour-costs', element: R('wages.view', LabourReportPage) },
-          { path: 'finance/subcontract-costs', element: R('project_cost.view', SubcontractReportPage) },
-          { path: 'finance/equipment-costs', element: R('project_cost.view', ProjectCostSummaryPage) },
-          { path: 'finance/other-expenses', element: R('expenses.view', ExpenseRequestsPage) },
-          { path: 'finance/income', element: R('cashflow.view', ExpensePaymentsPage) },
-          { path: 'finance/expenses', element: R('expenses.view', ExpenseBillsPage) },
-          { path: 'finance/vendor-payables', element: R('expense_payments.view', ExpenseBillsPage) },
-          { path: 'finance/payments', element: R('expense_payments.view', ExpensePaymentsPage) },
-          { path: 'finance/profitability', element: R('project_cost.view', ProjectCostSummaryPage) },
-          { path: 'finance/cash-flow', element: R('cashflow.view', ProjectCostSummaryPage) },
+          { path: 'finance/project-cost', element: R('project_cost.view', ProjectCostPage) },
+          { path: 'finance/budget-vs-actual', element: R('budget.view', BudgetVsActualPage) },
+          { path: 'finance/material-costs', element: R('project_cost.view', MaterialCostsPage) },
+          { path: 'finance/labour-costs', element: R('wages.view', LabourCostsPage) },
+          { path: 'finance/subcontract-costs', element: R('project_cost.view', SubcontractCostsPage) },
+          { path: 'finance/equipment-costs', element: R('project_cost.view', EquipmentCostsPage) },
+          { path: 'finance/other-expenses', element: R('expenses.view', OtherExpensesPage) },
+          { path: 'finance/income', element: R('cashflow.view', ProjectIncomePage) },
+          { path: 'finance/expenses', element: R('expenses.view', MasterExpensesPage) },
+          { path: 'finance/vendor-payables', element: R('expense_payments.view', VendorPayablesPage) },
+          { path: 'finance/payments', element: R('expense_payments.view', FinancePaymentsPage) },
+          { path: 'finance/profitability', element: R('project_cost.view', ProjectProfitabilityPage) },
+          { path: 'finance/cash-flow', element: R('cashflow.view', CashFlowPage) },
 
           // ─── 12. Reports & Analytics ─────────────────────
           { path: 'reports/project-progress', element: R('report.view', ProjectProgressReportPage) },
