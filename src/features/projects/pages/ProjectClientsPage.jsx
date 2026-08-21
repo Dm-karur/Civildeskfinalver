@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Building2, IndianRupee, FileText, CheckCircle2, Search, Filter, Eye, Edit, Layers, Briefcase } from 'lucide-react';
+import { Building2, IndianRupee, FileText, Briefcase, Layers, Eye, Edit, Search, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -86,17 +86,17 @@ export function ProjectClientsPage() {
         breadcrumbs={breadcrumbs}
       />
 
-      <div className="flex flex-col gap-4">
-        {/* KPI Metrics Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="flex flex-col gap-3 sm:gap-4 w-full">
+        {/* KPI Metrics Bar - Responsive Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard
-            label="Linked Client Projects"
+            label="Linked Projects"
             value={projects.length}
             status="primary"
             icon={<Briefcase className="w-4 h-4" />}
           />
           <KpiCard
-            label="Distinct Client Entities"
+            label="Client Entities"
             value={uniqueClientsCount}
             status="info"
             icon={<Building2 className="w-4 h-4 text-sky-500" />}
@@ -108,7 +108,7 @@ export function ProjectClientsPage() {
             icon={<IndianRupee className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
-            label="Average Value / Project"
+            label="Average / Project"
             value={projects.length ? `₹${Math.round(totalContractVal / projects.length).toLocaleString('en-IN')}` : '₹0'}
             status="neutral"
             icon={<Layers className="w-4 h-4 text-amber-500" />}
@@ -116,21 +116,21 @@ export function ProjectClientsPage() {
         </div>
 
         {/* Filter Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface border border-border rounded-lg p-3 shadow-xs">
-          <div className="flex-1 sm:max-w-xs">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
+          <div className="w-full sm:max-w-xs">
             <SearchField
-              placeholder="Search by project, client, or WO#..."
+              placeholder="Search project, client, WO#..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap justify-between sm:justify-end">
             <Select
               options={[{ value: 'all', label: 'All Clients' }, ...clients.map(c => ({ value: String(c.id), label: c.client_name || c.name }))]}
               value={clientFilter}
               onChange={setClientFilter}
-              className="w-44 text-xs h-8"
+              className="w-full sm:w-44 text-xs h-8"
             />
 
             {(search || clientFilter !== 'all' || statusFilter !== 'all') && (
@@ -146,9 +146,221 @@ export function ProjectClientsPage() {
           </div>
         </div>
 
-        {/* Project Client Details Table */}
-        <DataTableContainer
-          pagination={
+        {/* Desktop & Tablet Table (No horizontal scroll, 100% fluid) */}
+        <div className="hidden sm:block">
+          <DataTableContainer
+            pagination={
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                itemsPerPage={perPage}
+                onPageChange={setPage}
+                onItemsPerPageChange={() => {}}
+              />
+            }
+          >
+            <table className="w-full text-left text-[12px] table-auto">
+              <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+                <tr>
+                  <th className="px-3 py-2 w-10 text-center">#</th>
+                  <th className="px-3 py-2">Project</th>
+                  <th className="px-3 py-2">Client Details</th>
+                  <th className="px-3 py-2 hidden md:table-cell">Work Order / Ref</th>
+                  <th className="px-3 py-2 hidden lg:table-cell">Billing Terms</th>
+                  <th className="px-3 py-2 text-right">Contract Value</th>
+                  <th className="px-3 py-2 text-center w-24">Status</th>
+                  <th className="px-3 py-2 text-center w-16">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {loading ? (
+                  <tr>
+                    <td colSpan="8" className="text-center py-8 text-text-muted text-[12px]">
+                      Loading project client records...
+                    </td>
+                  </tr>
+                ) : paged.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="text-center py-8 text-text-muted text-[12px]">
+                      No project client records found.
+                    </td>
+                  </tr>
+                ) : (
+                  paged.map((project, index) => {
+                    const clientCode = project.client_code || '';
+                    const clientName = project.client_name || project.client || '—';
+                    const woNo = project.work_order_no || project.client_reference_no || '—';
+                    const billingMethod = project.billing_method_name || 'Progressive Milestone';
+                    const status = project.project_status_name || project.status_name || 'Active';
+                    const contractVal = Number(project.contract_value || 0);
+                    const budgetVal = Number(project.approved_budget || 0);
+
+                    return (
+                      <tr key={project.id || index} className="hover:bg-surface-muted/30 transition-colors group">
+                        <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                          {(page - 1) * perPage + index + 1}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-text-primary text-[12px] truncate" title={project.project_name}>
+                              {project.project_name}
+                            </span>
+                            <span className="font-mono text-[10px] text-text-secondary">
+                              {project.project_code}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-medium text-text-primary text-[12px] truncate" title={clientName}>
+                              {clientName}
+                            </span>
+                            {clientCode && (
+                              <span className="text-[10px] font-mono text-text-muted">
+                                {clientCode}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 hidden md:table-cell">
+                          <span className="font-mono text-[11px] text-text-secondary truncate block" title={woNo}>
+                            {woNo}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 hidden lg:table-cell">
+                          <div className="flex flex-col text-[11px] text-text-secondary">
+                            <span>{billingMethod}</span>
+                            <span className="text-[10px] text-text-muted">
+                              Ret: {project.retention_percentage || 0}% • GST: {project.tax_percentage || 18}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono">
+                          <span className="font-bold text-text-primary text-[12px] block">
+                            ₹{contractVal.toLocaleString('en-IN')}
+                          </span>
+                          {budgetVal > 0 && (
+                            <span className="text-[10px] text-emerald-600 block">
+                              Budget: ₹{budgetVal.toLocaleString('en-IN')}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <Badge
+                            variant={getStatusVariant(status)}
+                            className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
+                          >
+                            {status}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="View Client Commercial Details"
+                              onClick={() => setSelectedProject(project)}
+                            >
+                              <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="Edit Commercials"
+                              onClick={() => setEditingProject(project)}
+                            >
+                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </DataTableContainer>
+        </div>
+
+        {/* Mobile View - Cards List for Phones (< sm) */}
+        <div className="block sm:hidden space-y-3">
+          {loading ? (
+            <div className="text-center py-8 text-text-muted text-xs bg-surface border border-border rounded-lg">
+              Loading project client records...
+            </div>
+          ) : paged.length === 0 ? (
+            <div className="text-center py-8 text-text-muted text-xs bg-surface border border-border rounded-lg">
+              No project client records found.
+            </div>
+          ) : (
+            paged.map((project, idx) => {
+              const clientName = project.client_name || project.client || '—';
+              const contractVal = Number(project.contract_value || 0);
+              const status = project.project_status_name || project.status_name || 'Active';
+
+              return (
+                <div key={project.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-semibold text-text-primary text-[13px] leading-snug">
+                        {project.project_name}
+                      </h4>
+                      <span className="text-[10px] font-mono text-text-secondary">
+                        {project.project_code}
+                      </span>
+                    </div>
+                    <Badge
+                      variant={getStatusVariant(status)}
+                      className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
+                    >
+                      {status}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-text-muted block">Client</span>
+                      <span className="font-medium text-text-primary text-[11px] truncate block">{clientName}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-text-muted block">Contract Value</span>
+                      <span className="font-mono font-bold text-text-primary text-[11px] block">₹{contractVal.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
+                    <span className="text-[10px] text-text-secondary font-mono">
+                      WO: {project.work_order_no || '—'}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[11px] px-2"
+                        onClick={() => setSelectedProject(project)}
+                      >
+                        <Eye className="w-3 h-3 mr-1" /> View
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => setEditingProject(project)}
+                      >
+                        <Edit className="w-3.5 h-3.5 text-text-secondary" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          {/* Mobile Pagination */}
+          <div className="pt-2">
             <Pagination
               currentPage={page}
               totalPages={totalPages}
@@ -157,142 +369,24 @@ export function ProjectClientsPage() {
               onPageChange={setPage}
               onItemsPerPageChange={() => {}}
             />
-          }
-        >
-          <table className="w-full text-left text-[12px] whitespace-nowrap table-fixed">
-            <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
-              <tr>
-                <th className="px-2 py-1.5 w-10 text-center">#</th>
-                <th className="px-2 py-1.5 w-28">Project Code</th>
-                <th className="px-2 py-1.5 w-44">Project Name</th>
-                <th className="px-2 py-1.5 w-40">Client Details</th>
-                <th className="px-2 py-1.5 w-28">Work Order / Ref</th>
-                <th className="px-2 py-1.5 w-28">Billing Method</th>
-                <th className="px-2 py-1.5 w-20 text-center">Retention %</th>
-                <th className="px-2 py-1.5 w-20 text-center">Tax / GST %</th>
-                <th className="px-2 py-1.5 text-right w-28">Contract Value</th>
-                <th className="px-2 py-1.5 text-right w-28">Approved Budget</th>
-                <th className="px-2 py-1.5 text-center w-24">Status</th>
-                <th className="px-2 py-1.5 text-center w-20">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {loading ? (
-                <tr>
-                  <td colSpan="12" className="text-center py-8 text-text-muted text-[12px]">
-                    Loading project client details from database...
-                  </td>
-                </tr>
-              ) : paged.length === 0 ? (
-                <tr>
-                  <td colSpan="12" className="text-center py-8 text-text-muted text-[12px]">
-                    No project client records found matching your filters.
-                  </td>
-                </tr>
-              ) : (
-                paged.map((project, index) => {
-                  const clientCode = project.client_code || '';
-                  const clientName = project.client_name || project.client || '—';
-                  const woNo = project.work_order_no || project.client_reference_no || '—';
-                  const billingMethod = project.billing_method_name || 'Progressive Milestone';
-                  const status = project.project_status_name || project.status_name || 'Active';
-                  const contractVal = Number(project.contract_value || 0);
-                  const budgetVal = Number(project.approved_budget || 0);
-
-                  return (
-                    <tr key={project.id || index} className="hover:bg-surface-muted/30 transition-colors group">
-                      <td className="px-2 py-1.5 text-center font-medium text-text-primary text-[11px]">
-                        {(page - 1) * perPage + index + 1}
-                      </td>
-                      <td className="px-2 py-1.5 font-mono font-semibold text-text-primary text-[11px]">
-                        {project.project_code}
-                      </td>
-                      <td className="px-2 py-1.5 font-medium text-text-primary truncate" title={project.project_name}>
-                        {project.project_name}
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[11px] truncate" title={clientName}>
-                            {clientName}
-                          </span>
-                          {clientCode && (
-                            <span className="text-[10px] font-mono text-text-secondary">
-                              {clientCode}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-2 py-1.5 text-text-secondary font-mono text-[11px] truncate" title={woNo}>
-                        {woNo}
-                      </td>
-                      <td className="px-2 py-1.5 text-text-secondary text-[11px] truncate">
-                        {billingMethod}
-                      </td>
-                      <td className="px-2 py-1.5 text-center font-mono text-[11px]">
-                        {project.retention_percentage != null ? `${project.retention_percentage}%` : '0%'}
-                      </td>
-                      <td className="px-2 py-1.5 text-center font-mono text-[11px]">
-                        {project.tax_percentage != null ? `${project.tax_percentage}%` : '18%'}
-                      </td>
-                      <td className="px-2 py-1.5 text-right font-mono font-bold text-text-primary text-[11px]">
-                        ₹{contractVal.toLocaleString('en-IN')}
-                      </td>
-                      <td className="px-2 py-1.5 text-right font-mono text-emerald-600 text-[11px]">
-                        ₹{budgetVal.toLocaleString('en-IN')}
-                      </td>
-                      <td className="px-2 py-1.5 text-center">
-                        <Badge
-                          variant={getStatusVariant(status)}
-                          className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
-                        >
-                          {status}
-                        </Badge>
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="View Client Commercial Breakdown"
-                            onClick={() => setSelectedProject(project)}
-                          >
-                            <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Edit Project Commercials"
-                            onClick={() => setEditingProject(project)}
-                          >
-                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </DataTableContainer>
+          </div>
+        </div>
       </div>
 
-      {/* Project Client Details Modal */}
+      {/* Project Client Commercial Details Modal */}
       {selectedProject && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">
-                  <Building2 className="w-5 h-5" />
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border bg-surface-muted/30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
+                  <Building2 className="w-4 h-4" />
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-text-primary">
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-bold text-text-primary truncate">
                     {selectedProject.project_name}
                   </h3>
-                  <p className="text-xs text-text-secondary font-mono">
+                  <p className="text-[11px] text-text-secondary font-mono truncate">
                     {selectedProject.project_code} • Client: {selectedProject.client_name}
                   </p>
                 </div>
@@ -300,23 +394,23 @@ export function ProjectClientsPage() {
               <Button variant="ghost" size="sm" onClick={() => setSelectedProject(null)}>✕</Button>
             </div>
 
-            <div className="p-5 space-y-4 overflow-y-auto">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="bg-surface-muted/40 p-3 rounded-lg border border-border">
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                <div className="bg-surface-muted/40 p-2.5 sm:p-3 rounded-lg border border-border">
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Contract Value</span>
-                  <span className="text-sm font-bold font-mono text-text-primary">
+                  <span className="text-xs sm:text-sm font-bold font-mono text-text-primary">
                     ₹{Number(selectedProject.contract_value || 0).toLocaleString('en-IN')}
                   </span>
                 </div>
-                <div className="bg-surface-muted/40 p-3 rounded-lg border border-border">
+                <div className="bg-surface-muted/40 p-2.5 sm:p-3 rounded-lg border border-border">
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Approved Budget</span>
-                  <span className="text-sm font-bold font-mono text-emerald-600">
+                  <span className="text-xs sm:text-sm font-bold font-mono text-emerald-600">
                     ₹{Number(selectedProject.approved_budget || 0).toLocaleString('en-IN')}
                   </span>
                 </div>
-                <div className="bg-surface-muted/40 p-3 rounded-lg border border-border">
+                <div className="bg-surface-muted/40 p-2.5 sm:p-3 rounded-lg border border-border col-span-2 sm:col-span-1">
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Estimated Margin</span>
-                  <span className="text-sm font-bold font-mono text-primary">
+                  <span className="text-xs sm:text-sm font-bold font-mono text-primary">
                     {selectedProject.contract_value > 0
                       ? `${(((selectedProject.contract_value - (selectedProject.approved_budget || 0)) / selectedProject.contract_value) * 100).toFixed(1)}%`
                       : '0%'}
@@ -324,11 +418,11 @@ export function ProjectClientsPage() {
                 </div>
               </div>
 
-              <div className="border border-border rounded-lg p-4 space-y-2 text-xs">
-                <h4 className="font-bold text-text-primary text-[13px] border-b border-border pb-1.5 flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-primary" /> Commercial & Billing Terms
+              <div className="border border-border rounded-lg p-3.5 space-y-2 text-xs">
+                <h4 className="font-bold text-text-primary text-xs sm:text-[13px] border-b border-border pb-1.5 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-primary" /> Commercial & Billing Terms
                 </h4>
-                <div className="grid grid-cols-2 gap-y-2 pt-1 text-[12px]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 pt-1 text-[11px] sm:text-[12px]">
                   <div><span className="text-text-muted">Client Code:</span> <span className="font-mono font-semibold">{selectedProject.client_code || '—'}</span></div>
                   <div><span className="text-text-muted">Work Order No:</span> <span className="font-mono font-semibold">{selectedProject.work_order_no || '—'}</span></div>
                   <div><span className="text-text-muted">Client Ref No:</span> <span className="font-mono">{selectedProject.client_reference_no || '—'}</span></div>
@@ -348,7 +442,7 @@ export function ProjectClientsPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end">
+            <div className="px-4 sm:px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end">
               <Button variant="outline" onClick={() => setSelectedProject(null)}>Close</Button>
             </div>
           </div>
