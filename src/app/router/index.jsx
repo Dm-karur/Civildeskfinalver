@@ -76,7 +76,8 @@ import { SubcontractorsPage, WorkOrdersPage, SubcontractMeasurementsPage, RABill
 // Phase 3 — Finance & Cost Control
 import { ExpenseRequestsPage, ExpenseBillsPage, ExpensePaymentsPage, ProjectCostSummaryPage } from '../../features/finance/pages/FinancePages';
 // Phase 3 — Reports & Analytics
-import { ProjectProgressReportPage, BudgetVsActualReportPage, LabourReportPage, MaterialReportPage, SubcontractReportPage, ExpenseReportPage } from '../../features/reports/pages/ReportPages';
+import { ProjectProgressReportPage, BudgetVsActualReportPage, MaterialReportPage, SubcontractReportPage, ExpenseReportPage } from '../../features/reports/pages/ReportPages';
+import { LabourReportPage } from '../../features/reports/pages/LabourReportPage';
 // Phase 2/3 — Additional Masters
 import { LabourCategoriesPage, LabourContractorsPage } from '../../features/masters/pages/LabourMasterPages';
 import { MaterialCategoriesPage, SuppliersPage, ExpenseCategoriesPage } from '../../features/masters/pages/MaterialProcurementMasterPages';
