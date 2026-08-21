@@ -149,6 +149,13 @@ import { ProjectProfitabilityReportPage } from '../../features/reports/pages/Pro
 import { DailySiteReportPage } from '../../features/reports/pages/DailySiteReportPage';
 import { ManagementSummaryReportPage } from '../../features/reports/pages/ManagementSummaryReportPage';
 import { ExpenseReportPage } from '../../features/reports/pages/ReportPages';
+// Phase 3 — Communication & Collaboration
+import { ProjectMessagesPage } from '../../features/communication/pages/ProjectMessagesPage';
+import { ClientUpdatesPage } from '../../features/communication/pages/ClientUpdatesPage';
+import { CommunicationDocumentsPage } from '../../features/communication/pages/CommunicationDocumentsPage';
+import { CommunicationApprovalsPage } from '../../features/communication/pages/CommunicationApprovalsPage';
+import { WhatsAppLogsPage } from '../../features/communication/pages/WhatsAppLogsPage';
+import { EmailLogsPage } from '../../features/communication/pages/EmailLogsPage';
 // Phase 2/3 — Additional Masters
 import { LabourCategoriesPage, LabourContractorsPage } from '../../features/masters/pages/LabourMasterPages';
 import { MaterialCategoriesPage, SuppliersPage, ExpenseCategoriesPage } from '../../features/masters/pages/MaterialProcurementMasterPages';
@@ -336,12 +343,12 @@ export const router = createBrowserRouter([
           { path: 'reports/management-summary', element: R('management_review.view', ManagementSummaryReportPage) },
 
           // ─── Communication ───────────────────────────────
-          { path: 'communication/project-messages', element: R('dashboard.view', DashboardPage) },
-          { path: 'communication/client-updates', element: R('dashboard.view', DashboardPage) },
-          { path: 'communication/documents', element: R('project.view', ProjectsListPage) },
-          { path: 'communication/approvals', element: <ApprovalWorkflowsPage /> },
-          { path: 'communication/whatsapp', element: R('activity_log.view', AuditLogsPage) },
-          { path: 'communication/email', element: R('activity_log.view', AuditLogsPage) },
+          { path: 'communication/project-messages', element: R('project.view', ProjectMessagesPage) },
+          { path: 'communication/client-updates', element: R('client.view', ClientUpdatesPage) },
+          { path: 'communication/documents', element: R('project.manage_documents', CommunicationDocumentsPage) },
+          { path: 'communication/approvals', element: R('project.view', CommunicationApprovalsPage) },
+          { path: 'communication/whatsapp', element: R('activity_log.view', WhatsAppLogsPage) },
+          { path: 'communication/email', element: R('activity_log.view', EmailLogsPage) },
 
           // ─── Client Portal ───────────────────────────────
           { path: 'client-portal/users', element: R('user.view', UsersListPage) },
