@@ -31,21 +31,60 @@ import { FinancialYearsPage } from '../../features/masters/pages/FinancialYearsP
 import { UnitsOfMeasurementPage } from '../../features/masters/pages/UnitsOfMeasurementPage';
 import { WorkCategoriesPage } from '../../features/masters/pages/WorkCategoriesPage';
 import { BoqListPage } from '../../features/boq/pages/BoqListPage';
+import { BoqSectionsPage } from '../../features/boq/pages/BoqSectionsPage';
+import { BoqItemsPage } from '../../features/boq/pages/BoqItemsPage';
+import { DrawingTakeoffPage } from '../../features/boq/pages/DrawingTakeoffPage';
+import { TakeoffReviewPage } from '../../features/boq/pages/TakeoffReviewPage';
+import { ConvertTakeoffPage } from '../../features/boq/pages/ConvertTakeoffPage';
 import { BudgetListPage } from '../../features/budgets/pages/BudgetListPage';
+import { BudgetRevisionsPage } from '../../features/budgets/pages/BudgetRevisionsPage';
+import { BudgetVariationsPage } from '../../features/budgets/pages/BudgetVariationsPage';
+import { BudgetApprovalsPage } from '../../features/budgets/pages/BudgetApprovalsPage';
+import { PlanningActivitiesPage } from '../../features/planning/pages/PlanningActivitiesPage';
+import { WorkProgrammePage } from '../../features/planning/pages/WorkProgrammePage';
+import { PlanningBoqMappingPage } from '../../features/planning/pages/PlanningBoqMappingPage';
+import { PlannedVsCompletedPage } from '../../features/planning/pages/PlannedVsCompletedPage';
+import { LookAheadSchedulePage } from '../../features/planning/pages/LookAheadSchedulePage';
+import { MaterialRequirementsPlanningPage } from '../../features/planning/pages/MaterialRequirementsPlanningPage';
+import { MaterialForecastPage } from '../../features/planning/pages/MaterialForecastPage';
+import { MaterialShortagesPage } from '../../features/planning/pages/MaterialShortagesPage';
+import { PlanningAlertsPage } from '../../features/planning/pages/PlanningAlertsPage';
 // Phase 2 — Labour & Attendance
 import { LabourRegisterPage } from '../../features/labour/pages/LabourRegisterPage';
 import { LabourDeploymentPage } from '../../features/labour/pages/LabourDeploymentPage';
 import { DailyAttendancePage } from '../../features/labour/pages/DailyAttendancePage';
+import { AttendanceExceptionsPage } from '../../features/labour/pages/AttendanceExceptionsPage';
+import { LabourTimesheetsPage } from '../../features/labour/pages/LabourTimesheetsPage';
+import { LabourOvertimePage } from '../../features/labour/pages/LabourOvertimePage';
+import { LabourLeavePage } from '../../features/labour/pages/LabourLeavePage';
 import { DailyWagesPage } from '../../features/labour/pages/DailyWagesPage';
+import { ManpowerCostPage } from '../../features/labour/pages/ManpowerCostPage';
+import { LabourWageApprovalPage } from '../../features/labour/pages/LabourWageApprovalPage';
 // Phase 2 — Materials & Inventory
 import { MaterialCataloguePage } from '../../features/materials/pages/MaterialCataloguePage';
 import { StockOverviewPage } from '../../features/materials/pages/StockOverviewPage';
+import { ProjectStockPage } from '../../features/materials/pages/ProjectStockPage';
 import { MaterialRequestsPage } from '../../features/materials/pages/MaterialRequestsPage';
 import { StockReceiptsPage } from '../../features/materials/pages/StockReceiptsPage';
-import { StockIssuesPage, StockTransfersPage, MaterialReturnsPage, StockAdjustmentsPage, DeliveryChallansPage, MaterialConsumptionPage } from '../../features/materials/pages/StockTransactionsPage';
+import { StockIssuesPage } from '../../features/materials/pages/StockIssuesPage';
+import { StockTransfersPage } from '../../features/materials/pages/StockTransfersPage';
+import { MaterialReturnsPage } from '../../features/materials/pages/MaterialReturnsPage';
+import { StockAdjustmentsPage } from '../../features/materials/pages/StockAdjustmentsPage';
+import { DeliveryChallansPage } from '../../features/materials/pages/DeliveryChallansPage';
+import { MaterialConsumptionPage } from '../../features/materials/pages/MaterialConsumptionPage';
 import { StockLedgerPage } from '../../features/materials/pages/StockLedgerPage';
 // Phase 2 — Procurement
-import { PurchaseOrdersPage, PurchaseRequisitionsPage } from '../../features/procurement/pages/ProcurementPages';
+import { PurchaseRequisitionsPage } from '../../features/procurement/pages/PurchaseRequisitionsPage';
+import { RequisitionApprovalPage } from '../../features/procurement/pages/RequisitionApprovalPage';
+import { RfqPage } from '../../features/procurement/pages/RfqPage';
+import { VendorQuotationsPage } from '../../features/procurement/pages/VendorQuotationsPage';
+import { QuotationComparisonPage } from '../../features/procurement/pages/QuotationComparisonPage';
+import { PurchaseOrdersPage } from '../../features/procurement/pages/PurchaseOrdersPage';
+import { PurchaseOrderApprovalPage } from '../../features/procurement/pages/PurchaseOrderApprovalPage';
+import { ProcurementGoodsReceiptPage } from '../../features/procurement/pages/ProcurementGoodsReceiptPage';
+import { VendorInvoicesPage } from '../../features/procurement/pages/VendorInvoicesPage';
+import { ProcurementReturnsPage } from '../../features/procurement/pages/ProcurementReturnsPage';
+import { ProcurementTrackingPage } from '../../features/procurement/pages/ProcurementTrackingPage';
 // Phase 2 — Daily Site Operations
 import { DailyWorkReportPage } from '../../features/daily-operations/pages/DailyWorkReportPage';
 // Phase 2 — Subcontract Management
@@ -53,7 +92,8 @@ import { SubcontractorsPage, WorkOrdersPage, SubcontractMeasurementsPage, RABill
 // Phase 3 — Finance & Cost Control
 import { ExpenseRequestsPage, ExpenseBillsPage, ExpensePaymentsPage, ProjectCostSummaryPage } from '../../features/finance/pages/FinancePages';
 // Phase 3 — Reports & Analytics
-import { ProjectProgressReportPage, BudgetVsActualReportPage, LabourReportPage, MaterialReportPage, SubcontractReportPage, ExpenseReportPage } from '../../features/reports/pages/ReportPages';
+import { ProjectProgressReportPage, BudgetVsActualReportPage, MaterialReportPage, SubcontractReportPage, ExpenseReportPage } from '../../features/reports/pages/ReportPages';
+import { LabourReportPage } from '../../features/reports/pages/LabourReportPage';
 // Phase 2/3 — Additional Masters
 import { LabourCategoriesPage, LabourContractorsPage } from '../../features/masters/pages/LabourMasterPages';
 import { MaterialCategoriesPage, SuppliersPage, ExpenseCategoriesPage } from '../../features/masters/pages/MaterialProcurementMasterPages';
@@ -108,44 +148,43 @@ export const router = createBrowserRouter([
           // ─── 3. BOQ & Project Budget ─────────────────────
           { path: 'project-boqs', element: R('boq.view', BoqListPage) },
           { path: 'boq', element: R('boq.view', BoqListPage) },
-          { path: 'boq/sections', element: R('boq.view', BoqListPage) },
-          { path: 'boq/items', element: R('boq.view', BoqListPage) },
+          { path: 'boq/sections', element: R('boq.view', BoqSectionsPage) },
+          { path: 'boq/items', element: R('boq.view', BoqItemsPage) },
           { path: 'project-budgets', element: R('budget.view', BudgetListPage) },
           { path: 'budgets', element: R('budget.view', BudgetListPage) },
-          { path: 'budgets/revisions', element: R('budget.view', BudgetListPage) },
-          { path: 'budgets/variations', element: R('budget.view', BudgetListPage) },
-          { path: 'budgets/approvals', element: R('budget.view', BudgetListPage) },
-          { path: 'takeoff', element: R('boq.view', BoqListPage) },
-          { path: 'takeoff/review', element: R('boq.view', BoqListPage) },
-          { path: 'takeoff/convert', element: R('boq.view', BoqListPage) },
-
+          { path: 'budgets/revisions', element: R('budget.view', BudgetRevisionsPage) },
+          { path: 'budgets/variations', element: R('budget.view', BudgetVariationsPage) },
+          { path: 'budgets/approvals', element: R('budget.view', BudgetApprovalsPage) },
+          { path: 'takeoff', element: R('boq.view', DrawingTakeoffPage) },
+          { path: 'takeoff/review', element: R('boq.view', TakeoffReviewPage) },
+          { path: 'takeoff/convert', element: R('boq.view', ConvertTakeoffPage) },
           // ─── 4. Project Planning ─────────────────────────
-          { path: 'planning/activities', element: R('report.view', ProjectProgressReportPage) },
-          { path: 'planning/work-programme', element: R('report.view', ProjectProgressReportPage) },
-          { path: 'planning/boq-mapping', element: R('boq.view', BoqListPage) },
-          { path: 'planning/planned-vs-completed', element: R('report.view', ProjectProgressReportPage) },
-          { path: 'planning/look-ahead', element: R('report.view', ProjectProgressReportPage) },
-          { path: 'planning/material-requirements', element: R('materials.view', MaterialReportPage) },
-          { path: 'planning/material-forecast', element: R('materials.view', MaterialReportPage) },
-          { path: 'planning/shortages', element: R('material_stock.view', MaterialReportPage) },
-          { path: 'planning/alerts', element: R('dashboard.view', DashboardPage) },
+          { path: 'planning/activities', element: R('planning.view', PlanningActivitiesPage) },
+          { path: 'planning/work-programme', element: R('planning.view', WorkProgrammePage) },
+          { path: 'planning/boq-mapping', element: R('planning.view', PlanningBoqMappingPage) },
+          { path: 'planning/planned-vs-completed', element: R('planning.view', PlannedVsCompletedPage) },
+          { path: 'planning/look-ahead', element: R('planning.view', LookAheadSchedulePage) },
+          { path: 'planning/material-requirements', element: R('planning.view', MaterialRequirementsPlanningPage) },
+          { path: 'planning/material-forecast', element: R('planning.view', MaterialForecastPage) },
+          { path: 'planning/shortages', element: R('planning.view', MaterialShortagesPage) },
+          { path: 'planning/alerts', element: R('planning.view', PlanningAlertsPage) },
 
           // ─── 5. Labour & Attendance ───────────────────────
           { path: 'labour', element: R('labour.view', LabourRegisterPage) },
           { path: 'labour/deployment', element: R('labour.view', LabourDeploymentPage) },
           { path: 'labour/attendance', element: R('attendance.view', DailyAttendancePage) },
-          { path: 'labour/attendance-exceptions', element: R('attendance.view', DailyAttendancePage) },
-          { path: 'labour/timesheets', element: R('attendance.view', DailyAttendancePage) },
-          { path: 'labour/overtime', element: R('attendance.view', DailyAttendancePage) },
-          { path: 'labour/leave', element: R('attendance.view', DailyAttendancePage) },
+          { path: 'labour/attendance-exceptions', element: R('attendance.view', AttendanceExceptionsPage) },
+          { path: 'labour/timesheets', element: R('attendance.view', LabourTimesheetsPage) },
+          { path: 'labour/overtime', element: R('attendance.view', LabourOvertimePage) },
+          { path: 'labour/leave', element: R('attendance.view', LabourLeavePage) },
           { path: 'labour/wages', element: R('wages.view', DailyWagesPage) },
-          { path: 'labour/manpower-cost', element: R('wages.view', DailyWagesPage) },
-          { path: 'labour/wage-approval', element: R('wages.approve', DailyWagesPage) },
+          { path: 'labour/manpower-cost', element: R('wages.view', ManpowerCostPage) },
+          { path: 'labour/wage-approval', element: R('wages.approve', LabourWageApprovalPage) },
 
           // ─── 6. Materials & Inventory ─────────────────────
           { path: 'materials/catalogue', element: R('materials.view', MaterialCataloguePage) },
           { path: 'materials/stock', element: R('material_stock.view', StockOverviewPage) },
-          { path: 'materials/project-stock', element: R('material_stock.view', StockOverviewPage) },
+          { path: 'materials/project-stock', element: R('material_stock.view', ProjectStockPage) },
           { path: 'materials/requests', element: R('materials.view', MaterialRequestsPage) },
           { path: 'materials/receipts', element: R('material_receipts.view', StockReceiptsPage) },
           { path: 'materials/issues', element: R('material_stock.view', StockIssuesPage) },
@@ -158,16 +197,16 @@ export const router = createBrowserRouter([
 
           // ─── 7. Procurement ───────────────────────────────
           { path: 'procurement/requisitions', element: R('purchase_orders.view', PurchaseRequisitionsPage) },
-          { path: 'procurement/requisition-approval', element: R('purchase_orders.approve', PurchaseRequisitionsPage) },
-          { path: 'procurement/rfq', element: R('purchase_orders.view', PurchaseRequisitionsPage) },
-          { path: 'procurement/quotations', element: R('purchase_orders.view', PurchaseRequisitionsPage) },
-          { path: 'procurement/comparison', element: R('purchase_orders.view', PurchaseRequisitionsPage) },
+          { path: 'procurement/requisition-approval', element: R('purchase_orders.approve', RequisitionApprovalPage) },
+          { path: 'procurement/rfq', element: R('purchase_orders.view', RfqPage) },
+          { path: 'procurement/quotations', element: R('purchase_orders.view', VendorQuotationsPage) },
+          { path: 'procurement/comparison', element: R('purchase_orders.view', QuotationComparisonPage) },
           { path: 'procurement/purchase-orders', element: R('purchase_orders.view', PurchaseOrdersPage) },
-          { path: 'procurement/purchase-order-approval', element: R('purchase_orders.approve', PurchaseOrdersPage) },
-          { path: 'procurement/goods-receipt', element: R('material_receipts.view', StockReceiptsPage) },
-          { path: 'procurement/vendor-invoices', element: R('expenses.view', ExpenseBillsPage) },
-          { path: 'procurement/returns', element: R('purchase_orders.view', MaterialReturnsPage) },
-          { path: 'procurement/tracking', element: R('purchase_orders.view', PurchaseOrdersPage) },
+          { path: 'procurement/purchase-order-approval', element: R('purchase_orders.approve', PurchaseOrderApprovalPage) },
+          { path: 'procurement/goods-receipt', element: R('material_receipts.view', ProcurementGoodsReceiptPage) },
+          { path: 'procurement/vendor-invoices', element: R('purchase_orders.view', VendorInvoicesPage) },
+          { path: 'procurement/returns', element: R('purchase_orders.view', ProcurementReturnsPage) },
+          { path: 'procurement/tracking', element: R('purchase_orders.view', ProcurementTrackingPage) },
 
           // ─── 8. Daily Site Operations ─────────────────────
           { path: 'daily-operations/reports', element: R('daily_reports.view', DailyWorkReportPage) },

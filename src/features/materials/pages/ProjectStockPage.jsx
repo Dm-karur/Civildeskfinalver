@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Boxes, CheckCircle2, AlertTriangle, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Plus, ArrowRight, Printer,
-  ShieldCheck, AlertCircle, Sparkles, TrendingDown, ArrowUpRight
+  Building, MapPin, Send, ArrowUpRight, TrendingDown
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -15,88 +15,109 @@ import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
-import { materialManagementApi } from '../../../api/apiservice';
+import { projectsApi } from '../../../api/apiservice';
 
-const DEFAULT_STOCK = [
+const DEFAULT_PROJECT_STOCKS = [
   {
     id: 1,
+    project_id: 1,
+    project_code: 'PRJ-2026-001',
+    project_name: 'Metro Commercial Tower Block A',
+    site_name: 'Tower A Core - Level 2 Yard',
     material_code: 'MAT-CEM-001',
     material_name: 'OPC 53 Grade Cement',
     category_name: 'Cement & Binding Agents',
     uom: 'Bags',
-    available_qty: 450,
-    minimum_stock_qty: 200,
-    reorder_qty: 500,
+    available_qty: 220,
+    min_safety_qty: 150,
+    allocated_qty: 80,
+    in_transit_qty: 100,
     unit_rate: 385,
-    stock_value: 173250,
-    primary_store: 'Central Central Godown Bay 1',
-    status: 'In Stock'
+    site_stock_value: 84700,
+    status: 'Adequate Stock'
   },
   {
     id: 2,
+    project_id: 1,
+    project_code: 'PRJ-2026-001',
+    project_name: 'Metro Commercial Tower Block A',
+    site_name: 'Tower A Core - Level 2 Yard',
     material_code: 'MAT-STL-002',
     material_name: 'Fe 550D TMT Rebar 16mm',
     category_name: 'Steel & Reinforcement',
     uom: 'MT',
-    available_qty: 4.2,
-    minimum_stock_qty: 8.0,
-    reorder_qty: 15.0,
+    available_qty: 1.8,
+    min_safety_qty: 5.0,
+    allocated_qty: 1.5,
+    in_transit_qty: 4.0,
     unit_rate: 58500,
-    stock_value: 245700,
-    primary_store: 'Main Yard Steel Stacking Bay',
-    status: 'Low Stock'
+    site_stock_value: 105300,
+    status: 'Critical Deficit'
   },
   {
     id: 3,
-    material_code: 'MAT-AGG-003',
-    material_name: '20mm Blue Metal Coarse Aggregate',
-    category_name: 'Sand & Aggregates',
-    uom: 'Ton',
-    available_qty: 180,
-    minimum_stock_qty: 80,
-    reorder_qty: 200,
-    unit_rate: 1450,
-    stock_value: 261000,
-    primary_store: 'Aggregate Stacking Bunker 2',
-    status: 'In Stock'
-  },
-  {
-    id: 4,
+    project_id: 1,
+    project_code: 'PRJ-2026-001',
+    project_name: 'Metro Commercial Tower Block A',
+    site_name: 'Basement 1 & 2 Utility Store',
     material_code: 'MAT-BLK-004',
     material_name: 'AAC Blocks 600x200x150mm',
     category_name: 'Bricks & Masonry',
     uom: 'Nos',
-    available_qty: 1200,
-    minimum_stock_qty: 1500,
-    reorder_qty: 3000,
+    available_qty: 850,
+    min_safety_qty: 600,
+    allocated_qty: 400,
+    in_transit_qty: 0,
     unit_rate: 68,
-    stock_value: 81600,
-    primary_store: 'Block Yard Shed C',
-    status: 'Reorder Required'
+    site_stock_value: 57800,
+    status: 'Adequate Stock'
+  },
+  {
+    id: 4,
+    project_id: 2,
+    project_code: 'PRJ-2026-002',
+    project_name: 'Highway Expansion Package 3',
+    site_name: 'Ch. 16+300 Culvert Yard',
+    material_code: 'MAT-STL-002',
+    material_name: 'Fe 550D TMT Rebar 16mm',
+    category_name: 'Steel & Reinforcement',
+    uom: 'MT',
+    available_qty: 3.2,
+    min_safety_qty: 6.0,
+    allocated_qty: 2.0,
+    in_transit_qty: 10.0,
+    unit_rate: 58500,
+    site_stock_value: 187200,
+    status: 'Reorder In-Transit'
   },
   {
     id: 5,
-    material_code: 'MAT-ADM-005',
-    material_name: 'Polycarboxylate Superplasticizer',
-    category_name: 'Cement & Binding Agents',
-    uom: 'Kg',
-    available_qty: 350,
-    minimum_stock_qty: 100,
-    reorder_qty: 400,
-    unit_rate: 125,
-    stock_value: 43750,
-    primary_store: 'Chemical Storage Shed A',
-    status: 'In Stock'
+    project_id: 2,
+    project_code: 'PRJ-2026-002',
+    project_name: 'Highway Expansion Package 3',
+    site_name: 'Ch. 16+300 Culvert Yard',
+    material_code: 'MAT-AGG-003',
+    material_name: '20mm Blue Metal Aggregate',
+    category_name: 'Sand & Aggregates',
+    uom: 'Ton',
+    available_qty: 120,
+    min_safety_qty: 50,
+    allocated_qty: 60,
+    in_transit_qty: 0,
+    unit_rate: 1450,
+    site_stock_value: 174000,
+    status: 'Adequate Stock'
   },
 ];
 
-export function StockOverviewPage() {
-  const [stock, setStock] = useState(DEFAULT_STOCK);
+export function ProjectStockPage() {
+  const [projects, setProjects] = useState([]);
+  const [stocks, setStocks] = useState(DEFAULT_PROJECT_STOCKS);
   const [loading, setLoading] = useState(false);
 
   // Filters
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [healthFilter, setHealthFilter] = useState('all');
+  const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const perPage = 10;
@@ -104,18 +125,12 @@ export function StockOverviewPage() {
   // Modals
   const [viewingItem, setViewingItem] = useState(null);
 
-  // Load API Data if available
+  // Load Projects
   useEffect(() => {
-    setLoading(true);
-    materialManagementApi.stock()
-      .then(res => {
-        const list = res?.data?.material_stock ?? res?.data?.stock ?? res?.data?.data ?? [];
-        if (Array.isArray(list) && list.length > 0) {
-          setStock(list);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    projectsApi.list().then(res => {
+      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
+      setProjects(Array.isArray(list) ? list : []);
+    }).catch(() => setProjects([]));
   }, []);
 
   const handlePrint = () => {
@@ -123,54 +138,48 @@ export function StockOverviewPage() {
   };
 
   // Filtered List
-  const categoriesList = useMemo(() => {
-    const set = new Set();
-    stock.forEach(s => { if (s.category_name) set.add(s.category_name); });
-    return Array.from(set);
-  }, [stock]);
-
   const filtered = useMemo(() => {
-    return stock.filter(s => {
-      if (categoryFilter !== 'all' && s.category_name !== categoryFilter) return false;
-      if (healthFilter !== 'all' && s.status !== healthFilter) return false;
+    return stocks.filter(s => {
+      if (selectedProjectId !== 'all' && String(s.project_id) !== String(selectedProjectId)) return false;
+      if (statusFilter !== 'all' && s.status !== statusFilter) return false;
       if (search) {
         const q = search.toLowerCase();
         const code = (s.material_code || '').toLowerCase();
         const name = (s.material_name || '').toLowerCase();
+        const proj = (s.project_name || '').toLowerCase();
+        const site = (s.site_name || '').toLowerCase();
         const cat = (s.category_name || '').toLowerCase();
-        const store = (s.primary_store || '').toLowerCase();
-        if (!code.includes(q) && !name.includes(q) && !cat.includes(q) && !store.includes(q)) return false;
+        if (!code.includes(q) && !name.includes(q) && !proj.includes(q) && !site.includes(q) && !cat.includes(q)) return false;
       }
       return true;
     });
-  }, [stock, categoryFilter, healthFilter, search]);
+  }, [stocks, selectedProjectId, statusFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const totalSKUs = stock.length;
-  const totalValuation = useMemo(() => stock.reduce((acc, s) => acc + Number(s.stock_value || 0), 0), [stock]);
-  const lowStockCount = useMemo(() => stock.filter(s => s.status === 'Low Stock' || s.status === 'Reorder Required').length, [stock]);
-  const healthyCount = useMemo(() => stock.filter(s => s.status === 'In Stock').length, [stock]);
+  const totalValuation = useMemo(() => stocks.reduce((acc, s) => acc + Number(s.site_stock_value || 0), 0), [stocks]);
+  const deficitCount = useMemo(() => stocks.filter(s => s.status === 'Critical Deficit').length, [stocks]);
+  const adequateCount = useMemo(() => stocks.filter(s => s.status === 'Adequate Stock').length, [stocks]);
 
   const getStatusVariant = (status) => {
-    if (status === 'In Stock') return 'success';
-    if (status === 'Reorder Required') return 'warning';
-    if (status === 'Low Stock') return 'error';
+    if (status === 'Adequate Stock') return 'success';
+    if (status === 'Reorder In-Transit') return 'info';
+    if (status === 'Critical Deficit') return 'error';
     return 'neutral';
   };
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Materials & Inventory', href: '/materials/stock' },
-    { label: 'Stock Overview' }
+    { label: 'Materials & Inventory', href: '/materials/catalogue' },
+    { label: 'Project Site Stock' }
   ];
 
   return (
     <PageContainer>
       <PageHeader
-        title="Central Yard & Warehouse Stock Overview"
+        title="Project Site Store & Yard Stock Levels"
         breadcrumbs={breadcrumbs}
       />
 
@@ -178,27 +187,27 @@ export function StockOverviewPage() {
         {/* KPI Summary Ribbon */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard
-            label="Total Stock SKUs"
-            value={totalSKUs}
+            label="Total Site Stock SKUs"
+            value={stocks.length}
             status="primary"
             icon={<Boxes className="w-4 h-4" />}
           />
           <KpiCard
-            label="Total Stock Valuation"
+            label="Total Site Valuation"
             value={`₹${totalValuation.toLocaleString('en-IN')}`}
             status="success"
             icon={<IndianRupee className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
-            label="Healthy Stock Items"
-            value={`${healthyCount} SKUs`}
+            label="Adequate Buffer Items"
+            value={`${adequateCount} Items`}
             status="neutral"
             icon={<CheckCircle2 className="w-4 h-4 text-sky-500" />}
           />
           <KpiCard
-            label="Low Stock / Reorder Alerts"
-            value={`${lowStockCount} SKUs`}
-            status={lowStockCount > 0 ? 'warning' : 'neutral'}
+            label="Critical Site Deficits"
+            value={`${deficitCount} SKUs`}
+            status={deficitCount > 0 ? 'warning' : 'neutral'}
             icon={<AlertTriangle className="w-4 h-4 text-amber-500" />}
           />
         </div>
@@ -209,11 +218,11 @@ export function StockOverviewPage() {
             <div className="w-full sm:w-48">
               <Select
                 options={[
-                  { value: 'all', label: 'All Categories' },
-                  ...categoriesList.map(c => ({ value: c, label: c }))
+                  { value: 'all', label: 'All Projects' },
+                  ...projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))
                 ]}
-                value={categoryFilter}
-                onChange={setCategoryFilter}
+                value={selectedProjectId}
+                onChange={setSelectedProjectId}
                 className="text-xs h-8"
               />
             </div>
@@ -221,20 +230,20 @@ export function StockOverviewPage() {
             <div className="w-full sm:w-44">
               <Select
                 options={[
-                  { value: 'all', label: 'All Stock Health' },
-                  { value: 'In Stock', label: 'In Stock (Healthy)' },
-                  { value: 'Low Stock', label: 'Low Stock (Alert)' },
-                  { value: 'Reorder Required', label: 'Reorder Required' },
+                  { value: 'all', label: 'All Stock Status' },
+                  { value: 'Adequate Stock', label: 'Adequate Stock' },
+                  { value: 'Critical Deficit', label: 'Critical Deficit' },
+                  { value: 'Reorder In-Transit', label: 'Reorder In-Transit' },
                 ]}
-                value={healthFilter}
-                onChange={setHealthFilter}
+                value={statusFilter}
+                onChange={setStatusFilter}
                 className="text-xs h-8"
               />
             </div>
 
             <div className="w-full sm:w-56">
               <SearchField
-                placeholder="Search SKU code, material, store..."
+                placeholder="Search material, site yard, SKU..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -248,9 +257,9 @@ export function StockOverviewPage() {
               leftIcon={<Printer className="w-3.5 h-3.5" />}
               onClick={handlePrint}
               className="text-xs h-8 shadow-xs"
-              title="Print Stock Register"
+              title="Print Site Stock Report"
             >
-              Print Register
+              Print Report
             </Button>
           </div>
         </div>
@@ -274,12 +283,12 @@ export function StockOverviewPage() {
                 <tr>
                   <th className="px-3 py-2 w-10 text-center">#</th>
                   <th className="px-3 py-2 w-28">Item Code</th>
-                  <th className="px-3 py-2">Material Name & Category</th>
-                  <th className="px-3 py-2 text-right w-28">Available Stock</th>
-                  <th className="px-3 py-2 text-right w-24 hidden md:table-cell">Min Buffer</th>
-                  <th className="px-3 py-2 text-right w-24 hidden md:table-cell">Reorder Qty</th>
-                  <th className="px-3 py-2 text-right w-28">Valuation (₹)</th>
-                  <th className="px-3 py-2 text-center w-28">Stock Health</th>
+                  <th className="px-3 py-2">Material & Category</th>
+                  <th className="px-3 py-2 w-36 hidden md:table-cell">Site Location</th>
+                  <th className="px-3 py-2 text-right w-28">On-Site Qty</th>
+                  <th className="px-3 py-2 text-right w-24 hidden lg:table-cell">Min Buffer</th>
+                  <th className="px-3 py-2 text-right w-28">Site Value (₹)</th>
+                  <th className="px-3 py-2 text-center w-28">Status</th>
                   <th className="px-3 py-2 text-center w-20">Actions</th>
                 </tr>
               </thead>
@@ -287,13 +296,13 @@ export function StockOverviewPage() {
                 {loading ? (
                   <tr>
                     <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      Loading yard stock levels...
+                      Loading site stock inventory...
                     </td>
                   </tr>
                 ) : paged.length === 0 ? (
                   <tr>
                     <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      No material stock records found matching criteria.
+                      No site stock records found matching criteria.
                     </td>
                   </tr>
                 ) : (
@@ -313,21 +322,28 @@ export function StockOverviewPage() {
                             {s.material_name}
                           </span>
                           <span className="text-[10px] text-text-muted truncate">
-                            {s.category_name} • {s.primary_store}
+                            {s.category_name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 hidden md:table-cell">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[11px] text-text-primary font-medium truncate" title={s.site_name}>
+                            {s.site_name}
+                          </span>
+                          <span className="text-[10px] text-text-muted font-mono truncate">
+                            {s.project_name}
                           </span>
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
                         {s.available_qty} <span className="text-text-muted font-normal text-[10px]">{s.uom}</span>
                       </td>
-                      <td className="px-3 py-2 text-right hidden md:table-cell font-mono text-[11px] text-text-secondary">
-                        {s.minimum_stock_qty} {s.uom}
-                      </td>
-                      <td className="px-3 py-2 text-right hidden md:table-cell font-mono text-[11px] text-text-secondary">
-                        {s.reorder_qty} {s.uom}
+                      <td className="px-3 py-2 text-right hidden lg:table-cell font-mono text-[11px] text-text-secondary">
+                        {s.min_safety_qty} {s.uom}
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
-                        ₹{Number(s.stock_value).toLocaleString('en-IN')}
+                        ₹{Number(s.site_stock_value).toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-center">
                         <Badge
@@ -343,7 +359,7 @@ export function StockOverviewPage() {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
-                            title="View Stock 360"
+                            title="View Site Stock 360"
                             onClick={() => setViewingItem(s)}
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
@@ -366,7 +382,7 @@ export function StockOverviewPage() {
                 <div>
                   <span className="font-mono text-[10px] font-bold text-primary block">{s.material_code}</span>
                   <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{s.material_name}</h4>
-                  <span className="text-[11px] text-text-muted">{s.category_name}</span>
+                  <span className="text-[11px] text-text-muted">{s.site_name}</span>
                 </div>
                 <Badge
                   variant={getStatusVariant(s.status)}
@@ -378,17 +394,16 @@ export function StockOverviewPage() {
 
               <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Available On-Hand</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">On-Site Qty</span>
                   <span className="font-mono font-bold text-text-primary text-[11px]">{s.available_qty} {s.uom}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Total Valuation</span>
-                  <span className="font-mono font-bold text-primary text-[12px]">₹{Number(s.stock_value).toLocaleString('en-IN')}</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Site Value</span>
+                  <span className="font-mono font-bold text-primary text-[12px]">₹{Number(s.site_stock_value).toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-border/60 text-xs">
-                <span className="text-[10px] text-text-muted font-mono truncate">{s.primary_store}</span>
+              <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(s)}>
                   <Eye className="w-3 h-3 mr-1" /> View 360
                 </Button>
@@ -410,7 +425,7 @@ export function StockOverviewPage() {
         </div>
       </div>
 
-      {/* View Stock 360 Modal */}
+      {/* View Site Stock 360 Modal */}
       {viewingItem && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
@@ -421,7 +436,7 @@ export function StockOverviewPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-text-primary">{viewingItem.material_name}</h3>
-                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.material_code} • {viewingItem.category_name}</span>
+                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.material_code} • {viewingItem.project_name}</span>
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
@@ -429,13 +444,13 @@ export function StockOverviewPage() {
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Available On-Hand</span> <span className="font-bold text-primary font-mono text-sm">{viewingItem.available_qty} {viewingItem.uom}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Total Stock Value</span> <span className="font-bold text-primary font-mono text-sm">₹{Number(viewingItem.stock_value).toLocaleString('en-IN')}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Minimum Safety Stock</span> <span className="font-mono">{viewingItem.minimum_stock_qty} {viewingItem.uom}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Reorder Trigger Level</span> <span className="font-mono">{viewingItem.reorder_qty} {viewingItem.uom}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Unit Valuation Rate</span> <span className="font-mono">₹{viewingItem.unit_rate} / {viewingItem.uom}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Stock Health</span> <span className="font-semibold text-emerald-600">{viewingItem.status}</span></div>
-                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Primary Storage Location</span> <span className="text-text-primary font-medium">{viewingItem.primary_store}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">On-Site Available</span> <span className="font-bold text-primary font-mono text-sm">{viewingItem.available_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Site Stock Value</span> <span className="font-bold text-primary font-mono text-sm">₹{Number(viewingItem.site_stock_value).toLocaleString('en-IN')}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Allocated to Ongoing Pours</span> <span className="font-mono">{viewingItem.allocated_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Transfers In-Transit</span> <span className="font-mono text-sky-600 font-bold">{viewingItem.in_transit_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Minimum Safety Threshold</span> <span className="font-mono">{viewingItem.min_safety_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Site Stock Status</span> <span className="font-semibold text-emerald-600">{viewingItem.status}</span></div>
+                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Site Storage Yard</span> <span className="text-text-primary font-medium">{viewingItem.site_name}</span></div>
               </div>
             </div>
 

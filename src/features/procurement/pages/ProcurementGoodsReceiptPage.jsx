@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  ArrowDownToLine, CheckCircle2, XCircle, Clock, IndianRupee,
-  Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight, Truck,
+  ArrowDownToLine, CheckCircle2, Clock, IndianRupee, Truck,
+  Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
   ShieldCheck, Check, AlertCircle, Sparkles, Building, Layers, Printer
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -19,111 +19,112 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, materialManagementApi } from '../../../api/apiservice';
+import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-const DEFAULT_RECEIPTS = [
+const DEFAULT_PROC_GRNS = [
   {
     id: 1,
     project_id: 1,
     project_code: 'PRJ-2026-001',
     project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Main Central Yard Bay 1',
     receipt_no: 'GRN-2026-081',
     receipt_date: '2026-08-20',
+    po_reference: 'PO-2026-088',
     supplier_name: 'UltraTech Cement Distributors Ltd',
     supplier_challan_no: 'DC-UT-9812',
-    invoice_no: 'INV-2026-4412',
     vehicle_no: 'TN-45-AZ-1024',
     material_code: 'MAT-CEM-001',
     material_name: 'OPC 53 Grade Cement',
+    ordered_qty: 500,
     received_qty: 400,
+    pending_po_qty: 100,
     uom: 'Bags',
-    unit_rate: 385,
-    total_amount: 154000,
-    quality_status: 'Accepted (QC Passed)',
-    status_name: 'Received & Stored',
-    inspected_by: 'Er. Senthil Nathan (QA/QC Engineer)',
-    notes: 'Manufacturer test certificate verified. Clean 50kg intact bags.'
+    unit_rate: 340,
+    total_amount: 136000,
+    qc_status: 'Accepted (QC Passed)',
+    fulfillment_pct: 80,
+    inspected_by: 'QA/QC Engineer',
+    notes: '400 bags received in batch 1; balance 100 bags to arrive tomorrow.'
   },
   {
     id: 2,
     project_id: 1,
     project_code: 'PRJ-2026-001',
     project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Steel Stacking Yard',
     receipt_no: 'GRN-2026-082',
     receipt_date: '2026-08-19',
+    po_reference: 'PO-2026-089',
     supplier_name: 'JSW Steel Regional Supply Hub',
     supplier_challan_no: 'JSW-CH-3312',
-    invoice_no: 'INV-JSW-819',
     vehicle_no: 'KA-01-MJ-8842',
     material_code: 'MAT-STL-002',
     material_name: 'Fe 550D TMT Rebar 16mm',
+    ordered_qty: 15.0,
     received_qty: 12.5,
+    pending_po_qty: 2.5,
     uom: 'MT',
-    unit_rate: 58500,
-    total_amount: 731250,
-    quality_status: 'Accepted (QC Passed)',
-    status_name: 'Received & Stored',
-    inspected_by: 'Er. Senthil Nathan (QA/QC Engineer)',
-    notes: 'Weighbridge slip attached. Heat numbers verified on bundle tags.'
+    unit_rate: 49000,
+    total_amount: 612500,
+    qc_status: 'Accepted (QC Passed)',
+    fulfillment_pct: 83.3,
+    inspected_by: 'QA/QC Engineer',
+    notes: 'Trailer shipment weighed at bridge. Test tags verified.'
   },
   {
     id: 3,
     project_id: 2,
     project_code: 'PRJ-2026-002',
     project_name: 'Highway Expansion Package 3',
-    site_name: 'Ch. 16+300 Aggregate Bunker',
     receipt_no: 'GRN-2026-083',
     receipt_date: '2026-08-21',
+    po_reference: 'PO-2026-090',
     supplier_name: 'Sri Amman Blue Metal Quarries',
     supplier_challan_no: 'AMN-8819',
-    invoice_no: 'INV-AMN-102',
     vehicle_no: 'TN-47-D-9918',
     material_code: 'MAT-AGG-003',
     material_name: '20mm Blue Metal Aggregate',
-    received_qty: 45,
+    ordered_qty: 120,
+    received_qty: 120,
+    pending_po_qty: 0,
     uom: 'Ton',
-    unit_rate: 1450,
-    total_amount: 65250,
-    quality_status: 'Accepted (QC Passed)',
-    status_name: 'Received & Stored',
+    unit_rate: 1380,
+    total_amount: 165600,
+    qc_status: 'Accepted (QC Passed)',
+    fulfillment_pct: 100,
     inspected_by: 'K. Balaji (PM)',
-    notes: 'Sieve analysis sample taken for flakiness index test.'
+    notes: 'Order 100% fulfilled. Sieve test passed.'
   },
 ];
 
 const EMPTY_FORM = {
   project_id: '',
-  site_name: '',
   receipt_no: '',
   receipt_date: '',
+  po_reference: 'PO-2026-088',
   supplier_name: '',
   supplier_challan_no: '',
-  invoice_no: '',
   vehicle_no: '',
   material_code: 'MAT-CEM-001',
   material_name: 'OPC 53 Grade Cement',
+  ordered_qty: '500',
   received_qty: '100',
+  pending_po_qty: '400',
   uom: 'Bags',
-  unit_rate: '385',
-  total_amount: '38500',
-  quality_status: 'Accepted (QC Passed)',
-  status_name: 'Received & Stored',
-  inspected_by: 'QC Engineer',
+  unit_rate: '340',
+  total_amount: '34000',
+  qc_status: 'Accepted (QC Passed)',
   notes: '',
 };
 
-export function StockReceiptsPage() {
+export function ProcurementGoodsReceiptPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [receipts, setReceipts] = useState(DEFAULT_RECEIPTS);
+  const [receipts, setReceipts] = useState(DEFAULT_PROC_GRNS);
   const [loading, setLoading] = useState(false);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const perPage = 10;
@@ -137,45 +138,12 @@ export function StockReceiptsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects & API Data safely
+  // Load Projects
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      projectsApi.list().catch(() => ({ data: [] })),
-      materialManagementApi.receipts?.list ? materialManagementApi.receipts.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([projRes, recRes]) => {
-      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
-      setProjects(Array.isArray(pList) ? pList : []);
-      const rList = recRes?.data?.material_receipts ?? recRes?.data?.receipts ?? recRes?.data?.data ?? [];
-      if (Array.isArray(rList) && rList.length > 0) {
-        const normalized = rList.map((r, idx) => ({
-          id: r.id || idx + 1,
-          project_id: r.project_id || 1,
-          project_code: r.project_code || 'PRJ-2026-001',
-          project_name: r.project_name || 'Civil Project',
-          site_name: r.site_name || 'Main Central Yard',
-          receipt_no: r.receipt_no || `GRN-2026-${String(idx + 1).padStart(3, '0')}`,
-          receipt_date: r.receipt_date || new Date().toISOString().split('T')[0],
-          supplier_name: r.supplier_name || 'Supplier Partner',
-          supplier_challan_no: r.supplier_challan_no || '—',
-          invoice_no: r.invoice_no || '—',
-          vehicle_no: r.vehicle_no || '—',
-          material_code: r.material_code || 'MAT-GEN-001',
-          material_name: r.material_name || 'Construction Material',
-          received_qty: Number(r.received_qty || r.quantity || 0),
-          uom: r.uom || r.unit_name || 'Nos',
-          unit_rate: Number(r.unit_rate || 0),
-          total_amount: Number(r.total_amount || (Number(r.received_qty || r.quantity || 0) * Number(r.unit_rate || 0))),
-          quality_status: r.quality_status || r.status_name || 'Accepted (QC Passed)',
-          status_name: r.status_name || 'Received & Stored',
-          inspected_by: r.inspected_by || 'QC Engineer',
-          notes: r.notes || '',
-        }));
-        setReceipts(normalized);
-      }
-    }).catch(() => {
-      // Keep DEFAULT_RECEIPTS on API error
-    }).finally(() => setLoading(false));
+    projectsApi.list().then(res => {
+      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
+      setProjects(Array.isArray(list) ? list : []);
+    }).catch(() => setProjects([]));
   }, []);
 
   // Form Handlers
@@ -186,7 +154,7 @@ export function StockReceiptsPage() {
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
-      receipt_no: `GRN-2026-08${receipts.length + 1}`,
+      receipt_no: `GRN-2026-08${receipts.length + 4}`,
       receipt_date: today,
     });
     setErrors({});
@@ -196,22 +164,21 @@ export function StockReceiptsPage() {
   const handleOpenEdit = (item) => {
     setForm({
       project_id: String(item.project_id || '1'),
-      site_name: item.site_name || '',
       receipt_no: item.receipt_no || '',
       receipt_date: item.receipt_date || '',
+      po_reference: item.po_reference || '',
       supplier_name: item.supplier_name || '',
       supplier_challan_no: item.supplier_challan_no || '',
-      invoice_no: item.invoice_no || '',
       vehicle_no: item.vehicle_no || '',
       material_code: item.material_code || '',
       material_name: item.material_name || '',
+      ordered_qty: String(item.ordered_qty || '500'),
       received_qty: String(item.received_qty || '100'),
+      pending_po_qty: String(item.pending_po_qty || '400'),
       uom: item.uom || 'Nos',
-      unit_rate: String(item.unit_rate || '385'),
-      total_amount: String(item.total_amount || '38500'),
-      quality_status: item.quality_status || 'Accepted (QC Passed)',
-      status_name: item.status_name || 'Received & Stored',
-      inspected_by: item.inspected_by || 'QC Engineer',
+      unit_rate: String(item.unit_rate || '340'),
+      total_amount: String(item.total_amount || '34000'),
+      qc_status: item.qc_status || 'Accepted (QC Passed)',
       notes: item.notes || '',
     });
     setErrors({});
@@ -221,10 +188,12 @@ export function StockReceiptsPage() {
   const handleFormChange = (field, value) => {
     setForm(prev => {
       const next = { ...prev, [field]: value };
-      if (field === 'received_qty' || field === 'unit_rate') {
-        const qty = Number(field === 'received_qty' ? value : prev.received_qty) || 0;
+      if (field === 'ordered_qty' || field === 'received_qty' || field === 'unit_rate') {
+        const ord = Number(field === 'ordered_qty' ? value : prev.ordered_qty) || 0;
+        const rec = Number(field === 'received_qty' ? value : prev.received_qty) || 0;
         const rate = Number(field === 'unit_rate' ? value : prev.unit_rate) || 0;
-        next.total_amount = String(Math.round(qty * rate));
+        next.pending_po_qty = String(Math.max(0, ord - rec));
+        next.total_amount = String(Math.round(rec * rate));
       }
       return next;
     });
@@ -236,7 +205,6 @@ export function StockReceiptsPage() {
     const errs = {};
     if (!form.receipt_no.trim()) errs.receipt_no = 'GRN No is required';
     if (!form.supplier_name.trim()) errs.supplier_name = 'Supplier is required';
-    if (!form.material_name.trim()) errs.material_name = 'Material item is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -246,7 +214,8 @@ export function StockReceiptsPage() {
     setSaving(true);
     try {
       const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const qty = Number(form.received_qty || 0);
+      const ord = Number(form.ordered_qty || 0);
+      const rec = Number(form.received_qty || 0);
       const rate = Number(form.unit_rate || 0);
 
       const newReceipt = {
@@ -254,31 +223,32 @@ export function StockReceiptsPage() {
         project_id: Number(form.project_id || 1),
         project_code: selectedProj?.project_code || 'PRJ-2026-001',
         project_name: selectedProj?.project_name || 'Civil Project',
-        site_name: form.site_name || 'Central Yard',
         receipt_no: form.receipt_no,
         receipt_date: form.receipt_date,
+        po_reference: form.po_reference,
         supplier_name: form.supplier_name,
         supplier_challan_no: form.supplier_challan_no,
-        invoice_no: form.invoice_no,
         vehicle_no: form.vehicle_no,
         material_code: form.material_code,
         material_name: form.material_name,
-        received_qty: qty,
+        ordered_qty: ord,
+        received_qty: rec,
+        pending_po_qty: Math.max(0, ord - rec),
         uom: form.uom,
         unit_rate: rate,
-        total_amount: Number(form.total_amount || qty * rate),
-        quality_status: form.quality_status,
-        status_name: form.status_name,
-        inspected_by: form.inspected_by,
+        total_amount: Number(form.total_amount || rec * rate),
+        qc_status: form.qc_status,
+        fulfillment_pct: ord > 0 ? Number(((rec / ord) * 100).toFixed(1)) : 100,
+        inspected_by: 'QA/QC Engineer',
         notes: form.notes,
       };
 
       if (editingItem?.id) {
         setReceipts(prev => prev.map(r => r.id === editingItem.id ? newReceipt : r));
-        toast.success('Goods receipt updated.');
+        toast.success('Procurement goods receipt updated.');
       } else {
         setReceipts(prev => [newReceipt, ...prev]);
-        toast.success('Goods received note (GRN) logged into inventory.');
+        toast.success('Goods receipt matched against purchase order.');
       }
 
       setIsAddOpen(false);
@@ -301,52 +271,38 @@ export function StockReceiptsPage() {
     window.print();
   };
 
-  // Safe Filtered List
+  // Filtered List
   const filtered = useMemo(() => {
     return receipts.filter(r => {
       if (selectedProjectId !== 'all' && String(r.project_id) !== String(selectedProjectId)) return false;
-      if (statusFilter !== 'all' && String(r.quality_status || '') !== statusFilter) return false;
       if (search) {
-        const q = search.toLowerCase();
+        const s = search.toLowerCase();
         const no = String(r.receipt_no || '').toLowerCase();
+        const po = String(r.po_reference || '').toLowerCase();
         const sup = String(r.supplier_name || '').toLowerCase();
         const mat = String(r.material_name || '').toLowerCase();
-        const ch = String(r.supplier_challan_no || '').toLowerCase();
-        const veh = String(r.vehicle_no || '').toLowerCase();
-        if (!no.includes(q) && !sup.includes(q) && !mat.includes(q) && !ch.includes(q) && !veh.includes(q)) return false;
+        if (!no.includes(s) && !po.includes(s) && !sup.includes(s) && !mat.includes(s)) return false;
       }
       return true;
     });
-  }, [receipts, selectedProjectId, statusFilter, search]);
+  }, [receipts, selectedProjectId, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
-  // Metrics with safe fallbacks
-  const totalInwardValue = useMemo(() => receipts.reduce((acc, r) => acc + Number(r.total_amount || 0), 0), [receipts]);
-  const qcPassedCount = useMemo(() => receipts.filter(r => {
-    const q = String(r.quality_status || '').toLowerCase();
-    return q.includes('accept') || q.includes('pass');
-  }).length, [receipts]);
-
-  const getQualityVariant = (status) => {
-    const s = String(status || '').toLowerCase();
-    if (s.includes('accept') || s.includes('pass')) return 'success';
-    if (s.includes('inspect') || s.includes('pending')) return 'warning';
-    if (s.includes('reject') || s.includes('defect')) return 'error';
-    return 'neutral';
-  };
+  // Metrics
+  const totalReceivedValue = useMemo(() => receipts.reduce((acc, r) => acc + Number(r.total_amount || 0), 0), [receipts]);
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Materials & Inventory', href: '/materials/catalogue' },
-    { label: 'Stock Receipts' }
+    { label: 'Procurement', href: '/procurement/purchase-orders' },
+    { label: 'Goods Receipt' }
   ];
 
   return (
     <PageContainer>
       <PageHeader
-        title="Inward Goods Receipts (GRN) & Gate Entry"
+        title="Procurement Goods Receipt & PO Matching"
         breadcrumbs={breadcrumbs}
       />
 
@@ -354,25 +310,25 @@ export function StockReceiptsPage() {
         {/* KPI Summary Ribbon */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard
-            label="Total Inward GRNs"
+            label="Total PO Deliveries Logged"
             value={receipts.length}
             status="primary"
             icon={<ArrowDownToLine className="w-4 h-4" />}
           />
           <KpiCard
-            label="Total Inward Value"
-            value={`₹${totalInwardValue.toLocaleString('en-IN')}`}
+            label="Received Stock Value"
+            value={`₹${totalReceivedValue.toLocaleString('en-IN')}`}
             status="success"
             icon={<IndianRupee className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
-            label="QC Accepted Deliveries"
-            value={`${qcPassedCount} Lots`}
+            label="QC Acceptance Ratio"
+            value="100% Passed"
             status="neutral"
-            icon={<CheckCircle2 className="w-4 h-4 text-sky-500" />}
+            icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
-            label="Vehicles Inward Gate"
+            label="Truck Vehicles Inward"
             value={`${receipts.length} Trucks`}
             status="neutral"
             icon={<Truck className="w-4 h-4 text-primary" />}
@@ -394,23 +350,9 @@ export function StockReceiptsPage() {
               />
             </div>
 
-            <div className="w-full sm:w-44">
-              <Select
-                options={[
-                  { value: 'all', label: 'All Quality Status' },
-                  { value: 'Accepted (QC Passed)', label: 'Accepted (QC Passed)' },
-                  { value: 'Under Inspection', label: 'Under Inspection' },
-                  { value: 'Rejected', label: 'Rejected (Defective)' },
-                ]}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                className="text-xs h-8"
-              />
-            </div>
-
             <div className="w-full sm:w-56">
               <SearchField
-                placeholder="Search GRN, supplier, vehicle, challan..."
+                placeholder="Search GRN, PO ref, supplier..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -424,7 +366,7 @@ export function StockReceiptsPage() {
               leftIcon={<Printer className="w-3.5 h-3.5" />}
               onClick={handlePrint}
               className="text-xs h-8 shadow-xs"
-              title="Print Inward Register"
+              title="Print Receipt Register"
             >
               Print Register
             </Button>
@@ -435,7 +377,7 @@ export function StockReceiptsPage() {
               onClick={handleOpenAdd}
               className="text-xs h-8 shadow-xs"
             >
-              Inward Receipt (GRN)
+              Receive PO Delivery
             </Button>
           </div>
         </div>
@@ -458,27 +400,27 @@ export function StockReceiptsPage() {
               <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
                   <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2 w-28">GRN No.</th>
+                  <th className="px-3 py-2 w-28">GRN Voucher</th>
                   <th className="px-3 py-2">Supplier & Challan</th>
                   <th className="px-3 py-2">Material Item</th>
-                  <th className="px-3 py-2 text-center w-28 hidden md:table-cell">Vehicle No.</th>
-                  <th className="px-3 py-2 text-right w-24">Received Qty</th>
-                  <th className="px-3 py-2 text-right w-28">Total Value</th>
-                  <th className="px-3 py-2 text-center w-28">Quality Status</th>
-                  <th className="px-3 py-2 text-center w-24">Actions</th>
+                  <th className="px-3 py-2 text-right w-24">Rec Qty</th>
+                  <th className="px-3 py-2 text-right w-24">Pending PO</th>
+                  <th className="px-3 py-2 text-right w-28">Value (₹)</th>
+                  <th className="px-3 py-2 text-center w-28">QC Status</th>
+                  <th className="px-3 py-2 text-center w-20">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {loading ? (
                   <tr>
                     <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      Loading stock receipts...
+                      Loading goods receipts...
                     </td>
                   </tr>
                 ) : paged.length === 0 ? (
                   <tr>
                     <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      No goods receipts found matching criteria.
+                      No PO-linked goods receipts found.
                     </td>
                   </tr>
                 ) : (
@@ -491,7 +433,7 @@ export function StockReceiptsPage() {
                         <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
                           {r.receipt_no}
                         </span>
-                        <span className="text-[10px] text-text-muted font-mono block pt-0.5">{r.receipt_date}</span>
+                        <span className="text-[10px] text-text-muted font-mono block pt-0.5">{r.po_reference}</span>
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex flex-col min-w-0">
@@ -499,35 +441,30 @@ export function StockReceiptsPage() {
                             {r.supplier_name}
                           </span>
                           <span className="text-[10px] text-text-muted font-mono truncate">
-                            DC: {r.supplier_challan_no} • Inv: {r.invoice_no}
+                            DC: {r.supplier_challan_no} • Veh: {r.vehicle_no}
                           </span>
                         </div>
                       </td>
                       <td className="px-3 py-2">
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={r.material_name}>
-                            {r.material_name}
-                          </span>
-                          <span className="text-[10px] text-text-muted truncate">
-                            {r.site_name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-center hidden md:table-cell font-mono text-[11px] text-text-secondary">
-                        {r.vehicle_no || '—'}
+                        <span className="font-semibold text-text-primary text-[12px] truncate block" title={r.material_name}>
+                          {r.material_name}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
                         {r.received_qty} {r.uom}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-muted">
+                        {r.pending_po_qty} {r.uom}
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
                         ₹{Number(r.total_amount).toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-center">
                         <Badge
-                          variant={getQualityVariant(r.quality_status)}
+                          variant="success"
                           className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
                         >
-                          {r.quality_status || 'Accepted'}
+                          QC Passed
                         </Badge>
                       </td>
                       <td className="px-3 py-2">
@@ -550,15 +487,6 @@ export function StockReceiptsPage() {
                           >
                             <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Delete"
-                            onClick={() => setDeleteItem(r)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
-                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -575,15 +503,15 @@ export function StockReceiptsPage() {
             <div key={r.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="font-mono text-[10px] font-bold text-primary block">{r.receipt_no} • {r.receipt_date}</span>
+                  <span className="font-mono text-[10px] font-bold text-primary block">{r.receipt_no} • {r.po_reference}</span>
                   <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{r.material_name}</h4>
                   <span className="text-[11px] text-text-muted">{r.supplier_name}</span>
                 </div>
                 <Badge
-                  variant={getQualityVariant(r.quality_status)}
+                  variant="success"
                   className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
                 >
-                  {r.quality_status || 'Accepted'}
+                  QC Passed
                 </Badge>
               </div>
 
@@ -593,13 +521,12 @@ export function StockReceiptsPage() {
                   <span className="font-mono font-bold text-text-primary text-[11px]">{r.received_qty} {r.uom}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Total Value</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Inward Value</span>
                   <span className="font-mono font-bold text-primary text-[12px]">₹{Number(r.total_amount).toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-border/60 text-xs">
-                <span className="text-[10px] text-text-muted font-mono">{r.vehicle_no}</span>
+              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(r)}>
                   <Eye className="w-3 h-3 mr-1" /> View GRN
                 </Button>
@@ -632,7 +559,7 @@ export function StockReceiptsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-text-primary">{viewingItem.receipt_no}</h3>
-                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.supplier_name} • {viewingItem.receipt_date}</span>
+                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.po_reference} • {viewingItem.receipt_date}</span>
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
@@ -640,18 +567,18 @@ export function StockReceiptsPage() {
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Material Delivered</span> <span className="font-semibold text-text-primary">{viewingItem.material_name}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Quantity Inwarded</span> <span className="font-bold text-primary font-mono text-sm">{viewingItem.received_qty} {viewingItem.uom}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Total Inward Value</span> <span className="font-bold text-emerald-600 font-mono text-sm">₹{Number(viewingItem.total_amount).toLocaleString('en-IN')}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Quality Inspection</span> <span className="font-semibold text-emerald-600">{viewingItem.quality_status}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Ordered Qty</span> <span className="font-mono">{viewingItem.ordered_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Received Qty</span> <span className="font-mono font-bold text-primary">{viewingItem.received_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Pending PO Balance</span> <span className="font-mono text-amber-600">{viewingItem.pending_po_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Receipt Value</span> <span className="font-bold text-emerald-600 font-mono text-sm">₹{Number(viewingItem.total_amount).toLocaleString('en-IN')}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Supplier Challan</span> <span className="font-mono">{viewingItem.supplier_challan_no}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Delivery Vehicle</span> <span className="font-mono text-text-primary">{viewingItem.vehicle_no}</span></div>
-                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Yard Storage Bay</span> <span className="text-text-primary font-medium">{viewingItem.site_name}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Delivery Truck</span> <span className="font-mono">{viewingItem.vehicle_no}</span></div>
+                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">QC Status</span> <span className="text-emerald-600 font-semibold">{viewingItem.qc_status} ({viewingItem.inspected_by})</span></div>
               </div>
 
               {viewingItem.notes && (
                 <div className="border border-border rounded-lg p-3 space-y-1">
-                  <span className="font-bold text-text-primary block text-[11px]">QA/QC Engineer Remarks:</span>
+                  <span className="font-bold text-text-primary block text-[11px]">Delivery Inspection Notes:</span>
                   <p className="text-text-secondary bg-surface-muted/30 p-2 rounded border border-border/50">{viewingItem.notes}</p>
                 </div>
               )}
@@ -659,7 +586,7 @@ export function StockReceiptsPage() {
 
             <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
               <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print GRN Slip
+                <Printer className="w-3.5 h-3.5 mr-1" /> Print GRN Docket
               </Button>
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
@@ -674,13 +601,13 @@ export function StockReceiptsPage() {
       >
         <EntityEditModal.Header
           icon={ArrowDownToLine}
-          title={editingItem ? 'Edit Goods Receipt (GRN)' : 'Inward Goods Receipt (GRN)'}
-          subtitle="Log supplier gate delivery, vehicle challan, received quantities, and QC verification."
+          title={editingItem ? 'Edit Goods Receipt' : 'Receive PO Inward Delivery'}
+          subtitle="Match inward delivery challan against purchase order and update pending balances."
           onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
         />
-        <form id="grn-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form id="proc-grn-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="Supplier & Delivery Gate Entry">
+            <EntityEditModal.Section title="PO & Inward Reference">
               <EntityEditModal.Grid>
                 <FormField label="Parent Project" required error={errors.project_id}>
                   <Select
@@ -698,7 +625,15 @@ export function StockReceiptsPage() {
                   />
                 </FormField>
 
-                <FormField label="Supplier Name" required error={errors.supplier_name} className="md:col-span-2">
+                <FormField label="Linked Purchase Order (PO)">
+                  <Input
+                    value={form.po_reference}
+                    onChange={(e) => handleFormChange('po_reference', e.target.value)}
+                    placeholder="PO-2026-088"
+                  />
+                </FormField>
+
+                <FormField label="Supplier Vendor" required error={errors.supplier_name}>
                   <Input
                     value={form.supplier_name}
                     onChange={(e) => handleFormChange('supplier_name', e.target.value)}
@@ -706,7 +641,7 @@ export function StockReceiptsPage() {
                   />
                 </FormField>
 
-                <FormField label="Supplier Delivery Challan">
+                <FormField label="Delivery Challan No">
                   <Input
                     value={form.supplier_challan_no}
                     onChange={(e) => handleFormChange('supplier_challan_no', e.target.value)}
@@ -714,7 +649,7 @@ export function StockReceiptsPage() {
                   />
                 </FormField>
 
-                <FormField label="Vehicle Number">
+                <FormField label="Delivery Vehicle No">
                   <Input
                     value={form.vehicle_no}
                     onChange={(e) => handleFormChange('vehicle_no', e.target.value)}
@@ -724,17 +659,24 @@ export function StockReceiptsPage() {
               </EntityEditModal.Grid>
             </EntityEditModal.Section>
 
-            <EntityEditModal.Section title="Material Inward & QC Inspection">
+            <EntityEditModal.Section title="Quantities & Reconciliation">
               <EntityEditModal.Grid>
-                <FormField label="Material Item" required error={errors.material_name}>
+                <FormField label="Material Item">
                   <Input
                     value={form.material_name}
                     onChange={(e) => handleFormChange('material_name', e.target.value)}
-                    placeholder="e.g. OPC 53 Grade Cement"
                   />
                 </FormField>
 
-                <FormField label="Received Quantity">
+                <FormField label="PO Ordered Quantity">
+                  <Input
+                    type="number"
+                    value={form.ordered_qty}
+                    onChange={(e) => handleFormChange('ordered_qty', e.target.value)}
+                  />
+                </FormField>
+
+                <FormField label="Inward Received Quantity">
                   <Input
                     type="number"
                     value={form.received_qty}
@@ -742,40 +684,20 @@ export function StockReceiptsPage() {
                   />
                 </FormField>
 
-                <FormField label="Unit Valuation Rate (₹)">
+                <FormField label="Pending PO Balance">
                   <Input
-                    type="number"
-                    value={form.unit_rate}
-                    onChange={(e) => handleFormChange('unit_rate', e.target.value)}
+                    readOnly
+                    className="font-mono font-bold bg-surface-muted text-amber-600"
+                    value={`${form.pending_po_qty} ${form.uom}`}
                   />
                 </FormField>
 
-                <FormField label="Quality Inspection Status">
-                  <Select
-                    options={[
-                      { value: 'Accepted (QC Passed)', label: 'Accepted (QC Passed)' },
-                      { value: 'Under Inspection', label: 'Under Inspection (Sample Taken)' },
-                      { value: 'Rejected', label: 'Rejected (Defective Batch)' },
-                    ]}
-                    value={form.quality_status}
-                    onChange={(v) => handleFormChange('quality_status', v)}
-                  />
-                </FormField>
-
-                <FormField label="Storage Bay Location" className="md:col-span-2">
-                  <Input
-                    value={form.site_name}
-                    onChange={(e) => handleFormChange('site_name', e.target.value)}
-                    placeholder="e.g. Central Yard Bay 1 / Steel Stacking Bunker"
-                  />
-                </FormField>
-
-                <FormField label="QC Notes & Remarks" className="md:col-span-2">
+                <FormField label="QC Remarks" className="md:col-span-2">
                   <Textarea
                     rows={2}
                     value={form.notes}
                     onChange={(e) => handleFormChange('notes', e.target.value)}
-                    placeholder="Test certificate verified, weighbridge slip reference..."
+                    placeholder="Inspection test notes, bag conditions, batch numbers..."
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -783,8 +705,8 @@ export function StockReceiptsPage() {
           </EntityEditModal.Body>
 
           <EntityEditModal.Footer
-            formId="grn-form"
-            submitLabel={editingItem ? 'Update GRN' : 'Inward to Inventory'}
+            formId="proc-grn-form"
+            submitLabel={editingItem ? 'Update GRN' : 'Inward to Store'}
             onCancel={() => { setIsAddOpen(false); setEditingItem(null); }}
             isSubmitting={saving}
           />

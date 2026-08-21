@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Send, CheckCircle2, XCircle, Clock, AlertTriangle,
+  ShoppingCart, CheckCircle2, Clock, AlertTriangle, IndianRupee,
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
-  ShieldCheck, Check, AlertCircle, Sparkles, Building, Layers
+  ShieldCheck, Check, AlertCircle, Sparkles, Building, Layers, Printer
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -22,105 +22,95 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, materialManagementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-const DEFAULT_REQUESTS = [
+const DEFAULT_REQUISITIONS = [
   {
     id: 1,
     project_id: 1,
     project_code: 'PRJ-2026-001',
     project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Tower A Core - Level 2',
-    request_no: 'MRN-2026-081',
-    request_date: '2026-08-20',
-    required_by_date: '2026-08-23',
+    site_name: 'Main Central Godown Bay 1',
+    requisition_no: 'PR-2026-041',
+    requisition_date: '2026-08-20',
+    required_by_date: '2026-08-25',
     priority: 'Urgent',
     material_code: 'MAT-CEM-001',
     material_name: 'OPC 53 Grade Cement',
-    requested_qty: 300,
+    quantity: 500,
     uom: 'Bags',
-    purpose: 'Level 2 slab and beam casting pour scheduled on 24th Aug.',
+    estimated_rate: 385,
+    estimated_total: 192500,
     requested_by: 'Er. Rajesh Kumar (Site Incharge)',
+    department: 'Civil Structural Works',
     status: 'Approved',
-    status_name: 'Approved'
+    purpose: 'Core 1 & 2 column casting pour scheduled on 26th Aug.'
   },
   {
     id: 2,
     project_id: 1,
     project_code: 'PRJ-2026-001',
     project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Tower A Core - Level 2',
-    request_no: 'MRN-2026-082',
-    request_date: '2026-08-20',
-    required_by_date: '2026-08-22',
+    site_name: 'Steel Stacking Yard',
+    requisition_no: 'PR-2026-042',
+    requisition_date: '2026-08-21',
+    required_by_date: '2026-08-24',
     priority: 'Critical',
     material_code: 'MAT-STL-002',
     material_name: 'Fe 550D TMT Rebar 16mm',
-    requested_qty: 5.5,
+    quantity: 15.0,
     uom: 'MT',
-    purpose: 'Urgent column splice rebar requirement for Core 1 columns.',
+    estimated_rate: 58500,
+    estimated_total: 877500,
     requested_by: 'Er. Rajesh Kumar (Site Incharge)',
-    status: 'Pending Approval',
-    status_name: 'Submitted'
+    department: 'Civil Structural Works',
+    status: 'Pending PM Approval',
+    purpose: 'Urgent column splice rebar requirement for Level 3 framing.'
   },
   {
     id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Basement 1 & 2 Utility Zone',
-    request_no: 'MRN-2026-083',
-    request_date: '2026-08-21',
-    required_by_date: '2026-08-26',
-    priority: 'Normal',
-    material_code: 'MAT-BLK-004',
-    material_name: 'AAC Blocks 600x200x150mm',
-    requested_qty: 1500,
-    uom: 'Nos',
-    purpose: 'Basement transformer room partition wall masonry.',
-    requested_by: 'S. Natesan (Foreman)',
-    status: 'Pending Approval',
-    status_name: 'Submitted'
-  },
-  {
-    id: 4,
     project_id: 2,
     project_code: 'PRJ-2026-002',
     project_name: 'Highway Expansion Package 3',
     site_name: 'Ch. 16+300 Box Culvert Site',
-    request_no: 'MRN-2026-084',
-    request_date: '2026-08-19',
-    required_by_date: '2026-08-21',
-    priority: 'Urgent',
+    requisition_no: 'PR-2026-043',
+    requisition_date: '2026-08-19',
+    required_by_date: '2026-08-23',
+    priority: 'Normal',
     material_code: 'MAT-AGG-003',
     material_name: '20mm Blue Metal Aggregate',
-    requested_qty: 60,
+    quantity: 120,
     uom: 'Ton',
-    purpose: 'Culvert raft bed concrete batching on site.',
-    requested_by: 'K. Balaji (PM)',
+    estimated_rate: 1450,
+    estimated_total: 174000,
+    requested_by: 'K. Balaji (Highway PM)',
+    department: 'Highway Earthworks & Pavements',
     status: 'Approved',
-    status_name: 'Approved'
+    purpose: 'Base course concrete batching on site.'
   },
 ];
 
 const EMPTY_FORM = {
   project_id: '',
   site_name: '',
-  request_no: '',
-  request_date: '',
+  requisition_no: '',
+  requisition_date: '',
   required_by_date: '',
   priority: 'Normal',
   material_code: 'MAT-CEM-001',
   material_name: 'OPC 53 Grade Cement',
-  requested_qty: '100',
+  quantity: '100',
   uom: 'Bags',
-  purpose: '',
+  estimated_rate: '385',
+  estimated_total: '38500',
   requested_by: 'Site Engineer',
-  status_name: 'Submitted',
+  department: 'Civil Structural Works',
+  status: 'Pending PM Approval',
+  purpose: '',
 };
 
-export function MaterialRequestsPage() {
+export function PurchaseRequisitionsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [requests, setRequests] = useState(DEFAULT_REQUESTS);
+  const [requisitions, setRequisitions] = useState(DEFAULT_REQUISITIONS);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -140,33 +130,54 @@ export function MaterialRequestsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects & API Data
+  // Load Projects & API Data safely
   useEffect(() => {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
-      materialManagementApi.requests.list().catch(() => ({ data: [] }))
+      materialManagementApi.requests?.list ? materialManagementApi.requests.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
     ]).then(([projRes, reqRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
       const rList = reqRes?.data?.material_requests ?? reqRes?.data?.data ?? [];
       if (Array.isArray(rList) && rList.length > 0) {
-        setRequests(rList);
+        const normalized = rList.map((r, idx) => ({
+          id: r.id || idx + 1,
+          project_id: r.project_id || 1,
+          project_code: r.project_code || 'PRJ-2026-001',
+          project_name: r.project_name || 'Civil Project',
+          site_name: r.site_name || 'Site Yard',
+          requisition_no: r.request_no || `PR-2026-${String(idx + 1).padStart(3, '0')}`,
+          requisition_date: r.request_date || new Date().toISOString().split('T')[0],
+          required_by_date: r.required_by_date || new Date().toISOString().split('T')[0],
+          priority: r.priority || 'Normal',
+          material_code: r.material_code || 'MAT-GEN-001',
+          material_name: r.material_name || 'Construction Material',
+          quantity: Number(r.quantity || r.requested_qty || 0),
+          uom: r.uom || 'Nos',
+          estimated_rate: Number(r.estimated_rate || 385),
+          estimated_total: Number(r.estimated_total || (Number(r.quantity || r.requested_qty || 0) * Number(r.estimated_rate || 385))),
+          requested_by: r.requested_by || 'Site Engineer',
+          department: r.department || 'Civil Works',
+          status: r.status_name || r.status || 'Pending PM Approval',
+          purpose: r.purpose || '',
+        }));
+        setRequisitions(normalized);
       }
-    }).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   // Form Handlers
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
-    const defaultRequired = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const defaultRequired = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
 
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
-      request_no: `MRN-2026-08${requests.length + 1}`,
-      request_date: today,
+      requisition_no: `PR-2026-04${requisitions.length + 1}`,
+      requisition_date: today,
       required_by_date: defaultRequired,
     });
     setErrors({});
@@ -177,31 +188,42 @@ export function MaterialRequestsPage() {
     setForm({
       project_id: String(item.project_id || '1'),
       site_name: item.site_name || '',
-      request_no: item.request_no || '',
-      request_date: item.request_date || '',
+      requisition_no: item.requisition_no || '',
+      requisition_date: item.requisition_date || '',
       required_by_date: item.required_by_date || '',
       priority: item.priority || 'Normal',
       material_code: item.material_code || '',
       material_name: item.material_name || '',
-      requested_qty: String(item.requested_qty || '100'),
+      quantity: String(item.quantity || '100'),
       uom: item.uom || 'Nos',
-      purpose: item.purpose || '',
+      estimated_rate: String(item.estimated_rate || '385'),
+      estimated_total: String(item.estimated_total || '38500'),
       requested_by: item.requested_by || 'Site Engineer',
-      status_name: item.status_name || 'Submitted',
+      department: item.department || 'Civil Structural Works',
+      status: item.status || 'Pending PM Approval',
+      purpose: item.purpose || '',
     });
     setErrors({});
     setEditingItem(item);
   };
 
   const handleFormChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'quantity' || field === 'estimated_rate') {
+        const qty = Number(field === 'quantity' ? value : prev.quantity) || 0;
+        const rate = Number(field === 'estimated_rate' ? value : prev.estimated_rate) || 0;
+        next.estimated_total = String(Math.round(qty * rate));
+      }
+      return next;
+    });
     setErrors(prev => ({ ...prev, [field]: null }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.request_no.trim()) errs.request_no = 'Request No is required';
+    if (!form.requisition_no.trim()) errs.requisition_no = 'PR No is required';
     if (!form.material_name.trim()) errs.material_name = 'Material item is required';
 
     if (Object.keys(errs).length > 0) {
@@ -212,91 +234,90 @@ export function MaterialRequestsPage() {
     setSaving(true);
     try {
       const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
+      const qty = Number(form.quantity || 0);
+      const rate = Number(form.estimated_rate || 0);
 
-      const newRequest = {
+      const newPR = {
         id: editingItem?.id || Date.now(),
         project_id: Number(form.project_id || 1),
         project_code: selectedProj?.project_code || 'PRJ-2026-001',
         project_name: selectedProj?.project_name || 'Civil Project',
         site_name: form.site_name || 'Site Yard',
-        request_no: form.request_no,
-        request_date: form.request_date,
+        requisition_no: form.requisition_no,
+        requisition_date: form.requisition_date,
         required_by_date: form.required_by_date,
         priority: form.priority,
         material_code: form.material_code,
         material_name: form.material_name,
-        requested_qty: Number(form.requested_qty || 0),
+        quantity: qty,
         uom: form.uom,
-        purpose: form.purpose,
+        estimated_rate: rate,
+        estimated_total: Number(form.estimated_total || qty * rate),
         requested_by: form.requested_by,
-        status: form.status_name === 'Submitted' ? 'Pending Approval' : form.status_name,
-        status_name: form.status_name,
+        department: form.department,
+        status: form.status,
+        purpose: form.purpose,
       };
 
       if (editingItem?.id) {
-        setRequests(prev => prev.map(r => r.id === editingItem.id ? newRequest : r));
-        toast.success('Material request updated.');
+        setRequisitions(prev => prev.map(r => r.id === editingItem.id ? newPR : r));
+        toast.success('Purchase requisition updated.');
       } else {
-        setRequests(prev => [newRequest, ...prev]);
-        toast.success('Material request indent submitted.');
+        setRequisitions(prev => [newPR, ...prev]);
+        toast.success('Purchase requisition (PR) created.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
     } catch {
-      toast.error('Failed to save material request.');
+      toast.error('Failed to save purchase requisition.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleApprove = (item) => {
-    setRequests(prev => prev.map(r => r.id === item.id ? { ...r, status: 'Approved', status_name: 'Approved' } : r));
-    toast.success(`Indent ${item.request_no} approved. Store notified.`);
-  };
-
-  const handleReject = (item) => {
-    setRequests(prev => prev.map(r => r.id === item.id ? { ...r, status: 'Rejected', status_name: 'Rejected' } : r));
-    toast.success(`Indent ${item.request_no} rejected.`);
-  };
-
   const confirmDelete = () => {
     if (!deleteItem?.id) return;
-    setRequests(prev => prev.filter(r => r.id !== deleteItem.id));
-    toast.success('Material request removed.');
+    setRequisitions(prev => prev.filter(r => r.id !== deleteItem.id));
+    toast.success('Purchase requisition removed.');
     setDeleteItem(null);
   };
 
-  // Filtered List
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Safe Filtered List
   const filtered = useMemo(() => {
-    return requests.filter(r => {
+    return requisitions.filter(r => {
       if (selectedProjectId !== 'all' && String(r.project_id) !== String(selectedProjectId)) return false;
       if (priorityFilter !== 'all' && r.priority !== priorityFilter) return false;
-      if (statusFilter !== 'all' && r.status_name !== statusFilter) return false;
+      if (statusFilter !== 'all' && String(r.status || '') !== statusFilter) return false;
       if (search) {
         const q = search.toLowerCase();
-        const no = (r.request_no || '').toLowerCase();
-        const mat = (r.material_name || '').toLowerCase();
-        const purp = (r.purpose || '').toLowerCase();
-        const req = (r.requested_by || '').toLowerCase();
-        if (!no.includes(q) && !mat.includes(q) && !purp.includes(q) && !req.includes(q)) return false;
+        const no = String(r.requisition_no || '').toLowerCase();
+        const mat = String(r.material_name || '').toLowerCase();
+        const proj = String(r.project_name || '').toLowerCase();
+        const purp = String(r.purpose || '').toLowerCase();
+        if (!no.includes(q) && !mat.includes(q) && !proj.includes(q) && !purp.includes(q)) return false;
       }
       return true;
     });
-  }, [requests, selectedProjectId, priorityFilter, statusFilter, search]);
+  }, [requisitions, selectedProjectId, priorityFilter, statusFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const pendingCount = useMemo(() => requests.filter(r => r.status_name === 'Submitted' || r.status === 'Pending Approval').length, [requests]);
-  const approvedCount = useMemo(() => requests.filter(r => r.status_name === 'Approved').length, [requests]);
-  const criticalCount = useMemo(() => requests.filter(r => r.priority === 'Critical' || r.priority === 'Urgent').length, [requests]);
+  const totalEstimatedValue = useMemo(() => requisitions.reduce((acc, r) => acc + Number(r.estimated_total || 0), 0), [requisitions]);
+  const pendingCount = useMemo(() => requisitions.filter(r => String(r.status || '').toLowerCase().includes('pending')).length, [requisitions]);
+  const approvedCount = useMemo(() => requisitions.filter(r => String(r.status || '').toLowerCase().includes('approved')).length, [requisitions]);
 
   const getStatusVariant = (status) => {
-    if (status === 'Approved') return 'success';
-    if (status === 'Submitted' || status === 'Pending Approval') return 'warning';
-    if (status === 'Rejected') return 'error';
+    const s = String(status || '').toLowerCase();
+    if (s.includes('approved')) return 'success';
+    if (s.includes('pending')) return 'warning';
+    if (s.includes('rejected')) return 'error';
     return 'neutral';
   };
 
@@ -308,14 +329,14 @@ export function MaterialRequestsPage() {
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Materials & Inventory', href: '/materials/catalogue' },
-    { label: 'Material Requests' }
+    { label: 'Procurement', href: '/procurement/purchase-orders' },
+    { label: 'Purchase Requisitions' }
   ];
 
   return (
     <PageContainer>
       <PageHeader
-        title="Site Indents & Material Requisitions (MRN)"
+        title="Purchase Requisitions (PR) & Material Indents"
         breadcrumbs={breadcrumbs}
       />
 
@@ -323,28 +344,28 @@ export function MaterialRequestsPage() {
         {/* KPI Summary Ribbon */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard
-            label="Total Indent Requests"
-            value={requests.length}
+            label="Total Requisitions"
+            value={requisitions.length}
             status="primary"
-            icon={<Send className="w-4 h-4" />}
+            icon={<ShoppingCart className="w-4 h-4" />}
+          />
+          <KpiCard
+            label="Total Estimated Budget"
+            value={`₹${totalEstimatedValue.toLocaleString('en-IN')}`}
+            status="success"
+            icon={<IndianRupee className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
             label="Pending Approvals"
-            value={pendingCount}
+            value={`${pendingCount} PRs`}
             status={pendingCount > 0 ? 'warning' : 'success'}
             icon={<Clock className="w-4 h-4 text-amber-500" />}
           />
           <KpiCard
-            label="Approved & Dispatched"
-            value={approvedCount}
-            status="success"
-            icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-          />
-          <KpiCard
-            label="Urgent / Critical Priority"
-            value={`${criticalCount} Indents`}
-            status={criticalCount > 0 ? 'warning' : 'neutral'}
-            icon={<AlertTriangle className="w-4 h-4 text-red-500" />}
+            label="Approved for Procurement"
+            value={`${approvedCount} PRs`}
+            status="neutral"
+            icon={<CheckCircle2 className="w-4 h-4 text-sky-500" />}
           />
         </div>
 
@@ -377,11 +398,11 @@ export function MaterialRequestsPage() {
               />
             </div>
 
-            <div className="w-full sm:w-40">
+            <div className="w-full sm:w-44">
               <Select
                 options={[
                   { value: 'all', label: 'All Status' },
-                  { value: 'Submitted', label: 'Pending Approval' },
+                  { value: 'Pending PM Approval', label: 'Pending PM Approval' },
                   { value: 'Approved', label: 'Approved' },
                   { value: 'Rejected', label: 'Rejected' },
                 ]}
@@ -393,7 +414,7 @@ export function MaterialRequestsPage() {
 
             <div className="w-full sm:w-52">
               <SearchField
-                placeholder="Search indent no, material, purpose..."
+                placeholder="Search PR no, material, purpose..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -402,13 +423,23 @@ export function MaterialRequestsPage() {
 
           <div className="flex items-center gap-2 justify-end">
             <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<Printer className="w-3.5 h-3.5" />}
+              onClick={handlePrint}
+              className="text-xs h-8 shadow-xs"
+              title="Print Requisitions"
+            >
+              Print
+            </Button>
+            <Button
               variant="primary"
               size="sm"
               leftIcon={<Plus className="w-3.5 h-3.5" />}
               onClick={handleOpenAdd}
               className="text-xs h-8 shadow-xs"
             >
-              Raise Site Indent
+              New Requisition (PR)
             </Button>
           </div>
         </div>
@@ -431,27 +462,27 @@ export function MaterialRequestsPage() {
               <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
                   <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2 w-28">Indent Ref</th>
+                  <th className="px-3 py-2 w-28">PR No.</th>
                   <th className="px-3 py-2">Material Item & Scope</th>
                   <th className="px-3 py-2 w-32 hidden md:table-cell">Site Location</th>
                   <th className="px-3 py-2 text-right w-24">Req Qty</th>
-                  <th className="px-3 py-2 text-center w-28 hidden lg:table-cell">Required By</th>
+                  <th className="px-3 py-2 text-right w-28">Est. Budget</th>
                   <th className="px-3 py-2 text-center w-24">Priority</th>
                   <th className="px-3 py-2 text-center w-28">Status</th>
-                  <th className="px-3 py-2 text-center w-28">Actions</th>
+                  <th className="px-3 py-2 text-center w-20">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {loading ? (
                   <tr>
                     <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      Loading site indents...
+                      Loading purchase requisitions...
                     </td>
                   </tr>
                 ) : paged.length === 0 ? (
                   <tr>
                     <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      No material requests found matching criteria.
+                      No purchase requisitions found matching criteria.
                     </td>
                   </tr>
                 ) : (
@@ -462,8 +493,9 @@ export function MaterialRequestsPage() {
                       </td>
                       <td className="px-3 py-2">
                         <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                          {r.request_no}
+                          {r.requisition_no}
                         </span>
+                        <span className="text-[10px] text-text-muted font-mono block pt-0.5">{r.requisition_date}</span>
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex flex-col min-w-0">
@@ -480,11 +512,11 @@ export function MaterialRequestsPage() {
                           {r.site_name}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
-                        {r.requested_qty} {r.uom}
+                      <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
+                        {r.quantity} {r.uom}
                       </td>
-                      <td className="px-3 py-2 text-center hidden lg:table-cell font-mono text-[10px]">
-                        <span className="text-text-primary font-medium">{r.required_by_date}</span>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
+                        ₹{Number(r.estimated_total).toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-center">
                         <Badge
@@ -496,10 +528,10 @@ export function MaterialRequestsPage() {
                       </td>
                       <td className="px-3 py-2 text-center">
                         <Badge
-                          variant={getStatusVariant(r.status_name || r.status)}
+                          variant={getStatusVariant(r.status)}
                           className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
                         >
-                          {r.status_name || r.status}
+                          {r.status}
                         </Badge>
                       </td>
                       <td className="px-3 py-2">
@@ -508,33 +540,11 @@ export function MaterialRequestsPage() {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
-                            title="View Indent 360"
+                            title="View PR 360"
                             onClick={() => setViewingItem(r)}
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
-                          {(r.status_name === 'Submitted' || r.status === 'Pending Approval') && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-6 text-[10px] px-1.5 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
-                                title="Approve Indent"
-                                onClick={() => handleApprove(r)}
-                              >
-                                <Check className="w-3 h-3 mr-0.5" /> Approve
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                title="Reject Indent"
-                                onClick={() => handleReject(r)}
-                              >
-                                <XCircle className="w-3.5 h-3.5 text-red-500 hover:text-red-700" />
-                              </Button>
-                            </>
-                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -560,46 +570,33 @@ export function MaterialRequestsPage() {
             <div key={r.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="font-mono text-[10px] font-bold text-primary block">{r.request_no}</span>
+                  <span className="font-mono text-[10px] font-bold text-primary block">{r.requisition_no} • {r.requisition_date}</span>
                   <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{r.material_name}</h4>
                   <span className="text-[11px] text-text-muted">{r.site_name}</span>
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  <Badge
-                    variant={getStatusVariant(r.status_name || r.status)}
-                    className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
-                  >
-                    {r.status_name || r.status}
-                  </Badge>
-                  <Badge
-                    variant={getPriorityVariant(r.priority)}
-                    className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
-                  >
-                    {r.priority}
-                  </Badge>
-                </div>
+                <Badge
+                  variant={getStatusVariant(r.status)}
+                  className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
+                >
+                  {r.status}
+                </Badge>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Required Qty</span>
-                  <span className="font-mono font-bold text-primary text-[12px]">{r.requested_qty} {r.uom}</span>
+                  <span className="font-mono font-bold text-text-primary text-[11px]">{r.quantity} {r.uom}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Required By</span>
-                  <span className="font-mono text-text-primary text-[11px]">{r.required_by_date}</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Est. Budget</span>
+                  <span className="font-mono font-bold text-primary text-[12px]">₹{Number(r.estimated_total).toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(r)}>
-                  <Eye className="w-3 h-3 mr-1" /> View
+                  <Eye className="w-3 h-3 mr-1" /> View PR
                 </Button>
-                {(r.status_name === 'Submitted' || r.status === 'Pending Approval') && (
-                  <Button variant="primary" size="sm" className="h-7 text-[11px] px-2 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApprove(r)}>
-                    <Check className="w-3 h-3 mr-1" /> Approve
-                  </Button>
-                )}
               </div>
             </div>
           ))}
@@ -618,17 +615,17 @@ export function MaterialRequestsPage() {
         </div>
       </div>
 
-      {/* View Indent 360 Modal */}
+      {/* View PR 360 Modal */}
       {viewingItem && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <Send className="w-4 h-4" />
+                  <ShoppingCart className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.request_no}</h3>
+                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.requisition_no}</h3>
                   <span className="text-[11px] font-mono text-text-muted">{viewingItem.material_name} • {viewingItem.project_name}</span>
                 </div>
               </div>
@@ -637,13 +634,13 @@ export function MaterialRequestsPage() {
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Requested Quantity</span> <span className="font-bold text-primary font-mono text-sm">{viewingItem.requested_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Requested Quantity</span> <span className="font-bold text-primary font-mono text-sm">{viewingItem.quantity} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Estimated Budget</span> <span className="font-bold text-emerald-600 font-mono text-sm">₹{Number(viewingItem.estimated_total).toLocaleString('en-IN')}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Priority Level</span> <span className="font-semibold text-red-600">{viewingItem.priority}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Request Date</span> <span className="font-mono">{viewingItem.request_date}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Required On Site By</span> <span className="font-mono font-bold text-text-primary">{viewingItem.required_by_date}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Status</span> <span className="font-semibold text-emerald-600">{viewingItem.status_name || viewingItem.status}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Approval Status</span> <span className="font-semibold text-emerald-600">{viewingItem.status}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Requested By</span> <span className="text-text-primary">{viewingItem.requested_by}</span></div>
-                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Site Delivery Location</span> <span className="text-text-primary font-medium">{viewingItem.site_name}</span></div>
+                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Delivery Site Location</span> <span className="text-text-primary font-medium">{viewingItem.site_name}</span></div>
               </div>
 
               {viewingItem.purpose && (
@@ -654,27 +651,30 @@ export function MaterialRequestsPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end">
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="w-3.5 h-3.5 mr-1" /> Print PR Slip
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add / Edit Indent Modal */}
+      {/* Add / Edit PR Modal */}
       <EntityEditModal
         isOpen={Boolean(isAddOpen || editingItem)}
         onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
       >
         <EntityEditModal.Header
-          icon={Send}
-          title={editingItem ? 'Edit Material Indent' : 'Raise Site Material Indent (MRN)'}
-          subtitle="Submit formal requisition for cement, steel rebar, sand, bricks, or chemicals."
+          icon={ShoppingCart}
+          title={editingItem ? 'Edit Purchase Requisition' : 'Create Purchase Requisition (PR)'}
+          subtitle="Raise formal purchase requirement for project materials, equipment, or consumables."
           onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
         />
-        <form id="mrn-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form id="pr-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="Project & Location Information">
+            <EntityEditModal.Section title="Project & Delivery Details">
               <EntityEditModal.Grid>
                 <FormField label="Parent Project" required error={errors.project_id}>
                   <Select
@@ -684,25 +684,25 @@ export function MaterialRequestsPage() {
                   />
                 </FormField>
 
-                <FormField label="Indent Number" required error={errors.request_no}>
+                <FormField label="PR Number" required error={errors.requisition_no}>
                   <Input
-                    value={form.request_no}
-                    onChange={(e) => handleFormChange('request_no', e.target.value)}
-                    placeholder="MRN-2026-085"
+                    value={form.requisition_no}
+                    onChange={(e) => handleFormChange('requisition_no', e.target.value)}
+                    placeholder="PR-2026-045"
                   />
                 </FormField>
 
-                <FormField label="Site Location / Grid Zone" required className="md:col-span-2">
+                <FormField label="Delivery Site / Store" className="md:col-span-2">
                   <Input
                     value={form.site_name}
                     onChange={(e) => handleFormChange('site_name', e.target.value)}
-                    placeholder="e.g. Tower A Core - Level 2 / Foundation Sump"
+                    placeholder="e.g. Main Central Godown Bay 1"
                   />
                 </FormField>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>
 
-            <EntityEditModal.Section title="Material Requirement & Urgency">
+            <EntityEditModal.Section title="Material Item & Estimated Budget">
               <EntityEditModal.Grid>
                 <FormField label="Material Item" required error={errors.material_name}>
                   <Input
@@ -715,17 +715,33 @@ export function MaterialRequestsPage() {
                 <FormField label="Required Quantity">
                   <Input
                     type="number"
-                    value={form.requested_qty}
-                    onChange={(e) => handleFormChange('requested_qty', e.target.value)}
+                    value={form.quantity}
+                    onChange={(e) => handleFormChange('quantity', e.target.value)}
+                  />
+                </FormField>
+
+                <FormField label="Estimated Unit Rate (₹)">
+                  <Input
+                    type="number"
+                    value={form.estimated_rate}
+                    onChange={(e) => handleFormChange('estimated_rate', e.target.value)}
+                  />
+                </FormField>
+
+                <FormField label="Total Estimated Budget (₹)">
+                  <Input
+                    readOnly
+                    className="font-mono font-bold text-primary bg-surface-muted"
+                    value={`₹${Number(form.estimated_total).toLocaleString('en-IN')}`}
                   />
                 </FormField>
 
                 <FormField label="Priority Level">
                   <Select
                     options={[
-                      { value: 'Normal', label: 'Normal (Standard Delivery)' },
-                      { value: 'Urgent', label: 'Urgent (Within 48 Hours)' },
-                      { value: 'Critical', label: 'Critical (Immediate Pour Hold)' },
+                      { value: 'Normal', label: 'Normal' },
+                      { value: 'Urgent', label: 'Urgent' },
+                      { value: 'Critical', label: 'Critical' },
                     ]}
                     value={form.priority}
                     onChange={(v) => handleFormChange('priority', v)}
@@ -740,12 +756,12 @@ export function MaterialRequestsPage() {
                   />
                 </FormField>
 
-                <FormField label="Purpose & Activity Scope" className="md:col-span-2">
+                <FormField label="Work Scope & Purpose" className="md:col-span-2">
                   <Textarea
                     rows={2}
                     value={form.purpose}
                     onChange={(e) => handleFormChange('purpose', e.target.value)}
-                    placeholder="Describe specific concrete pour, column shuttering line, plastering room..."
+                    placeholder="Describe specific structural element pour, masonry zone..."
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -753,8 +769,8 @@ export function MaterialRequestsPage() {
           </EntityEditModal.Body>
 
           <EntityEditModal.Footer
-            formId="mrn-form"
-            submitLabel={editingItem ? 'Update Indent' : 'Submit Indent'}
+            formId="pr-form"
+            submitLabel={editingItem ? 'Update PR' : 'Create Requisition'}
             onCancel={() => { setIsAddOpen(false); setEditingItem(null); }}
             isSubmitting={saving}
           />
@@ -764,8 +780,8 @@ export function MaterialRequestsPage() {
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={Boolean(deleteItem)}
-        title="Delete Material Request"
-        message={`Are you sure you want to delete "${deleteItem?.request_no}"?`}
+        title="Delete Requisition"
+        message={`Are you sure you want to delete "${deleteItem?.requisition_no}"?`}
         variant="danger"
         confirmLabel="Delete"
         onConfirm={confirmDelete}
