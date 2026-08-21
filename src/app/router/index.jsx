@@ -43,6 +43,7 @@ import { BudgetApprovalsPage } from '../../features/budgets/pages/BudgetApproval
 import { PlanningActivitiesPage } from '../../features/planning/pages/PlanningActivitiesPage';
 import { WorkProgrammePage } from '../../features/planning/pages/WorkProgrammePage';
 import { PlanningBoqMappingPage } from '../../features/planning/pages/PlanningBoqMappingPage';
+import { PlannedVsCompletedPage } from '../../features/planning/pages/PlannedVsCompletedPage';
 // Phase 2 — Labour & Attendance
 import { LabourRegisterPage } from '../../features/labour/pages/LabourRegisterPage';
 import { LabourDeploymentPage } from '../../features/labour/pages/LabourDeploymentPage';
@@ -133,7 +134,7 @@ export const router = createBrowserRouter([
           { path: 'planning/activities', element: R('planning.view', PlanningActivitiesPage) },
           { path: 'planning/work-programme', element: R('planning.view', WorkProgrammePage) },
           { path: 'planning/boq-mapping', element: R('planning.view', PlanningBoqMappingPage) },
-          { path: 'planning/planned-vs-completed', element: R('report.view', ProjectProgressReportPage) },
+          { path: 'planning/planned-vs-completed', element: R('planning.view', PlannedVsCompletedPage) },
           { path: 'planning/look-ahead', element: R('report.view', ProjectProgressReportPage) },
           { path: 'planning/material-requirements', element: R('materials.view', MaterialReportPage) },
           { path: 'planning/material-forecast', element: R('materials.view', MaterialReportPage) },
