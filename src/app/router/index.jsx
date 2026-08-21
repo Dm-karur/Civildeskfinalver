@@ -56,6 +56,7 @@ import { DailyAttendancePage } from '../../features/labour/pages/DailyAttendance
 import { AttendanceExceptionsPage } from '../../features/labour/pages/AttendanceExceptionsPage';
 import { LabourTimesheetsPage } from '../../features/labour/pages/LabourTimesheetsPage';
 import { LabourOvertimePage } from '../../features/labour/pages/LabourOvertimePage';
+import { LabourLeavePage } from '../../features/labour/pages/LabourLeavePage';
 import { DailyWagesPage } from '../../features/labour/pages/DailyWagesPage';
 // Phase 2 — Materials & Inventory
 import { MaterialCataloguePage } from '../../features/materials/pages/MaterialCataloguePage';
@@ -156,7 +157,7 @@ export const router = createBrowserRouter([
           { path: 'labour/attendance-exceptions', element: R('attendance.view', AttendanceExceptionsPage) },
           { path: 'labour/timesheets', element: R('attendance.view', LabourTimesheetsPage) },
           { path: 'labour/overtime', element: R('attendance.view', LabourOvertimePage) },
-          { path: 'labour/leave', element: R('attendance.view', DailyAttendancePage) },
+          { path: 'labour/leave', element: R('attendance.view', LabourLeavePage) },
           { path: 'labour/wages', element: R('wages.view', DailyWagesPage) },
           { path: 'labour/manpower-cost', element: R('wages.view', DailyWagesPage) },
           { path: 'labour/wage-approval', element: R('wages.approve', DailyWagesPage) },
