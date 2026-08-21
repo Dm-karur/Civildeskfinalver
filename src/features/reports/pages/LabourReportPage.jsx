@@ -17,7 +17,9 @@ import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_LABOUR_REPORTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -87,10 +89,11 @@ const DEFAULT_LABOUR_REPORTS = [
     status: 'Optimal Deployment'
   },
 ];
+*/
 
 export function LabourReportPage() {
   const [projects, setProjects] = useState([]);
-  const [reports, setReports] = useState(DEFAULT_LABOUR_REPORTS);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

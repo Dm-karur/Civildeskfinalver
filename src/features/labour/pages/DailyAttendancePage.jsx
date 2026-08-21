@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { attendanceApi, labourApi, projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_ATTENDANCE_RECORDS = [
+
   {
     id: 1,
     worker_id: 6,
@@ -144,11 +146,12 @@ const DEFAULT_ATTENDANCE_RECORDS = [
     notes: 'Sick leave reported to contractor.'
   },
 ];
+*/
 
 export function DailyAttendancePage() {
   const { hasPermission } = useAuth();
   const [selectedDate, setSelectedDate] = useState('2026-08-21');
-  const [records, setRecords] = useState(DEFAULT_ATTENDANCE_RECORDS);
+  const [records, setRecords] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
 

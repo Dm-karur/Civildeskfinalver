@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_ISSUES = [
+
   {
     id: 1,
     project_id: 1,
@@ -87,6 +89,7 @@ const DEFAULT_ISSUES = [
     notes: 'Batching plant feeder issue.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -109,7 +112,7 @@ const EMPTY_FORM = {
 export function StockIssuesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [issues, setIssues] = useState(DEFAULT_ISSUES);
+  const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

@@ -20,7 +20,9 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, boqApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_MAPPINGS = [
+
   {
     id: 1,
     project_id: 1,
@@ -122,6 +124,7 @@ const DEFAULT_MAPPINGS = [
     status: 'Unmapped'
   },
 ];
+*/
 
 const AVAILABLE_ACTIVITIES = [
   { code: 'ACT-0101-EXC', name: 'Basement Mass Excavation & Soil Stacking', period: '2026-06-01 to 2026-07-15' },
@@ -133,7 +136,7 @@ const AVAILABLE_ACTIVITIES = [
 
 export function PlanningBoqMappingPage() {
   const [projects, setProjects] = useState([]);
-  const [mappings, setMappings] = useState(DEFAULT_MAPPINGS);
+  const [mappings, setMappings] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

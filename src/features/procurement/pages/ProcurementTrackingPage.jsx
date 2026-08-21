@@ -18,7 +18,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_TRACKING_ORDERS = [
+
   {
     id: 1,
     project_id: 1,
@@ -71,11 +73,12 @@ const DEFAULT_TRACKING_ORDERS = [
     notes: 'GRN-2026-083 closed.'
   },
 ];
+*/
 
 export function ProcurementTrackingPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [trackings, setTrackings] = useState(DEFAULT_TRACKING_ORDERS);
+  const [trackings, setTrackings] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

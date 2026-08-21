@@ -30,7 +30,9 @@ const MILESTONE_PHASES = [
   { id: 'handover', name: 'Testing, Commissioning & Handover' },
 ];
 
+/* 
 const DEFAULT_MILESTONES = [
+
   {
     id: 1,
     project_id: 1,
@@ -134,6 +136,7 @@ const DEFAULT_MILESTONES = [
     deliverables: 'Joint client inspection, fire NOC endorsement, and handover to client.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -152,7 +155,7 @@ const EMPTY_FORM = {
 export function ProjectMilestonesPage() {
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('all');
-  const [milestones, setMilestones] = useState(DEFAULT_MILESTONES);
+  const [milestones, setMilestones] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [activePhase, setActivePhase] = useState('all');

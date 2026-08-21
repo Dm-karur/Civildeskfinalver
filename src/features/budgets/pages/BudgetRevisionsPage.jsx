@@ -21,7 +21,9 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { budgetsApi, projectsApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_REVISIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -80,6 +82,7 @@ const DEFAULT_REVISIONS = [
     decision_note: 'Approved per variation order VO-04 signed by client.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -98,7 +101,7 @@ const EMPTY_FORM = {
 export function BudgetRevisionsPage() {
   const [projects, setProjects] = useState([]);
   const [budgets, setBudgets] = useState([]);
-  const [revisions, setRevisions] = useState(DEFAULT_REVISIONS);
+  const [revisions, setRevisions] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

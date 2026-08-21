@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_QUOTES = [
+
   {
     id: 1,
     project_id: 1,
@@ -90,6 +92,7 @@ const DEFAULT_QUOTES = [
     notes: 'Payment required prior to dispatch.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -112,7 +115,7 @@ const EMPTY_FORM = {
 export function VendorQuotationsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [quotes, setQuotes] = useState(DEFAULT_QUOTES);
+  const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

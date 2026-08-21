@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_ADJUSTMENTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -66,6 +68,7 @@ const DEFAULT_ADJUSTMENTS = [
     reason: 'Standard rolling tolerance length excess identified during physical caliper tally.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -88,7 +91,7 @@ const EMPTY_FORM = {
 export function StockAdjustmentsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [adjustments, setAdjustments] = useState(DEFAULT_ADJUSTMENTS);
+  const [adjustments, setAdjustments] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

@@ -28,7 +28,9 @@ const WINDOW_OPTIONS = [
   { id: '6w', name: '6-Week Lookahead' },
 ];
 
+/* 
 const DEFAULT_LOOKAHEAD_TASKS = [
+
   {
     id: 1,
     project_id: 1,
@@ -114,6 +116,7 @@ const DEFAULT_LOOKAHEAD_TASKS = [
     constraint_notes: 'Traffic diversion signboards installed; ready for excavation.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -136,7 +139,7 @@ const EMPTY_FORM = {
 
 export function LookAheadSchedulePage() {
   const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState(DEFAULT_LOOKAHEAD_TASKS);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

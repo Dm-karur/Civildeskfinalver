@@ -30,7 +30,9 @@ const DOCUMENT_CATEGORIES = [
   { id: 'safety', name: 'HSE & Safety Clearances' },
 ];
 
+/* 
 const DEFAULT_DOCUMENTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -127,6 +129,7 @@ const DEFAULT_DOCUMENTS = [
     remarks: 'Stage II forest clearance acknowledgement received.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -147,7 +150,7 @@ const EMPTY_FORM = {
 export function ProjectDocumentsPage() {
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('all');
-  const [documents, setDocuments] = useState(DEFAULT_DOCUMENTS);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');

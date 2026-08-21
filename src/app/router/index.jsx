@@ -86,14 +86,76 @@ import { VendorInvoicesPage } from '../../features/procurement/pages/VendorInvoi
 import { ProcurementReturnsPage } from '../../features/procurement/pages/ProcurementReturnsPage';
 import { ProcurementTrackingPage } from '../../features/procurement/pages/ProcurementTrackingPage';
 // Phase 2 — Daily Site Operations
-import { DailyWorkReportPage } from '../../features/daily-operations/pages/DailyWorkReportPage';
+import { DailyProgressReportsPage } from '../../features/daily-operations/pages/DailyProgressReportsPage';
+import { WorkCompletionPage } from '../../features/daily-operations/pages/WorkCompletionPage';
+import { SiteMeasurementsPage } from '../../features/daily-operations/pages/SiteMeasurementsPage';
+import { DailyManpowerPage } from '../../features/daily-operations/pages/DailyManpowerPage';
+import { DailyEquipmentPage } from '../../features/daily-operations/pages/DailyEquipmentPage';
+import { DailyMaterialsPage } from '../../features/daily-operations/pages/DailyMaterialsPage';
+import { DailyIssuesPage } from '../../features/daily-operations/pages/DailyIssuesPage';
+import { DailyPhotosPage } from '../../features/daily-operations/pages/DailyPhotosPage';
+import { DailyApprovalsPage } from '../../features/daily-operations/pages/DailyApprovalsPage';
+import { DailyHistoryPage } from '../../features/daily-operations/pages/DailyHistoryPage';
 // Phase 2 — Subcontract Management
-import { SubcontractorsPage, WorkOrdersPage, SubcontractMeasurementsPage, RABillsPage, SubcontractPaymentsPage } from '../../features/subcontracts/pages/SubcontractPages';
+import { SubcontractorsPage } from '../../features/subcontracts/pages/SubcontractorsPage';
+import { WorkOrdersPage } from '../../features/subcontracts/pages/WorkOrdersPage';
+import { WorkOrderApprovalPage } from '../../features/subcontracts/pages/WorkOrderApprovalPage';
+import { SubcontractMeasurementsPage } from '../../features/subcontracts/pages/SubcontractMeasurementsPage';
+import { PaymentCertificatesPage } from '../../features/subcontracts/pages/PaymentCertificatesPage';
+import { SubcontractRABillsPage } from '../../features/subcontracts/pages/SubcontractRABillsPage';
+import { RABillApprovalPage } from '../../features/subcontracts/pages/RABillApprovalPage';
+import { SubcontractPaymentsPage } from '../../features/subcontracts/pages/SubcontractPaymentsPage';
+import { PackageCompletionPage } from '../../features/subcontracts/pages/PackageCompletionPage';
+import { RetentionLedgerPage } from '../../features/subcontracts/pages/RetentionLedgerPage';
+// Phase 3 — Client Billing & Receivables
+import { ClientContractsPage } from '../../features/receivables/pages/ClientContractsPage';
+import { ContractValuesPage } from '../../features/receivables/pages/ContractValuesPage';
+import { ClientAdvancesPage } from '../../features/receivables/pages/ClientAdvancesPage';
+import { AdvanceApprovalPage } from '../../features/receivables/pages/AdvanceApprovalPage';
+import { ClientInvoicesPage } from '../../features/receivables/pages/ClientInvoicesPage';
+import { ProgressBillingPage } from '../../features/receivables/pages/ProgressBillingPage';
+import { ClientReceiptsPage } from '../../features/receivables/pages/ClientReceiptsPage';
+import { ReceiptAllocationsPage } from '../../features/receivables/pages/ReceiptAllocationsPage';
+import { OutstandingReceivablesPage } from '../../features/receivables/pages/OutstandingReceivablesPage';
+import { ClientRetentionPage } from '../../features/receivables/pages/ClientRetentionPage';
+import { ClientStatementsPage } from '../../features/receivables/pages/ClientStatementsPage';
 // Phase 3 — Finance & Cost Control
-import { ExpenseRequestsPage, ExpenseBillsPage, ExpensePaymentsPage, ProjectCostSummaryPage } from '../../features/finance/pages/FinancePages';
+import { ProjectCostPage } from '../../features/finance/pages/ProjectCostPage';
+import { BudgetVsActualPage } from '../../features/finance/pages/BudgetVsActualPage';
+import { MaterialCostsPage } from '../../features/finance/pages/MaterialCostsPage';
+import { LabourCostsPage } from '../../features/finance/pages/LabourCostsPage';
+import { SubcontractCostsPage } from '../../features/finance/pages/SubcontractCostsPage';
+import { EquipmentCostsPage } from '../../features/finance/pages/EquipmentCostsPage';
+import { OtherExpensesPage } from '../../features/finance/pages/OtherExpensesPage';
+import { ProjectIncomePage } from '../../features/finance/pages/ProjectIncomePage';
+import { MasterExpensesPage } from '../../features/finance/pages/MasterExpensesPage';
+import { VendorPayablesPage } from '../../features/finance/pages/VendorPayablesPage';
+import { FinancePaymentsPage } from '../../features/finance/pages/FinancePaymentsPage';
+import { ProjectProfitabilityPage } from '../../features/finance/pages/ProjectProfitabilityPage';
+import { CashFlowPage } from '../../features/finance/pages/CashFlowPage';
+import { ExpenseRequestsPage } from '../../features/finance/pages/FinancePages';
 // Phase 3 — Reports & Analytics
-import { ProjectProgressReportPage, BudgetVsActualReportPage, MaterialReportPage, SubcontractReportPage, ExpenseReportPage } from '../../features/reports/pages/ReportPages';
-import { LabourReportPage } from '../../features/reports/pages/LabourReportPage';
+import { ProjectProgressReportPage } from '../../features/reports/pages/ProjectProgressReportPage';
+import { BoqProgressReportPage } from '../../features/reports/pages/BoqProgressReportPage';
+import { BudgetVsActualReportPage } from '../../features/reports/pages/BudgetVsActualReportPage';
+import { MaterialConsumptionReportPage } from '../../features/reports/pages/MaterialConsumptionReportPage';
+import { MaterialShortageReportPage } from '../../features/reports/pages/MaterialShortageReportPage';
+import { LabourDeploymentReportPage } from '../../features/reports/pages/LabourDeploymentReportPage';
+import { LabourCostReportPage } from '../../features/reports/pages/LabourCostReportPage';
+import { SubcontractReportPage } from '../../features/reports/pages/SubcontractReportPage';
+import { ClientReceivablesReportPage } from '../../features/reports/pages/ClientReceivablesReportPage';
+import { VendorPayablesReportPage } from '../../features/reports/pages/VendorPayablesReportPage';
+import { ProjectProfitabilityReportPage } from '../../features/reports/pages/ProjectProfitabilityReportPage';
+import { DailySiteReportPage } from '../../features/reports/pages/DailySiteReportPage';
+import { ManagementSummaryReportPage } from '../../features/reports/pages/ManagementSummaryReportPage';
+import { ExpenseReportPage } from '../../features/reports/pages/ReportPages';
+// Phase 3 — Communication & Collaboration
+import { ProjectMessagesPage } from '../../features/communication/pages/ProjectMessagesPage';
+import { ClientUpdatesPage } from '../../features/communication/pages/ClientUpdatesPage';
+import { CommunicationDocumentsPage } from '../../features/communication/pages/CommunicationDocumentsPage';
+import { CommunicationApprovalsPage } from '../../features/communication/pages/CommunicationApprovalsPage';
+import { WhatsAppLogsPage } from '../../features/communication/pages/WhatsAppLogsPage';
+import { EmailLogsPage } from '../../features/communication/pages/EmailLogsPage';
 // Phase 2/3 — Additional Masters
 import { LabourCategoriesPage, LabourContractorsPage } from '../../features/masters/pages/LabourMasterPages';
 import { MaterialCategoriesPage, SuppliersPage, ExpenseCategoriesPage } from '../../features/masters/pages/MaterialProcurementMasterPages';
@@ -209,80 +271,84 @@ export const router = createBrowserRouter([
           { path: 'procurement/tracking', element: R('purchase_orders.view', ProcurementTrackingPage) },
 
           // ─── 8. Daily Site Operations ─────────────────────
-          { path: 'daily-operations/reports', element: R('daily_reports.view', DailyWorkReportPage) },
-          { path: 'daily-operations/completion', element: R('work_progress.record', DailyWorkReportPage) },
-          { path: 'daily-operations/measurements', element: R('measurements.view', DailyWorkReportPage) },
-          { path: 'daily-operations/manpower', element: R('daily_reports.view', DailyWorkReportPage) },
-          { path: 'daily-operations/equipment', element: R('daily_reports.view', DailyWorkReportPage) },
-          { path: 'daily-operations/materials', element: R('daily_reports.view', DailyWorkReportPage) },
-          { path: 'daily-operations/issues', element: R('site_issues.view', DailyWorkReportPage) },
-          { path: 'daily-operations/photos', element: R('site_photos.manage', DailyWorkReportPage) },
-          { path: 'daily-operations/approvals', element: R('daily_reports.approve', DailyWorkReportPage) },
-          { path: 'daily-operations/history', element: R('daily_reports.view', DailyWorkReportPage) },
+          { path: 'daily-operations/reports', element: R('daily_reports.view', DailyProgressReportsPage) },
+          { path: 'daily-operations/completion', element: R('work_progress.record', WorkCompletionPage) },
+          { path: 'daily-operations/measurements', element: R('measurements.view', SiteMeasurementsPage) },
+          { path: 'daily-operations/manpower', element: R('daily_reports.view', DailyManpowerPage) },
+          { path: 'daily-operations/equipment', element: R('daily_reports.view', DailyEquipmentPage) },
+          { path: 'daily-operations/materials', element: R('daily_reports.view', DailyMaterialsPage) },
+          { path: 'daily-operations/issues', element: R('site_issues.view', DailyIssuesPage) },
+          { path: 'daily-operations/photos', element: R('site_photos.manage', DailyPhotosPage) },
+          { path: 'daily-operations/approvals', element: R('daily_reports.approve', DailyApprovalsPage) },
+          { path: 'daily-operations/history', element: R('daily_reports.view', DailyHistoryPage) },
 
           // ─── 9. Subcontract Management ────────────────────
           { path: 'subcontracts/subcontractors', element: R('subcontractors.view', SubcontractorsPage) },
           { path: 'subcontracts/work-orders', element: R('work_orders.view', WorkOrdersPage) },
-          { path: 'subcontracts/work-order-approval', element: R('work_orders.approve', WorkOrdersPage) },
+          { path: 'subcontracts/work-order-approval', element: R('work_orders.approve', WorkOrderApprovalPage) },
           { path: 'subcontracts/measurements', element: R('measurements.view', SubcontractMeasurementsPage) },
-          { path: 'subcontracts/certificates', element: R('measurements.view', SubcontractMeasurementsPage) },
-          { path: 'subcontracts/ra-bills', element: R('ra_bills.view', RABillsPage) },
-          { path: 'subcontracts/bill-approval', element: R('ra_bills.certify', RABillsPage) },
+          { path: 'subcontracts/certificates', element: R('measurements.view', PaymentCertificatesPage) },
+          { path: 'subcontracts/ra-bills', element: R('ra_bills.view', SubcontractRABillsPage) },
+          { path: 'subcontracts/bill-approval', element: R('ra_bills.certify', RABillApprovalPage) },
           { path: 'subcontracts/payments', element: R('payments.view', SubcontractPaymentsPage) },
-          { path: 'subcontracts/completion', element: R('work_progress.view', WorkOrdersPage) },
-          { path: 'subcontracts/retention', element: R('ra_bills.view', RABillsPage) },
+          { path: 'subcontracts/completion', element: R('work_progress.view', PackageCompletionPage) },
+          { path: 'subcontracts/retention', element: R('ra_bills.view', RetentionLedgerPage) },
+          { path: 'subcontracts/reports', element: R('report.view', SubcontractReportPage) },
+          { path: 'reports/subcontracts', element: R('report.view', SubcontractReportPage) },
+          { path: 'reports/subcontractors', element: R('report.view', SubcontractReportPage) },
 
           // ─── 10. Client Billing & Receivables ─────────────
-          { path: 'receivables/contracts', element: R('client.view', ProjectsListPage) },
-          { path: 'receivables/contract-values', element: R('client.view', ProjectsListPage) },
-          { path: 'receivables/advances', element: R('payments.view', ExpensePaymentsPage) },
-          { path: 'receivables/advance-approval', element: R('payments.approve', ExpensePaymentsPage) },
-          { path: 'receivables/invoices', element: R('payments.view', ExpenseBillsPage) },
-          { path: 'receivables/progress-billing', element: R('payments.view', ExpenseBillsPage) },
-          { path: 'receivables/receipts', element: R('payments.view', ExpensePaymentsPage) },
-          { path: 'receivables/allocations', element: R('payments.view', ExpensePaymentsPage) },
-          { path: 'receivables/outstanding', element: R('cashflow.view', ExpenseReportPage) },
-          { path: 'receivables/retention', element: R('cashflow.view', ExpenseReportPage) },
-          { path: 'receivables/statements', element: R('report.view', ExpenseReportPage) },
+          { path: 'receivables/contracts', element: R('client.view', ClientContractsPage) },
+          { path: 'receivables/contract-values', element: R('client.view', ContractValuesPage) },
+          { path: 'receivables/advances', element: R('payments.view', ClientAdvancesPage) },
+          { path: 'receivables/advance-approval', element: R('payments.approve', AdvanceApprovalPage) },
+          { path: 'receivables/invoices', element: R('payments.view', ClientInvoicesPage) },
+          { path: 'receivables/progress-billing', element: R('payments.view', ProgressBillingPage) },
+          { path: 'receivables/receipts', element: R('payments.view', ClientReceiptsPage) },
+          { path: 'receivables/allocations', element: R('payments.view', ReceiptAllocationsPage) },
+          { path: 'receivables/outstanding', element: R('cashflow.view', OutstandingReceivablesPage) },
+          { path: 'receivables/retention', element: R('cashflow.view', ClientRetentionPage) },
+          { path: 'receivables/statements', element: R('report.view', ClientStatementsPage) },
 
           // ─── 11. Finance & Cost Control ───────────────────
-          { path: 'finance/project-cost', element: R('project_cost.view', ProjectCostSummaryPage) },
-          { path: 'finance/budget-vs-actual', element: R('budget.view', BudgetVsActualReportPage) },
-          { path: 'finance/material-costs', element: R('project_cost.view', MaterialReportPage) },
-          { path: 'finance/labour-costs', element: R('wages.view', LabourReportPage) },
-          { path: 'finance/subcontract-costs', element: R('project_cost.view', SubcontractReportPage) },
-          { path: 'finance/equipment-costs', element: R('project_cost.view', ProjectCostSummaryPage) },
-          { path: 'finance/other-expenses', element: R('expenses.view', ExpenseRequestsPage) },
-          { path: 'finance/income', element: R('cashflow.view', ExpensePaymentsPage) },
-          { path: 'finance/expenses', element: R('expenses.view', ExpenseBillsPage) },
-          { path: 'finance/vendor-payables', element: R('expense_payments.view', ExpenseBillsPage) },
-          { path: 'finance/payments', element: R('expense_payments.view', ExpensePaymentsPage) },
-          { path: 'finance/profitability', element: R('project_cost.view', ProjectCostSummaryPage) },
-          { path: 'finance/cash-flow', element: R('cashflow.view', ProjectCostSummaryPage) },
+          { path: 'finance/project-cost', element: R('project_cost.view', ProjectCostPage) },
+          { path: 'finance/budget-vs-actual', element: R('budget.view', BudgetVsActualPage) },
+          { path: 'finance/material-costs', element: R('project_cost.view', MaterialCostsPage) },
+          { path: 'finance/labour-costs', element: R('wages.view', LabourCostsPage) },
+          { path: 'finance/subcontract-costs', element: R('project_cost.view', SubcontractCostsPage) },
+          { path: 'finance/equipment-costs', element: R('project_cost.view', EquipmentCostsPage) },
+          { path: 'finance/other-expenses', element: R('expenses.view', OtherExpensesPage) },
+          { path: 'finance/income', element: R('cashflow.view', ProjectIncomePage) },
+          { path: 'finance/expenses', element: R('expenses.view', MasterExpensesPage) },
+          { path: 'finance/vendor-payables', element: R('expense_payments.view', VendorPayablesPage) },
+          { path: 'finance/payments', element: R('expense_payments.view', FinancePaymentsPage) },
+          { path: 'finance/profitability', element: R('project_cost.view', ProjectProfitabilityPage) },
+          { path: 'finance/cash-flow', element: R('cashflow.view', CashFlowPage) },
 
           // ─── 12. Reports & Analytics ─────────────────────
           { path: 'reports/project-progress', element: R('report.view', ProjectProgressReportPage) },
-          { path: 'reports/boq-progress', element: R('report.view', ProjectProgressReportPage) },
+          { path: 'reports/boq-progress', element: R('report.view', BoqProgressReportPage) },
           { path: 'reports/budget-vs-actual', element: R('report.view', BudgetVsActualReportPage) },
-          { path: 'reports/material-consumption', element: R('report.view', MaterialReportPage) },
-          { path: 'reports/material-shortage', element: R('report.view', MaterialReportPage) },
-          { path: 'reports/labour-deployment', element: R('report.view', LabourReportPage) },
-          { path: 'reports/labour-cost', element: R('report.view', LabourReportPage) },
-          { path: 'reports/labour', element: R('report.view', LabourReportPage) },
+          { path: 'reports/material-consumption', element: R('report.view', MaterialConsumptionReportPage) },
+          { path: 'reports/material-shortage', element: R('report.view', MaterialShortageReportPage) },
+          { path: 'reports/labour-deployment', element: R('report.view', LabourDeploymentReportPage) },
+          { path: 'reports/labour-cost', element: R('report.view', LabourCostReportPage) },
+          { path: 'reports/labour', element: R('report.view', LabourDeploymentReportPage) },
           { path: 'reports/subcontracts', element: R('report.view', SubcontractReportPage) },
-          { path: 'reports/client-receivables', element: R('report.view', ExpenseReportPage) },
-          { path: 'reports/vendor-payables', element: R('report.view', ExpenseReportPage) },
-          { path: 'reports/project-profitability', element: R('report.view', ProjectCostSummaryPage) },
-          { path: 'reports/daily-site', element: R('report.view', ProjectProgressReportPage) },
-          { path: 'reports/management-summary', element: R('management_review.view', ProjectProgressReportPage) },
+          { path: 'reports/subcontractors', element: R('report.view', SubcontractReportPage) },
+          { path: 'reports/client-receivables', element: R('report.view', ClientReceivablesReportPage) },
+          { path: 'reports/vendor-payables', element: R('report.view', VendorPayablesReportPage) },
+          { path: 'reports/project-profitability', element: R('report.view', ProjectProfitabilityReportPage) },
+          { path: 'reports/daily-site', element: R('report.view', DailySiteReportPage) },
+          { path: 'reports/management-summary', element: R('management_review.view', ManagementSummaryReportPage) },
 
           // ─── Communication ───────────────────────────────
-          { path: 'communication/project-messages', element: R('dashboard.view', DashboardPage) },
-          { path: 'communication/client-updates', element: R('dashboard.view', DashboardPage) },
-          { path: 'communication/documents', element: R('project.view', ProjectsListPage) },
-          { path: 'communication/approvals', element: <ApprovalWorkflowsPage /> },
-          { path: 'communication/whatsapp', element: R('activity_log.view', AuditLogsPage) },
-          { path: 'communication/email', element: R('activity_log.view', AuditLogsPage) },
+          { path: 'communication/project-messages', element: R('project.view', ProjectMessagesPage) },
+          { path: 'communication/client-updates', element: R('client.view', ClientUpdatesPage) },
+          { path: 'communication/documents', element: R('project.manage_documents', CommunicationDocumentsPage) },
+          { path: 'communication/approvals', element: R('project.view', CommunicationApprovalsPage) },
+          { path: 'communication/whatsapp', element: R('activity_log.view', WhatsAppLogsPage) },
+          { path: 'communication/email', element: R('activity_log.view', EmailLogsPage) },
 
           // ─── Client Portal ───────────────────────────────
           { path: 'client-portal/users', element: R('user.view', UsersListPage) },

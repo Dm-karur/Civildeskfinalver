@@ -30,7 +30,9 @@ const VARIATION_TYPES = [
   { id: 'client_request', name: 'Client Requested Specification Upgrade' },
 ];
 
+/* 
 const DEFAULT_VARIATIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -108,6 +110,7 @@ const DEFAULT_VARIATIONS = [
     contract_clause: 'Clause 10.4 - Extra Items & New Rates'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -126,7 +129,7 @@ const EMPTY_FORM = {
 
 export function BudgetVariationsPage() {
   const [projects, setProjects] = useState([]);
-  const [variations, setVariations] = useState(DEFAULT_VARIATIONS);
+  const [variations, setVariations] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

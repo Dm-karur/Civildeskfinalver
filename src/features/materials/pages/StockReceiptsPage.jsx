@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, materialManagementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_RECEIPTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -93,6 +95,7 @@ const DEFAULT_RECEIPTS = [
     notes: 'Sieve analysis sample taken for flakiness index test.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -118,7 +121,7 @@ const EMPTY_FORM = {
 export function StockReceiptsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [receipts, setReceipts] = useState(DEFAULT_RECEIPTS);
+  const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

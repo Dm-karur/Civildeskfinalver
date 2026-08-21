@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_CONSUMPTIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -90,6 +92,7 @@ const DEFAULT_CONSUMPTIONS = [
     notes: 'Site stockpile base ground contamination loss.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -114,7 +117,7 @@ const EMPTY_FORM = {
 export function MaterialConsumptionPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [consumptions, setConsumptions] = useState(DEFAULT_CONSUMPTIONS);
+  const [consumptions, setConsumptions] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

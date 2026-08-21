@@ -18,7 +18,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_APPROVAL_POS = [
+
   {
     id: 1,
     project_id: 1,
@@ -77,11 +79,12 @@ const DEFAULT_APPROVAL_POS = [
     notes: 'Approved for direct batching delivery.'
   },
 ];
+*/
 
 export function PurchaseOrderApprovalPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [orders, setOrders] = useState(DEFAULT_APPROVAL_POS);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

@@ -20,7 +20,9 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_TIMESHEETS = [
+
   {
     id: 1,
     project_id: 1,
@@ -122,6 +124,7 @@ const DEFAULT_TIMESHEETS = [
     notes: 'Box culvert raft rebar cutting & bending fabrication.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -142,7 +145,7 @@ const EMPTY_FORM = {
 };
 
 export function LabourTimesheetsPage() {
-  const [timesheets, setTimesheets] = useState(DEFAULT_TIMESHEETS);
+  const [timesheets, setTimesheets] = useState([]);
   const [projects, setProjects] = useState([]);
   const [currentWeekLabel, setCurrentWeekLabel] = useState('Week 34 (17 Aug - 23 Aug 2026)');
   const [loading, setLoading] = useState(false);

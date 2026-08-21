@@ -31,7 +31,9 @@ const SITE_DOC_CATEGORIES = [
   { id: 'possession', name: 'Site Handover & Clearances' },
 ];
 
+/* 
 const DEFAULT_SITE_DOCS = [
+
   {
     id: 1,
     project_id: 1,
@@ -128,6 +130,7 @@ const DEFAULT_SITE_DOCS = [
     remarks: 'Mandatory PPE and traffic diversion sign protocols briefed to 36 operators.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -146,7 +149,7 @@ const EMPTY_FORM = {
 export function SiteDocumentsPage() {
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
-  const [documents, setDocuments] = useState(DEFAULT_SITE_DOCS);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

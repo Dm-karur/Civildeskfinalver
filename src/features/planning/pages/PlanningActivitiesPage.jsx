@@ -30,7 +30,9 @@ const PHASES = [
   { id: 'handover', name: 'Phase 5: Testing & Handover' },
 ];
 
+/* 
 const DEFAULT_ACTIVITIES = [
+
   {
     id: 1,
     project_id: 1,
@@ -127,6 +129,7 @@ const DEFAULT_ACTIVITIES = [
     status: 'Not Started'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -146,7 +149,7 @@ const EMPTY_FORM = {
 
 export function PlanningActivitiesPage() {
   const [projects, setProjects] = useState([]);
-  const [activities, setActivities] = useState(DEFAULT_ACTIVITIES);
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

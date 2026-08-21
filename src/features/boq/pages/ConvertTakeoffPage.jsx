@@ -20,7 +20,9 @@ import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, boqApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_TAKEOFF_ITEMS = [
+
   {
     id: 1,
     project_id: 1,
@@ -94,12 +96,13 @@ const DEFAULT_TAKEOFF_ITEMS = [
     specification: 'Dense Bituminous Macadam 75mm thick with VG-30 bitumen binder.'
   },
 ];
+*/
 
 export function ConvertTakeoffPage() {
   const [projects, setProjects] = useState([]);
   const [boqs, setBoqs] = useState([]);
   const [sections, setSections] = useState([]);
-  const [items, setItems] = useState(DEFAULT_TAKEOFF_ITEMS);
+  const [items, setItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(false);
 

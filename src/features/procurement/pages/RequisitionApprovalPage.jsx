@@ -18,7 +18,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_APPROVAL_PRS = [
+
   {
     id: 1,
     project_id: 1,
@@ -86,11 +88,12 @@ const DEFAULT_APPROVAL_PRS = [
     purpose: 'Base course concrete batching on site.'
   },
 ];
+*/
 
 export function RequisitionApprovalPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [requisitions, setRequisitions] = useState(DEFAULT_APPROVAL_PRS);
+  const [requisitions, setRequisitions] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

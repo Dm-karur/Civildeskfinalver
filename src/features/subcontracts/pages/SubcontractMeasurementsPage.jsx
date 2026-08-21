@@ -1,0 +1,658 @@
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Ruler, CheckCircle2, IndianRupee, HardHat, Layers,
+  Search, Filter, Eye, Edit, Trash2, Plus, Building,
+  ShieldCheck, Check, AlertCircle, Sparkles, Printer, ArrowRight, Calculator
+} from 'lucide-react';
+import { PageHeader } from '../../../components/layout/PageHeader';
+import { PageContainer } from '../../../components/layout/PageContainer';
+import { DataTableContainer } from '../../../components/composite/DataTableContainer';
+import { Pagination } from '../../../components/composite/Pagination';
+import { SearchField } from '../../../components/composite/SearchField';
+import { KpiCard } from '../../../components/composite/KpiCard';
+import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
+import { Select } from '../../../components/ui/Select';
+import { Input } from '../../../components/ui/Input';
+import { Textarea } from '../../../components/ui/Textarea';
+import { FormField } from '../../../components/composite/FormField';
+import { EntityEditModal } from '../../../components/composite/EntityEditModal';
+import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
+import { toast } from '../../../components/composite/Toast';
+import { projectsApi } from '../../../api/apiservice';
+import { useAuth } from '../../auth/context/AuthContext';
+
+/* 
+const DEFAULT_MEASUREMENTS = [
+
+  {
+    id: 1,
+    project_id: 1,
+    project_code: 'PRJ-2026-001',
+    project_name: 'Metro Commercial Tower Block A',
+    measurement_no: 'SMB-2026-031',
+    measurement_date: '2026-08-20',
+    period_from: '2026-08-01',
+    period_to: '2026-08-15',
+    work_order_no: 'WO-2026-012',
+    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
+    work_item: 'Level 2 Column Formwork & Concrete Pouring (42 m³ @ ₹2,200/m³)',
+    total_measured_amount: 92400,
+    status_name: 'Verified & Certified for RA Bill',
+    measured_by: 'Er. Rajesh Kumar (Site Incharge)',
+    witnessed_by: 'Er. S. Murugesan (Contractor Partner)',
+    notes: 'Measurements cross-verified with column dimensions on drawing DWG-STR-202.'
+  },
+  {
+    id: 2,
+    project_id: 1,
+    project_code: 'PRJ-2026-001',
+    project_name: 'Metro Commercial Tower Block A',
+    measurement_no: 'SMB-2026-032',
+    measurement_date: '2026-08-21',
+    period_from: '2026-08-01',
+    period_to: '2026-08-15',
+    work_order_no: 'WO-2026-013',
+    contractor_name: 'Apex MEP Engineers & Contractors',
+    work_item: 'Level 2 Floor Slab PVC Conduit Laying (650 Rmt @ ₹65/Rmt)',
+    total_measured_amount: 42250,
+    status_name: 'Verified & Certified for RA Bill',
+    measured_by: 'Er. Rajesh Kumar',
+    witnessed_by: 'V. Sundaram (MEP Engineer)',
+    notes: 'All junction boxes and pull-boxes counted and verified.'
+  },
+  {
+    id: 3,
+    project_id: 2,
+    project_code: 'PRJ-2026-002',
+    project_name: 'Highway Expansion Package 3',
+    measurement_no: 'SMB-2026-033',
+    measurement_date: '2026-08-21',
+    period_from: '2026-08-10',
+    period_to: '2026-08-20',
+    work_order_no: 'WO-2026-014',
+    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
+    work_item: 'Box Culvert Excavation & PCC Raft (180 m³ @ ₹450/m³)',
+    total_measured_amount: 81000,
+    status_name: 'Draft Measurement (Under Verification)',
+    measured_by: 'K. Balaji (Highway PM)',
+    witnessed_by: 'Contractor Site Agent',
+    notes: 'Trench depths verified with auto-level readings.'
+  },
+];
+*/
+
+const EMPTY_FORM = {
+  project_id: '',
+  measurement_no: '',
+  measurement_date: '',
+  period_from: '',
+  period_to: '',
+  work_order_no: 'WO-2026-012',
+  contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
+  work_item: '',
+  total_measured_amount: '85000',
+  measured_by: 'Site Incharge',
+  witnessed_by: 'Contractor Representative',
+  notes: '',
+};
+
+export function SubcontractMeasurementsPage() {
+  const { hasPermission } = useAuth();
+  const [projects, setProjects] = useState([]);
+  const [measurements, setMeasurements] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Filters
+  const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const perPage = 10;
+
+  // Modals
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [viewingItem, setViewingItem] = useState(null);
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  // Load Projects
+  useEffect(() => {
+    projectsApi.list().then(res => {
+      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
+      setProjects(Array.isArray(list) ? list : []);
+    }).catch(() => setProjects([]));
+  }, []);
+
+  // Form Handlers
+  const handleOpenAdd = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+
+    setForm({
+      ...EMPTY_FORM,
+      project_id: defaultProj,
+      measurement_no: `SMB-2026-03${measurements.length + 5}`,
+      measurement_date: today,
+      period_from: today,
+      period_to: today,
+    });
+    setErrors({});
+    setIsAddOpen(true);
+  };
+
+  const handleOpenEdit = (item) => {
+    setForm({
+      project_id: String(item.project_id || '1'),
+      measurement_no: item.measurement_no || '',
+      measurement_date: item.measurement_date || '',
+      period_from: item.period_from || '',
+      period_to: item.period_to || '',
+      work_order_no: item.work_order_no || '',
+      contractor_name: item.contractor_name || '',
+      work_item: item.work_item || '',
+      total_measured_amount: String(item.total_measured_amount || '50000'),
+      measured_by: item.measured_by || '',
+      witnessed_by: item.witnessed_by || '',
+      notes: item.notes || '',
+    });
+    setErrors({});
+    setEditingItem(item);
+  };
+
+  const handleFormChange = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => ({ ...prev, [field]: null }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const errs = {};
+    if (!form.measurement_no.trim()) errs.measurement_no = 'MB number is required';
+    if (!form.work_item.trim()) errs.work_item = 'Work item description is required';
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
+      const amt = Number(form.total_measured_amount || 0);
+
+      const newMB = {
+        id: editingItem?.id || Date.now(),
+        project_id: Number(form.project_id || 1),
+        project_code: selectedProj?.project_code || 'PRJ-2026-001',
+        project_name: selectedProj?.project_name || 'Civil Project',
+        measurement_no: form.measurement_no,
+        measurement_date: form.measurement_date,
+        period_from: form.period_from,
+        period_to: form.period_to,
+        work_order_no: form.work_order_no,
+        contractor_name: form.contractor_name,
+        work_item: form.work_item,
+        total_measured_amount: amt,
+        status_name: editingItem?.status_name || 'Verified & Certified for RA Bill',
+        measured_by: form.measured_by,
+        witnessed_by: form.witnessed_by,
+        notes: form.notes,
+      };
+
+      if (editingItem?.id) {
+        setMeasurements(prev => prev.map(m => m.id === editingItem.id ? newMB : m));
+        toast.success('Subcontract measurement record updated.');
+      } else {
+        setMeasurements(prev => [newMB, ...prev]);
+        toast.success('Subcontract measurement recorded in MB Book.');
+      }
+
+      setIsAddOpen(false);
+      setEditingItem(null);
+    } catch {
+      toast.error('Failed to save measurement sheet.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (!deleteItem?.id) return;
+    setMeasurements(prev => prev.filter(m => m.id !== deleteItem.id));
+    toast.success('Measurement entry removed.');
+    setDeleteItem(null);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Safe Filtered List
+  const filtered = useMemo(() => {
+    return measurements.filter(m => {
+      if (selectedProjectId !== 'all' && String(m.project_id) !== String(selectedProjectId)) return false;
+      if (search) {
+        const s = search.toLowerCase();
+        const no = String(m.measurement_no || '').toLowerCase();
+        const wo = String(m.work_order_no || '').toLowerCase();
+        const cont = String(m.contractor_name || '').toLowerCase();
+        const item = String(m.work_item || '').toLowerCase();
+        if (!no.includes(s) && !wo.includes(s) && !cont.includes(s) && !item.includes(s)) return false;
+      }
+      return true;
+    });
+  }, [measurements, selectedProjectId, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const paged = filtered.slice((page - 1) * perPage, page * perPage);
+
+  // Metrics
+  const totalMeasured = useMemo(() => measurements.reduce((acc, m) => acc + Number(m.total_measured_amount || 0), 0), [measurements]);
+
+  const breadcrumbs = [
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Subcontract Management', href: '/subcontracts/work-orders' },
+    { label: 'Subcontract Work Measurements' }
+  ];
+
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Subcontract Measurement Book (MB Book) & Joint Quantities"
+        breadcrumbs={breadcrumbs}
+      />
+
+      <div className="flex flex-col gap-3 sm:gap-4 w-full">
+        {/* KPI Summary Ribbon */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <KpiCard
+            label="Total Measured Work Value"
+            value={`₹${(totalMeasured / 100000).toFixed(2)}L`}
+            status="primary"
+            icon={<IndianRupee className="w-4 h-4" />}
+          />
+          <KpiCard
+            label="Verified MB Sheets"
+            value={`${measurements.length} Sheets`}
+            status="success"
+            icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+          />
+          <KpiCard
+            label="Joint Contractor Signatures"
+            value="100% Witnessed"
+            status="neutral"
+            icon={<ShieldCheck className="w-4 h-4 text-sky-500" />}
+          />
+          <KpiCard
+            label="Ready for RA Billing"
+            value="3 Active Sheets"
+            status="neutral"
+            icon={<Calculator className="w-4 h-4 text-amber-500" />}
+          />
+        </div>
+
+        {/* Filter and Search Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            <div className="w-full sm:w-48">
+              <Select
+                options={[
+                  { value: 'all', label: 'All Projects' },
+                  ...projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))
+                ]}
+                value={selectedProjectId}
+                onChange={setSelectedProjectId}
+                className="text-xs h-8"
+              />
+            </div>
+
+            <div className="w-full sm:w-56">
+              <SearchField
+                placeholder="Search MB no, WO no, contractor..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<Printer className="w-3.5 h-3.5" />}
+              onClick={handlePrint}
+              className="text-xs h-8 shadow-xs"
+              title="Print Measurement Book"
+            >
+              Print MB Book
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+              onClick={handleOpenAdd}
+              className="text-xs h-8 shadow-xs"
+            >
+              Record MB Entry
+            </Button>
+          </div>
+        </div>
+
+        {/* Desktop & Tablet Table (No horizontal scroll, 100% fluid) */}
+        <div className="hidden sm:block">
+          <DataTableContainer
+            pagination={
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                itemsPerPage={perPage}
+                onPageChange={setPage}
+                onItemsPerPageChange={() => {}}
+              />
+            }
+          >
+            <table className="w-full text-left text-[12px] table-auto">
+              <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+                <tr>
+                  <th className="px-3 py-2 w-10 text-center">#</th>
+                  <th className="px-3 py-2 w-28">MB Number</th>
+                  <th className="px-3 py-2">Measured Work Item & Contractor</th>
+                  <th className="px-3 py-2 w-32 hidden md:table-cell">Billing Period</th>
+                  <th className="px-3 py-2 text-right w-28">Measured Value</th>
+                  <th className="px-3 py-2 text-center w-36">Certification</th>
+                  <th className="px-3 py-2 text-center w-20">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {loading ? (
+                  <tr>
+                    <td colSpan="7" className="text-center py-8 text-text-muted text-[12px]">
+                      Loading subcontract measurements...
+                    </td>
+                  </tr>
+                ) : paged.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="text-center py-8 text-text-muted text-[12px]">
+                      No measurement records found.
+                    </td>
+                  </tr>
+                ) : (
+                  paged.map((m, idx) => (
+                    <tr key={m.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
+                      <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                        {(page - 1) * perPage + idx + 1}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                          {m.measurement_no}
+                        </span>
+                        <span className="text-[10px] text-text-muted font-mono block pt-0.5">{m.work_order_no}</span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-text-primary text-[12px] truncate" title={m.work_item}>
+                            {m.work_item}
+                          </span>
+                          <span className="text-[10px] text-text-muted truncate">
+                            {m.contractor_name} • {m.project_name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 hidden md:table-cell font-mono text-[10px] text-text-secondary">
+                        {m.period_from} to {m.period_to}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
+                        ₹{m.total_measured_amount.toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <Badge
+                          variant="success"
+                          className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
+                        >
+                          Verified & Certified
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            title="View MB Sheet 360"
+                            onClick={() => setViewingItem(m)}
+                          >
+                            <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            title="Edit"
+                            onClick={() => handleOpenEdit(m)}
+                          >
+                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </DataTableContainer>
+        </div>
+
+        {/* Mobile View - Cards List for Phones (< sm) */}
+        <div className="block sm:hidden space-y-3">
+          {paged.map((m, idx) => (
+            <div key={m.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="font-mono text-[10px] font-bold text-primary block">{m.measurement_no} • {m.work_order_no}</span>
+                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{m.contractor_name}</h4>
+                  <span className="text-[11px] text-text-muted">{m.period_from} to {m.period_to}</span>
+                </div>
+                <Badge
+                  variant="success"
+                  className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
+                >
+                  ₹{m.total_measured_amount.toLocaleString('en-IN')}
+                </Badge>
+              </div>
+
+              <p className="text-xs text-text-secondary line-clamp-2 bg-surface-muted/40 p-2 rounded border border-border/60">
+                {m.work_item}
+              </p>
+
+              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(m)}>
+                  <Eye className="w-3 h-3 mr-1" /> View MB Sheet
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {/* Mobile Pagination */}
+          <div className="pt-2">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              itemsPerPage={perPage}
+              onPageChange={setPage}
+              onItemsPerPageChange={() => {}}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* View MB Sheet 360 Modal */}
+      {viewingItem && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Ruler className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.measurement_no}</h3>
+                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.work_order_no} • {viewingItem.contractor_name}</span>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto text-xs">
+              <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Total Measured Value</span> <span className="font-bold text-emerald-600 font-mono text-base">₹{viewingItem.total_measured_amount.toLocaleString('en-IN')}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Measurement Period</span> <span className="font-mono">{viewingItem.period_from} to {viewingItem.period_to}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Measured By (Site Engg)</span> <span className="text-text-primary font-medium">{viewingItem.measured_by}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Witnessed By (Contractor)</span> <span className="text-text-primary font-medium">{viewingItem.witnessed_by}</span></div>
+              </div>
+
+              <div className="border border-border rounded-lg p-3 space-y-1">
+                <span className="font-bold text-text-primary block text-[11px]">Work Scope Measured:</span>
+                <p className="text-text-secondary bg-surface-muted/30 p-2 rounded border border-border/50 leading-relaxed">{viewingItem.work_item}</p>
+              </div>
+
+              {viewingItem.notes && (
+                <div className="border border-border rounded-lg p-3 space-y-1">
+                  <span className="font-bold text-text-primary block text-[11px]">Joint Measurement Notes:</span>
+                  <p className="text-text-secondary bg-surface-muted/30 p-2 rounded border border-border/50 leading-relaxed">{viewingItem.notes}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="w-3.5 h-3.5 mr-1" /> Print Certified MB Sheet
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit MB Modal */}
+      <EntityEditModal
+        isOpen={Boolean(isAddOpen || editingItem)}
+        onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
+      >
+        <EntityEditModal.Header
+          icon={Ruler}
+          title={editingItem ? 'Edit Measurement Sheet' : 'Record Subcontract Work Measurement'}
+          subtitle="Record physical work quantities verified jointly with subcontractor site incharge."
+          onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
+        />
+        <form id="smb-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <EntityEditModal.Body>
+            <EntityEditModal.Section title="Measurement Book Identification">
+              <EntityEditModal.Grid>
+                <FormField label="Parent Project" required error={errors.project_id}>
+                  <Select
+                    options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
+                    value={form.project_id}
+                    onChange={(v) => handleFormChange('project_id', v)}
+                  />
+                </FormField>
+
+                <FormField label="MB Sheet Number" required error={errors.measurement_no}>
+                  <Input
+                    value={form.measurement_no}
+                    onChange={(e) => handleFormChange('measurement_no', e.target.value)}
+                    placeholder="SMB-2026-040"
+                  />
+                </FormField>
+
+                <FormField label="Linked Work Order No">
+                  <Input
+                    value={form.work_order_no}
+                    onChange={(e) => handleFormChange('work_order_no', e.target.value)}
+                    placeholder="WO-2026-012"
+                  />
+                </FormField>
+
+                <FormField label="Contractor Name" className="md:col-span-2">
+                  <Input
+                    value={form.contractor_name}
+                    onChange={(e) => handleFormChange('contractor_name', e.target.value)}
+                    placeholder="e.g. Sri Murugan Civil Infra Pvt Ltd"
+                  />
+                </FormField>
+              </EntityEditModal.Grid>
+            </EntityEditModal.Section>
+
+            <EntityEditModal.Section title="Period & Work Measured">
+              <EntityEditModal.Grid>
+                <FormField label="Period From Date">
+                  <Input
+                    type="date"
+                    value={form.period_from}
+                    onChange={(e) => handleFormChange('period_from', e.target.value)}
+                  />
+                </FormField>
+
+                <FormField label="Period To Date">
+                  <Input
+                    type="date"
+                    value={form.period_to}
+                    onChange={(e) => handleFormChange('period_to', e.target.value)}
+                  />
+                </FormField>
+
+                <FormField label="Total Measured Work Value (₹)" required>
+                  <Input
+                    type="number"
+                    value={form.total_measured_amount}
+                    onChange={(e) => handleFormChange('total_measured_amount', e.target.value)}
+                  />
+                </FormField>
+
+                <FormField label="Work Item & Dimensions Description" required error={errors.work_item} className="md:col-span-2">
+                  <Textarea
+                    rows={2}
+                    value={form.work_item}
+                    onChange={(e) => handleFormChange('work_item', e.target.value)}
+                    placeholder="e.g. Level 2 Column Formwork & Concrete Pouring (42 m³ @ ₹2,200/m³)..."
+                  />
+                </FormField>
+
+                <FormField label="Joint Measurement Notes" className="md:col-span-2">
+                  <Textarea
+                    rows={2}
+                    value={form.notes}
+                    onChange={(e) => handleFormChange('notes', e.target.value)}
+                    placeholder="Cross-references to drawings, laser distance meter calibration..."
+                  />
+                </FormField>
+              </EntityEditModal.Grid>
+            </EntityEditModal.Section>
+          </EntityEditModal.Body>
+
+          <EntityEditModal.Footer
+            formId="smb-form"
+            submitLabel={editingItem ? 'Update Measurement' : 'Record Measurement'}
+            onCancel={() => { setIsAddOpen(false); setEditingItem(null); }}
+            isSubmitting={saving}
+          />
+        </form>
+      </EntityEditModal>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={Boolean(deleteItem)}
+        title="Delete Measurement Sheet"
+        message={`Are you sure you want to delete "${deleteItem?.measurement_no}"?`}
+        variant="danger"
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteItem(null)}
+      />
+    </PageContainer>
+  );
+}

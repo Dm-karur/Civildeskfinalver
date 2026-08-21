@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, materialManagementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_REQUISITIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -87,6 +89,7 @@ const DEFAULT_REQUISITIONS = [
     purpose: 'Base course concrete batching on site.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -110,7 +113,7 @@ const EMPTY_FORM = {
 export function PurchaseRequisitionsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [requisitions, setRequisitions] = useState(DEFAULT_REQUISITIONS);
+  const [requisitions, setRequisitions] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

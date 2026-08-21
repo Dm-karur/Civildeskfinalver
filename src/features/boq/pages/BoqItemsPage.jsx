@@ -21,7 +21,9 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { boqApi, projectsApi, mastersApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_ITEMS = [
+
   {
     id: 1,
     project_id: 1,
@@ -123,6 +125,7 @@ const DEFAULT_ITEMS = [
     specification: 'Class A AAC blocks with thin bed joint adhesive mortar, continuous polymer bonding and chicken wire mesh at joints.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -144,7 +147,7 @@ export function BoqItemsPage() {
   const [boqs, setBoqs] = useState([]);
   const [sections, setSections] = useState([]);
   const [uoms, setUoms] = useState([]);
-  const [items, setItems] = useState(DEFAULT_ITEMS);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

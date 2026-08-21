@@ -20,7 +20,9 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { workLocationsApi, siteZonesApi, sitesApi, projectsApi, mastersApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_LOCATIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -94,6 +96,7 @@ const DEFAULT_LOCATIONS = [
     description: 'Twin-cell RCC box culvert 2x3m for natural drainage outlet.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -113,7 +116,7 @@ export function WorkLocationsPage() {
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
   const [zones, setZones] = useState([]);
-  const [locations, setLocations] = useState(DEFAULT_LOCATIONS);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

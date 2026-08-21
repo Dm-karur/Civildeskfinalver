@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, materialManagementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_REQUESTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -100,6 +102,7 @@ const DEFAULT_REQUESTS = [
     status_name: 'Approved'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -120,7 +123,7 @@ const EMPTY_FORM = {
 export function MaterialRequestsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [requests, setRequests] = useState(DEFAULT_REQUESTS);
+  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

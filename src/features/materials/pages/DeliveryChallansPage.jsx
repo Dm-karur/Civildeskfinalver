@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_CHALLANS = [
+
   {
     id: 1,
     project_id: 1,
@@ -64,6 +66,7 @@ const DEFAULT_CHALLANS = [
     notes: 'Bundled rebar with steel security seals.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -86,7 +89,7 @@ const EMPTY_FORM = {
 export function DeliveryChallansPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [challans, setChallans] = useState(DEFAULT_CHALLANS);
+  const [challans, setChallans] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

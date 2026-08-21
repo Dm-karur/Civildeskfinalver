@@ -28,7 +28,9 @@ const FORECAST_HORIZONS = [
   { id: 'full', name: 'Full Project Lifecycle' },
 ];
 
+/* 
 const DEFAULT_FORECASTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -98,6 +100,7 @@ const DEFAULT_FORECASTS = [
     delivery_plan: 'Insulated thermal tankers maintaining 140°C temperature to hot-mix plant.',
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -116,7 +119,7 @@ const EMPTY_FORM = {
 
 export function MaterialForecastPage() {
   const [projects, setProjects] = useState([]);
-  const [forecasts, setForecasts] = useState(DEFAULT_FORECASTS);
+  const [forecasts, setForecasts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters
