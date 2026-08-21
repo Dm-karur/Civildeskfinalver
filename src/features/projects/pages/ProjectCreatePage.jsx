@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, ArrowLeft, Save, Building2, Calendar, IndianRupee, FileText } from 'lucide-react';
+import { Save, Building2, Calendar, IndianRupee, FileText } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { FormField } from '../../../components/composite/FormField';
@@ -120,18 +120,9 @@ export function ProjectCreatePage() {
       <PageHeader
         title="Add New Project"
         breadcrumbs={breadcrumbs}
-        actions={
-          <Button
-            variant="outline"
-            leftIcon={<ArrowLeft className="w-4 h-4" />}
-            onClick={() => navigate('/projects')}
-          >
-            Back to Projects
-          </Button>
-        }
       />
 
-      <form onSubmit={handleSubmit} className="max-w-5xl space-y-6 pb-12">
+      <form onSubmit={handleSubmit} className="w-full space-y-6 pb-12">
         {/* Section 1: Basic Information */}
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border text-text-primary font-semibold text-sm">
