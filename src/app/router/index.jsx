@@ -21,6 +21,7 @@ import { RequirePermission } from '../../components/layout/RequirePermission';
 import { ErrorBoundary } from '../../components/layout/ErrorBoundary';
 // Phase 1 — Sites, Masters, BOQ, Budgets
 import { SitesListPage } from '../../features/sites/pages/SitesListPage';
+import { SiteZonesPage } from '../../features/sites/pages/SiteZonesPage';
 import { ProjectTypesPage } from '../../features/masters/pages/ProjectTypesPage';
 import { FinancialYearsPage } from '../../features/masters/pages/FinancialYearsPage';
 import { UnitsOfMeasurementPage } from '../../features/masters/pages/UnitsOfMeasurementPage';
@@ -93,7 +94,7 @@ export const router = createBrowserRouter([
 
           // ─── 2. Sites & Locations ─────────────────────────
           { path: 'sites', element: R('site.view', SitesListPage) },
-          { path: 'sites/zones', element: R('site.view', SitesListPage) },
+          { path: 'sites/zones', element: R('site.view', SiteZonesPage) },
           { path: 'sites/work-locations', element: R('site.view', SitesListPage) },
           { path: 'sites/team', element: R('site.view', SitesListPage) },
           { path: 'sites/instructions', element: R('site.view', SitesListPage) },
