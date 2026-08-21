@@ -48,6 +48,7 @@ import { LookAheadSchedulePage } from '../../features/planning/pages/LookAheadSc
 import { MaterialRequirementsPlanningPage } from '../../features/planning/pages/MaterialRequirementsPlanningPage';
 import { MaterialForecastPage } from '../../features/planning/pages/MaterialForecastPage';
 import { MaterialShortagesPage } from '../../features/planning/pages/MaterialShortagesPage';
+import { PlanningAlertsPage } from '../../features/planning/pages/PlanningAlertsPage';
 // Phase 2 — Labour & Attendance
 import { LabourRegisterPage } from '../../features/labour/pages/LabourRegisterPage';
 import { LabourDeploymentPage } from '../../features/labour/pages/LabourDeploymentPage';
@@ -143,7 +144,7 @@ export const router = createBrowserRouter([
           { path: 'planning/material-requirements', element: R('planning.view', MaterialRequirementsPlanningPage) },
           { path: 'planning/material-forecast', element: R('planning.view', MaterialForecastPage) },
           { path: 'planning/shortages', element: R('planning.view', MaterialShortagesPage) },
-          { path: 'planning/alerts', element: R('dashboard.view', DashboardPage) },
+          { path: 'planning/alerts', element: R('planning.view', PlanningAlertsPage) },
 
           // ─── 5. Labour & Attendance ───────────────────────
           { path: 'labour', element: R('labour.view', LabourRegisterPage) },
