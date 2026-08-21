@@ -31,6 +31,7 @@ import { FinancialYearsPage } from '../../features/masters/pages/FinancialYearsP
 import { UnitsOfMeasurementPage } from '../../features/masters/pages/UnitsOfMeasurementPage';
 import { WorkCategoriesPage } from '../../features/masters/pages/WorkCategoriesPage';
 import { BoqListPage } from '../../features/boq/pages/BoqListPage';
+import { BoqSectionsPage } from '../../features/boq/pages/BoqSectionsPage';
 import { BudgetListPage } from '../../features/budgets/pages/BudgetListPage';
 // Phase 2 — Labour & Attendance
 import { LabourRegisterPage } from '../../features/labour/pages/LabourRegisterPage';
@@ -108,7 +109,7 @@ export const router = createBrowserRouter([
           // ─── 3. BOQ & Project Budget ─────────────────────
           { path: 'project-boqs', element: R('boq.view', BoqListPage) },
           { path: 'boq', element: R('boq.view', BoqListPage) },
-          { path: 'boq/sections', element: R('boq.view', BoqListPage) },
+          { path: 'boq/sections', element: R('boq.view', BoqSectionsPage) },
           { path: 'boq/items', element: R('boq.view', BoqListPage) },
           { path: 'project-budgets', element: R('budget.view', BudgetListPage) },
           { path: 'budgets', element: R('budget.view', BudgetListPage) },
