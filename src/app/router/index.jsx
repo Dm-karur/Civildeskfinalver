@@ -143,6 +143,11 @@ import { MaterialShortageReportPage } from '../../features/reports/pages/Materia
 import { LabourDeploymentReportPage } from '../../features/reports/pages/LabourDeploymentReportPage';
 import { LabourCostReportPage } from '../../features/reports/pages/LabourCostReportPage';
 import { SubcontractReportPage } from '../../features/reports/pages/SubcontractReportPage';
+import { ClientReceivablesReportPage } from '../../features/reports/pages/ClientReceivablesReportPage';
+import { VendorPayablesReportPage } from '../../features/reports/pages/VendorPayablesReportPage';
+import { ProjectProfitabilityReportPage } from '../../features/reports/pages/ProjectProfitabilityReportPage';
+import { DailySiteReportPage } from '../../features/reports/pages/DailySiteReportPage';
+import { ManagementSummaryReportPage } from '../../features/reports/pages/ManagementSummaryReportPage';
 import { ExpenseReportPage } from '../../features/reports/pages/ReportPages';
 // Phase 2/3 — Additional Masters
 import { LabourCategoriesPage, LabourContractorsPage } from '../../features/masters/pages/LabourMasterPages';
@@ -281,7 +286,9 @@ export const router = createBrowserRouter([
           { path: 'subcontracts/payments', element: R('payments.view', SubcontractPaymentsPage) },
           { path: 'subcontracts/completion', element: R('work_progress.view', PackageCompletionPage) },
           { path: 'subcontracts/retention', element: R('ra_bills.view', RetentionLedgerPage) },
+          { path: 'subcontracts/reports', element: R('report.view', SubcontractReportPage) },
           { path: 'reports/subcontracts', element: R('report.view', SubcontractReportPage) },
+          { path: 'reports/subcontractors', element: R('report.view', SubcontractReportPage) },
 
           // ─── 10. Client Billing & Receivables ─────────────
           { path: 'receivables/contracts', element: R('client.view', ClientContractsPage) },
@@ -321,11 +328,12 @@ export const router = createBrowserRouter([
           { path: 'reports/labour-cost', element: R('report.view', LabourCostReportPage) },
           { path: 'reports/labour', element: R('report.view', LabourDeploymentReportPage) },
           { path: 'reports/subcontracts', element: R('report.view', SubcontractReportPage) },
-          { path: 'reports/client-receivables', element: R('report.view', ExpenseReportPage) },
-          { path: 'reports/vendor-payables', element: R('report.view', ExpenseReportPage) },
-          { path: 'reports/project-profitability', element: R('report.view', ProjectProfitabilityPage) },
-          { path: 'reports/daily-site', element: R('report.view', ProjectProgressReportPage) },
-          { path: 'reports/management-summary', element: R('management_review.view', ProjectProgressReportPage) },
+          { path: 'reports/subcontractors', element: R('report.view', SubcontractReportPage) },
+          { path: 'reports/client-receivables', element: R('report.view', ClientReceivablesReportPage) },
+          { path: 'reports/vendor-payables', element: R('report.view', VendorPayablesReportPage) },
+          { path: 'reports/project-profitability', element: R('report.view', ProjectProfitabilityReportPage) },
+          { path: 'reports/daily-site', element: R('report.view', DailySiteReportPage) },
+          { path: 'reports/management-summary', element: R('management_review.view', ManagementSummaryReportPage) },
 
           // ─── Communication ───────────────────────────────
           { path: 'communication/project-messages', element: R('dashboard.view', DashboardPage) },
