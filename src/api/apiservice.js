@@ -330,6 +330,7 @@ export const dailyReportsApi = {
         remove: (reportId, photoId) => request.delete(`/daily-site-reports/${enc(reportId)}/photos/${enc(photoId)}`),
     },
 };
+export const dailyOpsApi = dailyReportsApi;
 
 const subcontractDocument = (type, hasItems = true) => ({
     ...crud(`/subcontracts/${type}`),

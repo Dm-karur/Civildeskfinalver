@@ -112,7 +112,10 @@ export function ProjectsTable({ searchQuery = '', refreshKey = 0, onEdit, filter
             filteredProjects.map((project, index) => {
               const code = project.project_code || project.code || '—';
               const name = project.project_name || project.name || '—';
-              const client = project.client_name || project.client || '—';
+              const clientName = project.client_name || project.client || '—';
+              const clientsList = Array.isArray(project.clients) ? project.clients : (project.client_names ? project.client_names : []);
+              const clientCount = clientsList.length > 0 ? clientsList.length : (project.client_count || 1);
+              const clientDisplay = clientsList.length > 0 ? clientsList.map(c => c.name || c.client_name || c).join(', ') : clientName;
               const type = project.project_type || project.type || '—';
               const status = project.status_name || project.status || 'Active';
               const startDate = project.start_date ? project.start_date.split(' ')[0] : '—';
@@ -125,7 +128,12 @@ export function ProjectsTable({ searchQuery = '', refreshKey = 0, onEdit, filter
                   <td className="px-2 py-1 text-center font-medium text-text-primary text-[11px]">{index + 1}</td>
                   <td className="px-2 py-1 font-mono font-semibold text-text-primary text-[11px]">{code}</td>
                   <td className="px-2 py-1 font-medium text-text-primary truncate" title={name}>{name}</td>
-                  <td className="px-2 py-1 text-text-secondary truncate" title={client}>{client}</td>
+                  <td className="px-2 py-1 text-text-secondary truncate" title={clientDisplay}>
+                    <span>{clientDisplay}</span>
+                    {clientCount > 1 && (
+                      <span className="ml-1 text-[9px] bg-primary/10 text-primary px-1 rounded-full font-bold">+{clientCount - 1} clients</span>
+                    )}
+                  </td>
                   <td className="px-2 py-1 text-text-secondary truncate text-[11px]">{type}</td>
                   <td className="px-2 py-1 text-center">
                     <Badge 

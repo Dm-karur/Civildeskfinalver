@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { PageContainer, PageHeader } from '../../../components/layout';
 import { Button } from '../../../components/ui/Button';
 import { Plus, Workflow, CheckCircle2, XCircle, Grid2x2 } from 'lucide-react';
-import { MOCK_WORKFLOWS } from '../data/mockWorkflows';
 import { WorkflowsFilterBar } from '../components/WorkflowsFilterBar';
 import { WorkflowsTable } from '../components/WorkflowsTable';
 import { WorkflowDetailsModal } from '../components/WorkflowDetailsModal';
@@ -11,7 +10,7 @@ import { toast } from '../../../components/composite/Toast';
 
 export function ApprovalWorkflowsPage() {
   const [workflows, setWorkflows] = useState(MOCK_WORKFLOWS);
-  
+
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [moduleFilter, setModuleFilter] = useState('all');
@@ -33,11 +32,11 @@ export function ApprovalWorkflowsPage() {
           !wf.transaction.toLowerCase().includes(q)
         ) return false;
       }
-      
+
       if (moduleFilter !== 'all' && wf.module !== moduleFilter) return false;
       if (statusFilter !== 'all' && wf.status !== statusFilter) return false;
       if (scopeFilter !== 'all' && wf.scope !== scopeFilter) return false;
-      
+
       return true;
     });
   }, [workflows, searchQuery, moduleFilter, statusFilter, scopeFilter]);
@@ -79,8 +78,8 @@ export function ApprovalWorkflowsPage() {
 
   return (
     <PageContainer>
-      <PageHeader 
-        title="Approval Workflows" 
+      <PageHeader
+        title="Approval Workflows"
         description="Configure approval rules and authorization flows for Civil Desk transactions."
         breadcrumbs={[
           { label: 'Dashboard', to: '/dashboard' },
@@ -88,8 +87,8 @@ export function ApprovalWorkflowsPage() {
           { label: 'Approval Workflows' }
         ]}
         rightContent={
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={() => setIsAddOpen(true)}
             className="gap-2"
           >
@@ -134,7 +133,7 @@ export function ApprovalWorkflowsPage() {
 
         {/* Filters and Table */}
         <div className="flex flex-col min-h-0 flex-1 bg-surface border border-border rounded-lg overflow-hidden shadow-sm">
-          <WorkflowsFilterBar 
+          <WorkflowsFilterBar
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             moduleFilter={moduleFilter}
@@ -146,7 +145,7 @@ export function ApprovalWorkflowsPage() {
             onReset={handleResetFilters}
           />
           <div className="flex-1 min-h-0 flex flex-col min-w-0">
-            <WorkflowsTable 
+            <WorkflowsTable
               workflows={filteredWorkflows}
               onView={setViewingWorkflow}
               onEdit={setEditingWorkflow}
@@ -159,14 +158,14 @@ export function ApprovalWorkflowsPage() {
 
       {/* Modals */}
       {viewingWorkflow && (
-        <WorkflowDetailsModal 
-          workflow={viewingWorkflow} 
-          onClose={() => setViewingWorkflow(null)} 
+        <WorkflowDetailsModal
+          workflow={viewingWorkflow}
+          onClose={() => setViewingWorkflow(null)}
         />
       )}
 
       {(editingWorkflow || isAddOpen) && (
-        <WorkflowFormModal 
+        <WorkflowFormModal
           isOpen={Boolean(editingWorkflow || isAddOpen)}
           workflow={editingWorkflow}
           onClose={() => {
