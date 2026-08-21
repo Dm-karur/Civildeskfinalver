@@ -32,6 +32,7 @@ import { UnitsOfMeasurementPage } from '../../features/masters/pages/UnitsOfMeas
 import { WorkCategoriesPage } from '../../features/masters/pages/WorkCategoriesPage';
 import { BoqListPage } from '../../features/boq/pages/BoqListPage';
 import { BoqSectionsPage } from '../../features/boq/pages/BoqSectionsPage';
+import { BoqItemsPage } from '../../features/boq/pages/BoqItemsPage';
 import { BudgetListPage } from '../../features/budgets/pages/BudgetListPage';
 // Phase 2 — Labour & Attendance
 import { LabourRegisterPage } from '../../features/labour/pages/LabourRegisterPage';
@@ -110,7 +111,7 @@ export const router = createBrowserRouter([
           { path: 'project-boqs', element: R('boq.view', BoqListPage) },
           { path: 'boq', element: R('boq.view', BoqListPage) },
           { path: 'boq/sections', element: R('boq.view', BoqSectionsPage) },
-          { path: 'boq/items', element: R('boq.view', BoqListPage) },
+          { path: 'boq/items', element: R('boq.view', BoqItemsPage) },
           { path: 'project-budgets', element: R('budget.view', BudgetListPage) },
           { path: 'budgets', element: R('budget.view', BudgetListPage) },
           { path: 'budgets/revisions', element: R('budget.view', BudgetListPage) },
