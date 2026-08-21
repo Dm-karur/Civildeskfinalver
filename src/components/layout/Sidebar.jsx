@@ -1,14 +1,40 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
+  BarChart3,
+  Boxes,
   Briefcase,
+  Building2,
+  Calculator,
+  Calendar,
+  CalendarRange,
   ChevronDown,
   ChevronRight,
+  ClipboardList,
+  Coins,
+  FileSpreadsheet,
+  FileText,
   FolderCog,
+  FolderKanban,
+  HardHat,
+  IndianRupee,
+  Landmark,
+  Layers,
   LayoutDashboard,
   LogOut,
+  MapPin,
   Menu,
+  MessageSquare,
+  MonitorSmartphone,
+  Package,
+  Receipt,
   Settings,
+  ShieldCheck,
+  ShoppingCart,
+  Truck,
+  UserCheck,
+  Users,
+  Wallet,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { navigationApi } from '../../api/apiservice';
@@ -16,16 +42,114 @@ import { useAuth } from '../../features/auth/context/AuthContext';
 
 const ICONS = Object.freeze({
   'layout-dashboard': LayoutDashboard,
-  briefcase: Briefcase,
+  'briefcase': Briefcase,
+  'map-pin': MapPin,
+  'calculator': Calculator,
+  'calendar-range': CalendarRange,
+  'calendar': Calendar,
+  'users': Users,
+  'package': Package,
+  'shopping-cart': ShoppingCart,
+  'clipboard-list': ClipboardList,
+  'hard-hat': HardHat,
+  'receipt-indian-rupee': IndianRupee,
+  'indian-rupee': IndianRupee,
+  'receipt': Receipt,
+  'landmark': Landmark,
+  'bar-chart-3': BarChart3,
+  'bar-chart': BarChart3,
+  'message-square': MessageSquare,
+  'monitor-smartphone': MonitorSmartphone,
   'folder-cog': FolderCog,
-  settings: Settings,
-  menu: Menu,
+  'folder-kanban': FolderKanban,
+  'project-masters': FolderKanban,
+  'labour-masters': UserCheck,
+  'material-masters': Boxes,
+  'procurement-masters': Truck,
+  'finance-masters': Coins,
+  'settings': Settings,
+  'layers': Layers,
+  'wallet': Wallet,
+  'file-spreadsheet': FileSpreadsheet,
+  'file-text': FileText,
+  'building': Building2,
+  'shield-check': ShieldCheck,
+  'menu': Menu,
 });
 
+const CODE_ICONS = Object.freeze({
+  DASHBOARD: LayoutDashboard,
+  PROJECTS: Briefcase,
+  SITES_LOCATIONS: MapPin,
+  SITES: MapPin,
+  BOQ_BUDGET: Calculator,
+  BOQ: FileSpreadsheet,
+  BUDGETS: Wallet,
+  PROJECT_PLANNING: CalendarRange,
+  LABOUR_ATTENDANCE: Users,
+  LABOUR: Users,
+  MATERIALS_INVENTORY: Package,
+  MATERIALS: Package,
+  PROCUREMENT: ShoppingCart,
+  DAILY_SITE_OPERATIONS: ClipboardList,
+  DAILY_OPERATIONS: ClipboardList,
+  SUBCONTRACT_MANAGEMENT: HardHat,
+  SUBCONTRACTS: HardHat,
+  CLIENT_BILLING: IndianRupee,
+  RECEIVABLES: IndianRupee,
+  FINANCE_COST_CONTROL: Landmark,
+  FINANCE: Landmark,
+  EXPENSES: Landmark,
+  REPORTS_ANALYTICS: BarChart3,
+  REPORTS: BarChart3,
+  COMMUNICATION: MessageSquare,
+  CLIENT_PORTAL: MonitorSmartphone,
+  MASTERS: FolderCog,
+  PROJECT_MASTERS: FolderKanban,
+  LABOUR_MASTERS: UserCheck,
+  MATERIAL_MASTERS: Boxes,
+  PROCUREMENT_MASTERS: Truck,
+  FINANCE_MASTERS: Coins,
+  ADMINISTRATION: Settings,
+  SETTINGS: Settings,
+});
+
+function getIcon(item) {
+  if (item.icon_key && ICONS[item.icon_key]) {
+    return ICONS[item.icon_key];
+  }
+  if (item.item_code && CODE_ICONS[item.item_code]) {
+    return CODE_ICONS[item.item_code];
+  }
+  if (item.route_path) {
+    const path = item.route_path.toLowerCase();
+    if (path.includes('dashboard')) return LayoutDashboard;
+    if (path.includes('project')) return Briefcase;
+    if (path.includes('site')) return MapPin;
+    if (path.includes('boq')) return FileSpreadsheet;
+    if (path.includes('budget')) return Wallet;
+    if (path.includes('planning')) return CalendarRange;
+    if (path.includes('labour') || path.includes('attendance') || path.includes('wages')) return Users;
+    if (path.includes('material') || path.includes('stock')) return Package;
+    if (path.includes('procurement') || path.includes('purchase')) return ShoppingCart;
+    if (path.includes('daily') || path.includes('operation')) return ClipboardList;
+    if (path.includes('subcontract')) return HardHat;
+    if (path.includes('receivable') || path.includes('billing') || path.includes('invoice')) return IndianRupee;
+    if (path.includes('finance') || path.includes('expense') || path.includes('cost')) return Landmark;
+    if (path.includes('report')) return BarChart3;
+    if (path.includes('communication') || path.includes('message')) return MessageSquare;
+    if (path.includes('portal')) return MonitorSmartphone;
+    if (path.includes('master')) return FolderCog;
+    if (path.includes('admin') || path.includes('setting') || path.includes('user') || path.includes('role')) return Settings;
+  }
+  return Menu;
+}
+
 function NavigationItem({ item, openByDepth, onToggle, onNavigate, depth = 0 }) {
-  const Icon = ICONS[item.icon_key] ?? Menu;
+  const Icon = getIcon(item);
   const children = item.children ?? [];
   const expanded = openByDepth[depth] === item.item_code;
+  const hasCustomIcon = Boolean(item.icon_key && ICONS[item.icon_key]);
 
   if (item.item_type === 'DIVIDER') return <div className="my-2 h-px bg-white/10" />;
   if (item.item_type === 'SECTION') {
@@ -36,6 +160,7 @@ function NavigationItem({ item, openByDepth, onToggle, onNavigate, depth = 0 }) 
     return (
       <NavLink
         to={item.route_path}
+        end
         onClick={onNavigate}
         style={{ paddingLeft: `${8 + (depth * 16)}px` }}
         className={({ isActive }) => clsx(
@@ -43,7 +168,11 @@ function NavigationItem({ item, openByDepth, onToggle, onNavigate, depth = 0 }) 
           isActive ? 'bg-primary text-white' : 'text-[#C8D1DC] hover:bg-white/5 hover:text-white',
         )}
       >
-        {depth === 0 ? <Icon className="h-5 w-5 shrink-0" /> : <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-60" />}
+        {depth === 0 || hasCustomIcon ? (
+          <Icon className={clsx(depth === 0 ? "h-5 w-5 shrink-0" : "h-4 w-4 shrink-0 opacity-80")} />
+        ) : (
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-60" />
+        )}
         <span className="truncate">{item.item_name}</span>
       </NavLink>
     );
@@ -59,7 +188,11 @@ function NavigationItem({ item, openByDepth, onToggle, onNavigate, depth = 0 }) 
         aria-expanded={expanded}
       >
         <span className="flex min-w-0 items-center gap-3">
-          {depth === 0 ? <Icon className="h-5 w-5 shrink-0" /> : <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-60" />}
+          {depth === 0 || hasCustomIcon ? (
+            <Icon className={clsx(depth === 0 ? "h-5 w-5 shrink-0" : "h-4 w-4 shrink-0 opacity-80")} />
+          ) : (
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-60" />
+          )}
           <span className="truncate">{item.item_name}</span>
         </span>
         {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
