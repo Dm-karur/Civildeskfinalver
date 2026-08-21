@@ -1,5 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Users, Clock, CheckCircle, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  Users, Clock, CheckCircle, Plus, Edit, Trash2, Eye,
+  IndianRupee, Filter, Search, UserCheck, HardHat, Phone,
+  CreditCard, ShieldCheck, MapPin, Building
+} from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -43,11 +47,19 @@ export function LabourRegisterPage() {
   const { hasPermission } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Filters
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [contractorFilter, setContractorFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const perPage = 10;
+
+  // Modals
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const [viewingWorker, setViewingWorker] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
@@ -114,11 +126,23 @@ export function LabourRegisterPage() {
     } catch (err) { toast.error(err?.message || 'Cannot delete worker.'); }
   };
 
-  const filtered = items.filter((i) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return [i.worker_code, i.worker_name, i.category_name, i.contractor_name, i.phone].some((v) => String(v || '').toLowerCase().includes(q));
-  });
+  // Filtered List
+  const filtered = useMemo(() => {
+    return items.filter((i) => {
+      if (categoryFilter !== 'all' && String(i.labour_category_id) !== String(categoryFilter) && i.category_name !== categoryFilter) return false;
+      if (contractorFilter !== 'all' && String(i.contractor_id) !== String(contractorFilter) && i.contractor_name !== contractorFilter) return false;
+      if (statusFilter !== 'all') {
+        const isAct = String(i.status_name || '').toLowerCase().includes('active');
+        if (statusFilter === 'Active' && !isAct) return false;
+        if (statusFilter === 'Inactive' && isAct) return false;
+      }
+      if (search) {
+        const q = search.toLowerCase();
+        return [i.worker_code, i.worker_name, i.category_name, i.contractor_name, i.phone].some((v) => String(v || '').toLowerCase().includes(q));
+      }
+      return true;
+    });
+  }, [items, categoryFilter, contractorFilter, statusFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -126,83 +150,386 @@ export function LabourRegisterPage() {
 
   const masterOpts = (key) => (Array.isArray(masters[key]) ? masters[key] : []).map((m) => ({ value: String(m.id), label: m.status_name || m.source_name || m.gender_name || m.type_name || m.basis_name || m.name || m.id }));
 
-  const active = items.filter((i) => String(i.status_name || '').toLowerCase().includes('active')).length;
+  // Metrics
+  const activeCount = useMemo(() => items.filter((i) => String(i.status_name || '').toLowerCase().includes('active')).length, [items]);
+  const avgWage = useMemo(() => {
+    const valid = items.filter(i => Number(i.base_wage_rate) > 0);
+    if (valid.length === 0) return 0;
+    return Math.round(valid.reduce((acc, i) => acc + Number(i.base_wage_rate), 0) / valid.length);
+  }, [items]);
+
+  // Unique categories and contractors for dropdowns
+  const categoriesList = useMemo(() => {
+    const set = new Set();
+    items.forEach(i => { if (i.category_name) set.add(i.category_name); });
+    return Array.from(set);
+  }, [items]);
+
+  const contractorsList = useMemo(() => {
+    const set = new Set();
+    items.forEach(i => { if (i.contractor_name) set.add(i.contractor_name); });
+    return Array.from(set);
+  }, [items]);
 
   return (
     <PageContainer>
-      <PageHeader title="Labour Register" breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Labour & Attendance' }, { label: 'Labour Register' }]} />
+      <PageHeader
+        title="Labour Register"
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Labour & Attendance' },
+          { label: 'Labour Register' }
+        ]}
+      />
 
-      <div className="flex flex-col gap-4">
-        {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <KpiCard label="Total Workers" value={items.length} status="primary" icon={<Users className="w-5 h-5" />} />
-          <KpiCard label="Active" value={active} status="success" icon={<CheckCircle className="w-5 h-5" />} />
-          <KpiCard label="Inactive / Left" value={items.length - active} status="neutral" icon={<Clock className="w-5 h-5" />} />
+      <div className="flex flex-col gap-3 sm:gap-4 w-full">
+        {/* KPIs Summary Ribbon */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <KpiCard
+            label="Total Registered"
+            value={items.length}
+            status="primary"
+            icon={<Users className="w-4 h-4" />}
+          />
+          <KpiCard
+            label="Active Workforce"
+            value={activeCount}
+            status="success"
+            icon={<CheckCircle className="w-4 h-4 text-emerald-500" />}
+          />
+          <KpiCard
+            label="Inactive / Left"
+            value={items.length - activeCount}
+            status="neutral"
+            icon={<Clock className="w-4 h-4 text-text-muted" />}
+          />
+          <KpiCard
+            label="Average Base Wage"
+            value={`₹${avgWage}/day`}
+            status="neutral"
+            icon={<IndianRupee className="w-4 h-4 text-sky-500" />}
+          />
         </div>
 
-        {/* Filter Bar */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-1">
-          <div className="w-full sm:w-[220px]">
-            <SearchField placeholder="Search workers..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        {/* Filter and Search Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            {categoriesList.length > 0 && (
+              <div className="w-full sm:w-44">
+                <Select
+                  options={[
+                    { value: 'all', label: 'All Categories' },
+                    ...categoriesList.map(c => ({ value: c, label: c }))
+                  ]}
+                  value={categoryFilter}
+                  onChange={setCategoryFilter}
+                  className="text-xs h-8"
+                />
+              </div>
+            )}
+
+            {contractorsList.length > 0 && (
+              <div className="w-full sm:w-48">
+                <Select
+                  options={[
+                    { value: 'all', label: 'All Contractors' },
+                    ...contractorsList.map(c => ({ value: c, label: c }))
+                  ]}
+                  value={contractorFilter}
+                  onChange={setContractorFilter}
+                  className="text-xs h-8"
+                />
+              </div>
+            )}
+
+            <div className="w-full sm:w-32">
+              <Select
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'Active', label: 'Active' },
+                  { value: 'Inactive', label: 'Inactive' },
+                ]}
+                value={statusFilter}
+                onChange={setStatusFilter}
+                className="text-xs h-8"
+              />
+            </div>
+
+            <div className="w-full sm:w-56">
+              <SearchField
+                placeholder="Search code, name, phone..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
           </div>
+
           <div className="flex items-center gap-2 justify-end">
             {hasPermission('labour.create') && (
-              <Button variant="primary" className="h-9 px-3 text-[13px]" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd}>Add Worker</Button>
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Plus className="w-3.5 h-3.5" />}
+                onClick={openAdd}
+                className="text-xs h-8 shadow-xs"
+              >
+                Add Worker
+              </Button>
             )}
           </div>
         </div>
 
-        {/* Table */}
-        <DataTableContainer pagination={<Pagination currentPage={page} totalPages={totalPages} totalItems={filtered.length} itemsPerPage={perPage} onPageChange={setPage} onItemsPerPageChange={() => {}} />}>
-          <table className="w-full text-left text-[12px] whitespace-nowrap table-fixed">
-            <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
-              <tr>
-                <th className="px-2 py-1.5 w-10 text-center">#</th>
-                <th className="px-2 py-1.5 w-24">Code</th>
-                <th className="px-2 py-1.5 w-40">Name</th>
-                <th className="px-2 py-1.5 w-28">Category</th>
-                <th className="px-2 py-1.5 w-32">Contractor</th>
-                <th className="px-2 py-1.5 w-24">Phone</th>
-                <th className="px-2 py-1.5 w-24">Joined</th>
-                <th className="px-2 py-1.5 w-24 text-right">Wage Rate</th>
-                <th className="px-2 py-1.5 w-24 text-center">Status</th>
-                <th className="px-2 py-1.5 text-center w-20">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {loading ? (
-                <tr><td colSpan="10" className="text-center py-6 text-text-muted text-[12px]">Loading...</td></tr>
-              ) : paged.length === 0 ? (
-                <tr><td colSpan="10" className="text-center py-6 text-text-muted text-[12px]">No workers found.</td></tr>
-              ) : paged.map((item, idx) => (
-                <tr key={item.id} className="hover:bg-surface-muted/30 transition-colors">
-                  <td className="px-2 py-1 text-center font-medium text-text-primary text-[11px]">{(page - 1) * perPage + idx + 1}</td>
-                  <td className="px-2 py-1 font-mono font-semibold text-text-primary text-[11px]">{item.worker_code || '—'}</td>
-                  <td className="px-2 py-1 font-medium text-text-primary text-[11px]">{item.worker_name || '—'}</td>
-                  <td className="px-2 py-1 text-[11px]">{item.category_name || '—'}</td>
-                  <td className="px-2 py-1 text-[11px]">{item.contractor_name || '—'}</td>
-                  <td className="px-2 py-1 text-[11px]">{item.phone || '—'}</td>
-                  <td className="px-2 py-1 text-[11px]">{item.date_joined ? item.date_joined.split(' ')[0] : '—'}</td>
-                  <td className="px-2 py-1 text-[11px] text-right font-mono">{item.base_wage_rate ? `₹${Number(item.base_wage_rate).toLocaleString('en-IN')}` : '—'}</td>
-                  <td className="px-2 py-1 text-center">
-                    <Badge variant={statusVariant(item.status_name)} className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none">{item.status_name || '—'}</Badge>
-                  </td>
-                  <td className="px-2 py-1">
-                    <div className="flex items-center justify-center gap-0.5">
-                      {hasPermission('labour.update') && (
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Edit" onClick={() => openEdit(item)}><Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" /></Button>
-                      )}
-                      {hasPermission('labour.delete') && (
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Delete" onClick={() => setDeleteItem(item)}><Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" /></Button>
-                      )}
-                    </div>
-                  </td>
+        {/* Desktop & Tablet Table (No horizontal scroll, 100% fluid) */}
+        <div className="hidden sm:block">
+          <DataTableContainer
+            pagination={
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                itemsPerPage={perPage}
+                onPageChange={setPage}
+                onItemsPerPageChange={() => {}}
+              />
+            }
+          >
+            <table className="w-full text-left text-[12px] table-auto">
+              <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+                <tr>
+                  <th className="px-3 py-2 w-10 text-center">#</th>
+                  <th className="px-3 py-2 w-28">Worker Code</th>
+                  <th className="px-3 py-2">Worker Name & Phone</th>
+                  <th className="px-3 py-2 w-32 hidden md:table-cell">Skill Category</th>
+                  <th className="px-3 py-2 w-36 hidden lg:table-cell">Labour Contractor</th>
+                  <th className="px-3 py-2 w-24 hidden md:table-cell">Joined</th>
+                  <th className="px-3 py-2 text-right w-24">Wage Rate</th>
+                  <th className="px-3 py-2 text-center w-24">Status</th>
+                  <th className="px-3 py-2 text-center w-24">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </DataTableContainer>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {loading ? (
+                  <tr>
+                    <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
+                      Loading labour workforce...
+                    </td>
+                  </tr>
+                ) : paged.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
+                      No workers found matching filter criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  paged.map((item, idx) => (
+                    <tr key={item.id} className="hover:bg-surface-muted/30 transition-colors group">
+                      <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                        {(page - 1) * perPage + idx + 1}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                          {item.worker_code || '—'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-text-primary text-[12px] truncate" title={item.worker_name}>
+                            {item.worker_name || '—'}
+                          </span>
+                          <span className="text-[10px] text-text-muted font-mono truncate">
+                            {item.phone || 'No phone'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 hidden md:table-cell">
+                        <span className="text-[11px] text-text-secondary truncate block" title={item.category_name}>
+                          {item.category_name || 'General'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 hidden lg:table-cell">
+                        <span className="text-[11px] text-text-muted truncate block" title={item.contractor_name}>
+                          {item.contractor_name || 'Direct Roll'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 hidden md:table-cell font-mono text-[11px] text-text-secondary">
+                        {item.date_joined ? item.date_joined.split(' ')[0] : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
+                        {item.base_wage_rate ? `₹${Number(item.base_wage_rate).toLocaleString('en-IN')}` : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <Badge
+                          variant={statusVariant(item.status_name)}
+                          className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
+                        >
+                          {item.status_name || 'Active'}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            title="View Worker 360"
+                            onClick={() => setViewingWorker(item)}
+                          >
+                            <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                          </Button>
+                          {hasPermission('labour.update') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="Edit"
+                              onClick={() => openEdit(item)}
+                            >
+                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                          )}
+                          {hasPermission('labour.delete') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="Delete"
+                              onClick={() => setDeleteItem(item)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </DataTableContainer>
+        </div>
+
+        {/* Mobile View - Cards List for Phones (< sm) */}
+        <div className="block sm:hidden space-y-3">
+          {paged.map((item, idx) => (
+            <div key={item.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="font-mono text-[10px] font-bold text-primary block">{item.worker_code || 'W-000'}</span>
+                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{item.worker_name}</h4>
+                  <span className="text-[11px] text-text-muted">{item.category_name || 'General Helper'}</span>
+                </div>
+                <Badge
+                  variant={statusVariant(item.status_name)}
+                  className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
+                >
+                  {item.status_name || 'Active'}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Contractor</span>
+                  <span className="text-text-primary text-[11px] truncate block">{item.contractor_name || 'Direct Roll'}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Daily Wage</span>
+                  <span className="font-mono font-bold text-primary text-[11px]">
+                    {item.base_wage_rate ? `₹${Number(item.base_wage_rate).toLocaleString('en-IN')}` : '—'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
+                <span className="font-mono text-[10px] text-text-muted">{item.phone || 'No phone'}</span>
+                <div className="flex items-center gap-1.5">
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingWorker(item)}>
+                    <Eye className="w-3 h-3 mr-1" /> View
+                  </Button>
+                  {hasPermission('labour.update') && (
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEdit(item)}>
+                      <Edit className="w-3.5 h-3.5 text-text-secondary" />
+                    </Button>
+                  )}
+                  {hasPermission('labour.delete') && (
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setDeleteItem(item)}>
+                      <Trash2 className="w-3.5 h-3.5 text-error" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Mobile Pagination */}
+          <div className="pt-2">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              itemsPerPage={perPage}
+              onPageChange={setPage}
+              onItemsPerPageChange={() => {}}
+            />
+          </div>
+        </div>
       </div>
+
+      {/* View Worker 360 Modal */}
+      {viewingWorker && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">{viewingWorker.worker_name}</h3>
+                  <span className="text-[11px] font-mono text-text-muted">{viewingWorker.worker_code} • {viewingWorker.category_name}</span>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setViewingWorker(null)}>✕</Button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto text-xs">
+              <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Labour Contractor</span> <span className="font-semibold text-text-primary">{viewingWorker.contractor_name || 'Direct Roll'}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Base Wage Rate</span> <span className="font-bold text-primary font-mono text-sm">{viewingWorker.base_wage_rate ? `₹${Number(viewingWorker.base_wage_rate).toLocaleString('en-IN')}` : '—'}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Contact Phone</span> <span className="font-mono text-text-primary">{viewingWorker.phone || '—'}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Date Joined</span> <span className="font-mono">{viewingWorker.date_joined ? viewingWorker.date_joined.split(' ')[0] : '—'}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Overtime Rate</span> <span className="font-mono">{viewingWorker.overtime_rate_per_hour ? `₹${viewingWorker.overtime_rate_per_hour}/hr` : '—'}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Status</span> <span className="font-semibold text-emerald-600">{viewingWorker.status_name || 'Active'}</span></div>
+              </div>
+
+              <div className="border border-border rounded-lg p-3 space-y-2">
+                <span className="font-bold text-text-primary block text-[11px]">Identity & Emergency Details:</span>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div><span className="text-text-muted block text-[10px]">ID Proof:</span> {viewingWorker.id_number_masked || 'Not Submitted'}</div>
+                  <div><span className="text-text-muted block text-[10px]">Blood Group:</span> {viewingWorker.blood_group || '—'}</div>
+                  <div><span className="text-text-muted block text-[10px]">Emergency Contact:</span> {viewingWorker.emergency_contact_name || '—'}</div>
+                  <div><span className="text-text-muted block text-[10px]">Emergency Phone:</span> {viewingWorker.emergency_contact_phone || '—'}</div>
+                  <div className="col-span-2"><span className="text-text-muted block text-[10px]">Native Place:</span> {viewingWorker.native_place || '—'}</div>
+                </div>
+              </div>
+
+              {viewingWorker.bank_name && (
+                <div className="border border-border rounded-lg p-3 space-y-1">
+                  <span className="font-bold text-text-primary block text-[11px]">Bank Account Details:</span>
+                  <div className="grid grid-cols-2 gap-1 text-[11px] font-mono">
+                    <div>Bank: {viewingWorker.bank_name}</div>
+                    <div>IFSC: {viewingWorker.bank_ifsc || '—'}</div>
+                    <div className="col-span-2">A/C: {viewingWorker.bank_account_no_masked || '—'}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => setViewingWorker(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit Modal */}
       <EntityEditModal isOpen={isModalOpen} onClose={() => { setIsAddOpen(false); setEditItem(null); }}>
