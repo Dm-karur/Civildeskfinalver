@@ -7,6 +7,7 @@ import { ProjectCreatePage } from '../../features/projects/pages/ProjectCreatePa
 import { ProjectClientsPage } from '../../features/projects/pages/ProjectClientsPage';
 import { ProjectTeamPage } from '../../features/projects/pages/ProjectTeamPage';
 import { ProjectOverviewPage } from '../../features/projects/pages/ProjectOverviewPage';
+import { ProjectDocumentsPage } from '../../features/projects/pages/ProjectDocumentsPage';
 import { ClientsListPage } from '../../features/clients/pages/ClientsListPage';
 import { CompanyListPage } from '../../features/settings/pages/CompanyListPage';
 import { BranchListPage } from '../../features/settings/pages/BranchListPage';
@@ -82,7 +83,7 @@ export const router = createBrowserRouter([
           { path: 'projects/clients', element: R('project.view', ProjectClientsPage) },
           { path: 'projects/team', element: R('project.view', ProjectTeamPage) },
           { path: 'projects/overview', element: R('project.view', ProjectOverviewPage) },
-          { path: 'projects/documents', element: R('project.view', ProjectsListPage) },
+          { path: 'projects/documents', element: R('project.view', ProjectDocumentsPage) },
           { path: 'projects/milestones', element: R('project.view', ProjectsListPage) },
           { path: 'projects/status-history', element: R('project.view', ProjectsListPage) },
           { path: 'project-masters/clients', element: R('client.view', ClientsListPage) },
