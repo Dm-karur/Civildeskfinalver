@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, reportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_LABOUR_COST_REPORTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -83,11 +85,12 @@ const DEFAULT_LABOUR_COST_REPORTS = [
     status: 'Optimal Cost'
   }
 ];
+*/
 
 export function LabourCostReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [labourCosts, setLabourCosts] = useState(DEFAULT_LABOUR_COST_REPORTS);
+  const [labourCosts, setLabourCosts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

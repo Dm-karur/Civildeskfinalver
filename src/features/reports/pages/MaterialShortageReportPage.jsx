@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_SHORTAGES = [
+
   {
     id: 1,
     project_id: 1,
@@ -87,11 +89,12 @@ const DEFAULT_SHORTAGES = [
     store_location: 'Block Yard South'
   }
 ];
+*/
 
 export function MaterialShortageReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [shortages, setShortages] = useState(DEFAULT_SHORTAGES);
+  const [shortages, setShortages] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

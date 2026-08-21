@@ -21,7 +21,9 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_MANPOWER_COSTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -115,6 +117,7 @@ const DEFAULT_MANPOWER_COSTS = [
     notes: 'Ch. 16+300 culvert bottom slab & haunch rebar tying.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -135,7 +138,7 @@ const EMPTY_FORM = {
 
 export function ManpowerCostPage() {
   const [projects, setProjects] = useState([]);
-  const [costs, setCosts] = useState(DEFAULT_MANPOWER_COSTS);
+  const [costs, setCosts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

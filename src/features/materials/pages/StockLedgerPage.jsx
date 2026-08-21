@@ -17,7 +17,9 @@ import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, materialManagementApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_LEDGER_ENTRIES = [
+
   {
     id: 1,
     project_id: 1,
@@ -124,10 +126,11 @@ const DEFAULT_LEDGER_ENTRIES = [
     notes: 'Core 1 column splice cutting issue.'
   },
 ];
+*/
 
 export function StockLedgerPage() {
   const [projects, setProjects] = useState([]);
-  const [entries, setEntries] = useState(DEFAULT_LEDGER_ENTRIES);
+  const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

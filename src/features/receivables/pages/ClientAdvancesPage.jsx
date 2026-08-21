@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_ADVANCES = [
+
   {
     id: 1,
     project_id: 1,
@@ -81,6 +83,7 @@ const DEFAULT_ADVANCES = [
     notes: 'Structural steel procurement advance; fully adjusted against RA 1.'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -99,7 +102,7 @@ const EMPTY_FORM = {
 export function ClientAdvancesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [advances, setAdvances] = useState(DEFAULT_ADVANCES);
+  const [advances, setAdvances] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

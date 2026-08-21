@@ -19,7 +19,9 @@ import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, budgetsApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_APPROVALS = [
+
   {
     id: 1,
     project_id: 1,
@@ -97,10 +99,11 @@ const DEFAULT_APPROVALS = [
     comments: 'Rate analysis sheets missing sub-contractor quotations. Please resubmit with vendor quotes.'
   },
 ];
+*/
 
 export function BudgetApprovalsPage() {
   const [projects, setProjects] = useState([]);
-  const [approvals, setApprovals] = useState(DEFAULT_APPROVALS);
+  const [approvals, setApprovals] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

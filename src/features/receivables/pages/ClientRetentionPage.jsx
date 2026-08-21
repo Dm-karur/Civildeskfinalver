@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_RETENTIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -72,6 +74,7 @@ const DEFAULT_RETENTIONS = [
     notes: '50% retention released on Taking-Over Certificate (TOC).'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -89,7 +92,7 @@ const EMPTY_FORM = {
 export function ClientRetentionPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [retentions, setRetentions] = useState(DEFAULT_RETENTIONS);
+  const [retentions, setRetentions] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

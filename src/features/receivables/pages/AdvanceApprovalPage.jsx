@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_APPROVAL_ADVANCES = [
+
   {
     id: 1,
     project_id: 3,
@@ -73,11 +75,12 @@ const DEFAULT_APPROVAL_ADVANCES = [
     notes: 'Client authorized remittance into project escrow.'
   }
 ];
+*/
 
 export function AdvanceApprovalPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [advances, setAdvances] = useState(DEFAULT_APPROVAL_ADVANCES);
+  const [advances, setAdvances] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

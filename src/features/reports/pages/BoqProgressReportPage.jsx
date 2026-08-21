@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_BOQ_PROGRESS = [
+
   {
     id: 1,
     project_id: 1,
@@ -83,11 +85,12 @@ const DEFAULT_BOQ_PROGRESS = [
     status: 'In Progress'
   }
 ];
+*/
 
 export function BoqProgressReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [boqList, setBoqList] = useState(DEFAULT_BOQ_PROGRESS);
+  const [boqList, setBoqList] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

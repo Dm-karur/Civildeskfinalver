@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, reportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_PROJECT_PROGRESS = [
+
   {
     id: 1,
     project_id: 1,
@@ -67,11 +69,12 @@ const DEFAULT_PROJECT_PROGRESS = [
     health_status: 'On Track'
   }
 ];
+*/
 
 export function ProjectProgressReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [progressData, setProgressData] = useState(DEFAULT_PROJECT_PROGRESS);
+  const [progressData, setProgressData] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

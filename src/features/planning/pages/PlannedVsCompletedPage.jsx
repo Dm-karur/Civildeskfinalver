@@ -20,7 +20,9 @@ import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_VARIANCE_DATA = [
+
   {
     id: 1,
     project_id: 1,
@@ -122,10 +124,11 @@ const DEFAULT_VARIANCE_DATA = [
     remarks: 'Paving speed achieved 1.2 KM per day.'
   },
 ];
+*/
 
 export function PlannedVsCompletedPage() {
   const [projects, setProjects] = useState([]);
-  const [items, setItems] = useState(DEFAULT_VARIANCE_DATA);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

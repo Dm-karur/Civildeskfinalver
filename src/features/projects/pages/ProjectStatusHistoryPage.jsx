@@ -19,7 +19,9 @@ import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, mastersApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_STATUS_LOGS = [
+
   {
     id: 1,
     project_id: 1,
@@ -65,11 +67,12 @@ const DEFAULT_STATUS_LOGS = [
     changed_at: '2026-07-05 09:00:00'
   },
 ];
+*/
 
 export function ProjectStatusHistoryPage() {
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('all');
-  const [statusLogs, setStatusLogs] = useState(DEFAULT_STATUS_LOGS);
+  const [statusLogs, setStatusLogs] = useState([]);
   const [projectStatuses, setProjectStatuses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');

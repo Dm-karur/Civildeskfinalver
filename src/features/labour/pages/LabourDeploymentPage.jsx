@@ -25,7 +25,9 @@ import { useAuth } from '../../auth/context/AuthContext';
 
 const extract = (res) => res?.data?.assignments ?? res?.data?.data ?? [];
 
+/* 
 const DEFAULT_DEPLOYMENTS = [
+
   {
     id: 1,
     worker_id: 6,
@@ -111,6 +113,7 @@ const DEFAULT_DEPLOYMENTS = [
     notes: 'Box culvert raft rebar cutting & bending fabrication.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   worker_id: '',
@@ -132,7 +135,7 @@ const EMPTY_FORM = {
 
 export function LabourDeploymentPage() {
   const { hasPermission } = useAuth();
-  const [items, setItems] = useState(DEFAULT_DEPLOYMENTS);
+  const [items, setItems] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);

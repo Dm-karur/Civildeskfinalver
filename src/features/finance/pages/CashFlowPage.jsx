@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_CASHFLOW = [
+
   {
     id: 1,
     project_id: 1,
@@ -70,11 +72,12 @@ const DEFAULT_CASHFLOW = [
     status: 'Positive Operating Cash Flow'
   }
 ];
+*/
 
 export function CashFlowPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [cashflowList, setCashflowList] = useState(DEFAULT_CASHFLOW);
+  const [cashflowList, setCashflowList] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

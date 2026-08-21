@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_CONTRACTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -87,6 +89,7 @@ const DEFAULT_CONTRACTS = [
     notes: 'Turnkey warehouse contract including FM2 flooring specifications.'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -107,7 +110,7 @@ const EMPTY_FORM = {
 export function ClientContractsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [contracts, setContracts] = useState(DEFAULT_CONTRACTS);
+  const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

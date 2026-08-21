@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, clientsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_RECEIVABLES_REPORTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -67,11 +69,12 @@ const DEFAULT_RECEIVABLES_REPORTS = [
     status: 'Overdue Follow-up'
   }
 ];
+*/
 
 export function ClientReceivablesReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [receivables, setReceivables] = useState(DEFAULT_RECEIVABLES_REPORTS);
+  const [receivables, setReceivables] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

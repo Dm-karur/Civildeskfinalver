@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_BUDGET_DATA = [
+
   {
     id: 1,
     project_id: 1,
@@ -84,6 +86,7 @@ const DEFAULT_BUDGET_DATA = [
     notes: 'Borrow area excavation and 98% modified proctor compaction achieved.'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -98,7 +101,7 @@ const EMPTY_FORM = {
 export function BudgetVsActualPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [budgetItems, setBudgetItems] = useState(DEFAULT_BUDGET_DATA);
+  const [budgetItems, setBudgetItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

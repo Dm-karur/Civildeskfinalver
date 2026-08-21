@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, subcontractsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_WORK_ORDERS = [
+
   {
     id: 1,
     project_id: 1,
@@ -87,6 +89,7 @@ const DEFAULT_WORK_ORDERS = [
     scope_summary: 'Excavation, PCC blinding, RCC raft and wing wall construction for 4 box culverts.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -105,7 +108,7 @@ const EMPTY_FORM = {
 export function WorkOrdersPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [workOrders, setWorkOrders] = useState(DEFAULT_WORK_ORDERS);
+  const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

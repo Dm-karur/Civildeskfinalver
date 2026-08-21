@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { materialsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_MATERIALS = [
+
   {
     id: 1,
     material_code: 'MAT-CEM-001',
@@ -99,6 +101,7 @@ const DEFAULT_MATERIALS = [
     description: 'High performance water reducing admixture for pumped concrete.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   material_code: '',
@@ -116,7 +119,7 @@ const EMPTY_FORM = {
 
 export function MaterialCataloguePage() {
   const { hasPermission } = useAuth();
-  const [materials, setMaterials] = useState(DEFAULT_MATERIALS);
+  const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

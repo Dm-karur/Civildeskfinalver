@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_INVOICES = [
+
   {
     id: 1,
     project_id: 1,
@@ -87,6 +89,7 @@ const DEFAULT_INVOICES = [
     notes: 'Primary PEB portal frames and roof purlin installation.'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -107,7 +110,7 @@ const EMPTY_FORM = {
 export function ClientInvoicesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [invoices, setInvoices] = useState(DEFAULT_INVOICES);
+  const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

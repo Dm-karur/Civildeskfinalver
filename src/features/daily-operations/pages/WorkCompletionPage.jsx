@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_ACTIVITIES = [
+
   {
     id: 1,
     project_id: 1,
@@ -81,6 +83,7 @@ const DEFAULT_ACTIVITIES = [
     notes: 'Roller compaction passes verified with sand replacement test.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -102,7 +105,7 @@ const EMPTY_FORM = {
 export function WorkCompletionPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [activities, setActivities] = useState(DEFAULT_ACTIVITIES);
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

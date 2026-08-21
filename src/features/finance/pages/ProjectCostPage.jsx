@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, projectCostingApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_COST_DATA = [
+
   {
     id: 1,
     project_id: 1,
@@ -73,11 +75,12 @@ const DEFAULT_COST_DATA = [
     status: 'On Track (Healthy Margin)'
   }
 ];
+*/
 
 export function ProjectCostPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [costData, setCostData] = useState(DEFAULT_COST_DATA);
+  const [costData, setCostData] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

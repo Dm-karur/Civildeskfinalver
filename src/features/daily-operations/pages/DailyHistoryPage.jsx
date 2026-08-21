@@ -18,7 +18,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_HISTORY_LOGS = [
+
   {
     id: 1,
     project_id: 1,
@@ -71,11 +73,12 @@ const DEFAULT_HISTORY_LOGS = [
     audit_notes: 'Rain delay of 45 mins recorded.'
   },
 ];
+*/
 
 export function DailyHistoryPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [logs, setLogs] = useState(DEFAULT_HISTORY_LOGS);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

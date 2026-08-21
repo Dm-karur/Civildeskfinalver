@@ -23,7 +23,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_WAGE_BATCHES = [
+
   {
     id: 1,
     project_id: 1,
@@ -109,6 +111,7 @@ const DEFAULT_WAGE_BATCHES = [
     notes: 'Tower A Level 1 slab casting muster.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -131,7 +134,7 @@ const EMPTY_FORM = {
 export function LabourWageApprovalPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [batches, setBatches] = useState(DEFAULT_WAGE_BATCHES);
+  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

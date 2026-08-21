@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_SUBCONTRACT_COSTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -72,6 +74,7 @@ const DEFAULT_SUBCONTRACT_COSTS = [
     status: 'Completed (100% Certified)'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -89,7 +92,7 @@ const EMPTY_FORM = {
 export function SubcontractCostsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [subcontractCosts, setSubcontractCosts] = useState(DEFAULT_SUBCONTRACT_COSTS);
+  const [subcontractCosts, setSubcontractCosts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_PROFITABILITY = [
+
   {
     id: 1,
     project_id: 1,
@@ -70,11 +72,12 @@ const DEFAULT_PROFITABILITY = [
     status: 'High Profitability'
   }
 ];
+*/
 
 export function ProjectProfitabilityPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [profitabilityList, setProfitabilityList] = useState(DEFAULT_PROFITABILITY);
+  const [profitabilityList, setProfitabilityList] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

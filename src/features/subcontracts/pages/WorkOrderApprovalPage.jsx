@@ -18,7 +18,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_APPROVAL_WOS = [
+
   {
     id: 1,
     project_id: 2,
@@ -77,11 +79,12 @@ const DEFAULT_APPROVAL_WOS = [
     scope_summary: 'Electrical slab inserts, DB dressing, drainage shafts and rainwater down-take pipes.'
   },
 ];
+*/
 
 export function WorkOrderApprovalPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [workOrders, setWorkOrders] = useState(DEFAULT_APPROVAL_WOS);
+  const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

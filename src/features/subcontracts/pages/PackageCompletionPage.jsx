@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_COMPLETIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -60,6 +62,7 @@ const DEFAULT_COMPLETIONS = [
     notes: 'Soil anchor load testing certificates submitted.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -78,7 +81,7 @@ const EMPTY_FORM = {
 export function PackageCompletionPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [completions, setCompletions] = useState(DEFAULT_COMPLETIONS);
+  const [completions, setCompletions] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

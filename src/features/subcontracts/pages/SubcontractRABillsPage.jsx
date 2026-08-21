@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, subcontractsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_RA_BILLS = [
+
   {
     id: 1,
     project_id: 1,
@@ -84,6 +86,7 @@ const DEFAULT_RA_BILLS = [
     notes: 'Mobilization advance claim bill against bank guarantee.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -104,7 +107,7 @@ const EMPTY_FORM = {
 export function SubcontractRABillsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [raBills, setRaBills] = useState(DEFAULT_RA_BILLS);
+  const [raBills, setRaBills] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

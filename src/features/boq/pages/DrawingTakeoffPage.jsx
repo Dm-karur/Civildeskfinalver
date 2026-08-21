@@ -29,7 +29,9 @@ const DRAWING_CATEGORIES = [
   { id: 'highway', name: 'Road Alignment & Cross Sections (HWY)' },
 ];
 
+/* 
 const DEFAULT_TAKEOFFS = [
+
   {
     id: 1,
     project_id: 1,
@@ -123,6 +125,7 @@ const DEFAULT_TAKEOFFS = [
     notes: '75mm compacted thickness DBM 60/70 penetration grade VG-30 bitumen binder.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -143,7 +146,7 @@ const EMPTY_FORM = {
 
 export function DrawingTakeoffPage() {
   const [projects, setProjects] = useState([]);
-  const [takeoffs, setTakeoffs] = useState(DEFAULT_TAKEOFFS);
+  const [takeoffs, setTakeoffs] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

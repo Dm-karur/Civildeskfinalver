@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, reportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_BUDGET_REPORTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -75,11 +77,12 @@ const DEFAULT_BUDGET_REPORTS = [
     status: 'Within Budget'
   }
 ];
+*/
 
 export function BudgetVsActualReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [budgetList, setBudgetList] = useState(DEFAULT_BUDGET_REPORTS);
+  const [budgetList, setBudgetList] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

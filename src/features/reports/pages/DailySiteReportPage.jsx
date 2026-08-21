@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_DAILY_SITE_REPORTS = [
+
   {
     id: 1,
     report_date: '2026-08-21',
@@ -70,11 +72,12 @@ const DEFAULT_DAILY_SITE_REPORTS = [
     status: 'Approved DPR'
   }
 ];
+*/
 
 export function DailySiteReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [dailyReports, setDailyReports] = useState(DEFAULT_DAILY_SITE_REPORTS);
+  const [dailyReports, setDailyReports] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, reportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_DEPLOYMENTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -79,11 +81,12 @@ const DEFAULT_DEPLOYMENTS = [
     status: 'Optimal Deployment'
   }
 ];
+*/
 
 export function LabourDeploymentReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [deployments, setDeployments] = useState(DEFAULT_DEPLOYMENTS);
+  const [deployments, setDeployments] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

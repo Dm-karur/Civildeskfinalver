@@ -30,7 +30,9 @@ const EXCEPTION_CATEGORIES = [
   { id: 'ot_dispute', name: 'Overtime Hours Discrepancy' },
 ];
 
+/* 
 const DEFAULT_EXCEPTIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -128,6 +130,7 @@ const DEFAULT_EXCEPTIONS = [
     reason: 'Emergency box culvert reinforcement fabrication required extra shift handover.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -151,7 +154,7 @@ const EMPTY_FORM = {
 
 export function AttendanceExceptionsPage() {
   const [projects, setProjects] = useState([]);
-  const [exceptions, setExceptions] = useState(DEFAULT_EXCEPTIONS);
+  const [exceptions, setExceptions] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

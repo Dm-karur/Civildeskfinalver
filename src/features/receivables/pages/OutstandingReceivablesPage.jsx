@@ -21,7 +21,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_OUTSTANDINGS = [
+
   {
     id: 1,
     project_id: 2,
@@ -80,11 +82,12 @@ const DEFAULT_OUTSTANDINGS = [
     status: 'Overdue (Follow-up Escalated)'
   }
 ];
+*/
 
 export function OutstandingReceivablesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [outstandings, setOutstandings] = useState(DEFAULT_OUTSTANDINGS);
+  const [outstandings, setOutstandings] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_DOCUMENTS = [
+
   {
     id: 1,
     doc_no: 'DRG-STR-L3-004',
@@ -79,11 +81,12 @@ const DEFAULT_DOCUMENTS = [
     status: 'GFC Approved'
   }
 ];
+*/
 
 export function CommunicationDocumentsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [documents, setDocuments] = useState(DEFAULT_DOCUMENTS);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

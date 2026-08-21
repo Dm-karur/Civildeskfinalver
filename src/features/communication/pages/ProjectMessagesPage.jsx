@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_MESSAGES = [
+
   {
     id: 1,
     project_id: 1,
@@ -79,11 +81,12 @@ const DEFAULT_MESSAGES = [
     status: 'Resolved'
   }
 ];
+*/
 
 export function ProjectMessagesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [messages, setMessages] = useState(DEFAULT_MESSAGES);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

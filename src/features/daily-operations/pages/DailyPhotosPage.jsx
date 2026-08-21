@@ -20,7 +20,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_PHOTOS = [
+
   {
     id: 1,
     project_id: 1,
@@ -70,6 +72,7 @@ const DEFAULT_PHOTOS = [
     aspect_color: 'bg-amber-950/20 border-amber-500/30 text-amber-400'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -86,7 +89,7 @@ const EMPTY_FORM = {
 export function DailyPhotosPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [photos, setPhotos] = useState(DEFAULT_PHOTOS);
+  const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

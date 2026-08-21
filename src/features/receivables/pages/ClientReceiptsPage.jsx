@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_RECEIPTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -75,6 +77,7 @@ const DEFAULT_RECEIPTS = [
     notes: 'Mobilization & Material advance remittance.'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -93,7 +96,7 @@ const EMPTY_FORM = {
 export function ClientReceiptsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [receipts, setReceipts] = useState(DEFAULT_RECEIPTS);
+  const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

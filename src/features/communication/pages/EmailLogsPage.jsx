@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_EMAIL_LOGS = [
+
   {
     id: 1,
     email_id: 'EML-2026-1092',
@@ -67,10 +69,11 @@ const DEFAULT_EMAIL_LOGS = [
     status: 'Delivered (250 OK)'
   }
 ];
+*/
 
 export function EmailLogsPage() {
   const { hasPermission } = useAuth();
-  const [logs, setLogs] = useState(DEFAULT_EMAIL_LOGS);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

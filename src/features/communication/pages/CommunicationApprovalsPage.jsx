@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_APPROVALS = [
+
   {
     id: 1,
     request_no: 'APR-COM-2026-008',
@@ -61,11 +63,12 @@ const DEFAULT_APPROVALS = [
     status: 'Approved & Dispatched'
   }
 ];
+*/
 
 export function CommunicationApprovalsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [approvals, setApprovals] = useState(DEFAULT_APPROVALS);
+  const [approvals, setApprovals] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

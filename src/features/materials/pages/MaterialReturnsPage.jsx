@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_RETURNS = [
+
   {
     id: 1,
     project_id: 1,
@@ -64,6 +66,7 @@ const DEFAULT_RETURNS = [
     reason: 'Transit rain damaged bags rejected during inward QC inspection.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -85,7 +88,7 @@ const EMPTY_FORM = {
 export function MaterialReturnsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [returns, setReturns] = useState(DEFAULT_RETURNS);
+  const [returns, setReturns] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

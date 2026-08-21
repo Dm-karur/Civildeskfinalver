@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_INCOMES = [
+
   {
     id: 1,
     project_id: 1,
@@ -75,6 +77,7 @@ const DEFAULT_INCOMES = [
     status: 'Realized in Bank'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -94,7 +97,7 @@ const EMPTY_FORM = {
 export function ProjectIncomePage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [incomes, setIncomes] = useState(DEFAULT_INCOMES);
+  const [incomes, setIncomes] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

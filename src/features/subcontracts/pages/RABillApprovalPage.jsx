@@ -18,7 +18,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_APPROVAL_BILLS = [
+
   {
     id: 1,
     project_id: 2,
@@ -80,11 +82,12 @@ const DEFAULT_APPROVAL_BILLS = [
     notes: 'RA Bill 1 covering electrical conduit inserts.'
   },
 ];
+*/
 
 export function RABillApprovalPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [bills, setBills] = useState(DEFAULT_APPROVAL_BILLS);
+  const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

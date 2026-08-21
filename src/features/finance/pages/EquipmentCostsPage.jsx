@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_EQUIPMENT_COSTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -88,6 +90,7 @@ const DEFAULT_EQUIPMENT_COSTS = [
     status: 'Active'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -105,7 +108,7 @@ const EMPTY_FORM = {
 export function EquipmentCostsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [equipmentCosts, setEquipmentCosts] = useState(DEFAULT_EQUIPMENT_COSTS);
+  const [equipmentCosts, setEquipmentCosts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

@@ -16,7 +16,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, reportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_REPORT_DATA = [
+
   {
     id: 1,
     project_id: 1,
@@ -86,11 +88,12 @@ const DEFAULT_REPORT_DATA = [
     performance_rating: 'Grade A+ (96%)'
   },
 ];
+*/
 
 export function SubcontractReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [reportData, setReportData] = useState(DEFAULT_REPORT_DATA);
+  const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

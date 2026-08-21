@@ -20,7 +20,9 @@ import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_REVIEWS = [
+
   {
     id: 1,
     project_id: 1,
@@ -98,10 +100,11 @@ const DEFAULT_REVIEWS = [
     audit_notes: 'Awaiting cross-section chainage survey data verification.'
   },
 ];
+*/
 
 export function TakeoffReviewPage() {
   const [projects, setProjects] = useState([]);
-  const [reviews, setReviews] = useState(DEFAULT_REVIEWS);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_PROFITABILITY_REPORTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -70,11 +72,12 @@ const DEFAULT_PROFITABILITY_REPORTS = [
     status: 'Healthy Margin'
   }
 ];
+*/
 
 export function ProjectProfitabilityReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [profitabilityList, setProfitabilityList] = useState(DEFAULT_PROFITABILITY_REPORTS);
+  const [profitabilityList, setProfitabilityList] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

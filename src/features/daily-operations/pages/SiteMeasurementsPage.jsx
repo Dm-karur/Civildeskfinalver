@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_MEASUREMENTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -87,6 +89,7 @@ const DEFAULT_MEASUREMENTS = [
     notes: 'Cross-section levels recorded at 10m intervals with Auto Level.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -110,7 +113,7 @@ const EMPTY_FORM = {
 export function SiteMeasurementsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [measurements, setMeasurements] = useState(DEFAULT_MEASUREMENTS);
+  const [measurements, setMeasurements] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

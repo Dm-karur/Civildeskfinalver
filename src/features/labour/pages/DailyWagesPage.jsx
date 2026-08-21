@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_WAGE_RECORDS = [
+
   {
     id: 1,
     project_id: 1,
@@ -136,6 +138,7 @@ const DEFAULT_WAGE_RECORDS = [
     notes: 'Box culvert raft rebar cutting & bending.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -161,7 +164,7 @@ const EMPTY_FORM = {
 export function DailyWagesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [wages, setWages] = useState(DEFAULT_WAGE_RECORDS);
+  const [wages, setWages] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

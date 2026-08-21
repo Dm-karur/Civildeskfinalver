@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_EQUIPMENT_LOGS = [
+
   {
     id: 1,
     project_id: 1,
@@ -78,6 +80,7 @@ const DEFAULT_EQUIPMENT_LOGS = [
     notes: 'Amplitude and vibration frequency calibrated.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -98,7 +101,7 @@ const EMPTY_FORM = {
 export function DailyEquipmentPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [logs, setLogs] = useState(DEFAULT_EQUIPMENT_LOGS);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

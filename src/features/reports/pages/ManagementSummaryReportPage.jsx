@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_MANAGEMENT_PORTFOLIO = [
+
   {
     id: 1,
     project_id: 1,
@@ -70,11 +72,12 @@ const DEFAULT_MANAGEMENT_PORTFOLIO = [
     executive_status: 'Requires Cash Flow Buffer Watch'
   }
 ];
+*/
 
 export function ManagementSummaryReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [portfolioList, setPortfolioList] = useState(DEFAULT_MANAGEMENT_PORTFOLIO);
+  const [portfolioList, setPortfolioList] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

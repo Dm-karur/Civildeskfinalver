@@ -30,7 +30,9 @@ const OT_REASONS = [
   { id: 'weather_recovery', name: 'Rain Delay Schedule Recovery' },
 ];
 
+/* 
 const DEFAULT_OT_SLIPS = [
+
   {
     id: 1,
     project_id: 1,
@@ -128,6 +130,7 @@ const DEFAULT_OT_SLIPS = [
     approved_by: 'K. Balaji (Highway Project Director)'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -152,7 +155,7 @@ const EMPTY_FORM = {
 
 export function LabourOvertimePage() {
   const [projects, setProjects] = useState([]);
-  const [slips, setSlips] = useState(DEFAULT_OT_SLIPS);
+  const [slips, setSlips] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

@@ -17,7 +17,9 @@ import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_PROJECT_STOCKS = [
+
   {
     id: 1,
     project_id: 1,
@@ -109,10 +111,11 @@ const DEFAULT_PROJECT_STOCKS = [
     status: 'Adequate Stock'
   },
 ];
+*/
 
 export function ProjectStockPage() {
   const [projects, setProjects] = useState([]);
-  const [stocks, setStocks] = useState(DEFAULT_PROJECT_STOCKS);
+  const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_OTHER_EXPENSES = [
+
   {
     id: 1,
     project_id: 1,
@@ -84,6 +86,7 @@ const DEFAULT_OTHER_EXPENSES = [
     status: 'Approved & Settled'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -100,7 +103,7 @@ const EMPTY_FORM = {
 export function OtherExpensesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [expenses, setExpenses] = useState(DEFAULT_OTHER_EXPENSES);
+  const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

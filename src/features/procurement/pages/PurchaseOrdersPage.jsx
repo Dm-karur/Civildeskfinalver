@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, materialManagementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_POS = [
+
   {
     id: 1,
     project_id: 1,
@@ -99,6 +101,7 @@ const DEFAULT_POS = [
     notes: 'All 120 tons delivered at site bunker.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -125,7 +128,7 @@ const EMPTY_FORM = {
 export function PurchaseOrdersPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [orders, setOrders] = useState(DEFAULT_POS);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

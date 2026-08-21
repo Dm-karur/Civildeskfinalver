@@ -21,7 +21,9 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { boqApi, projectsApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_SECTIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -83,6 +85,7 @@ const DEFAULT_SECTIONS = [
     description: 'AAC block masonry, internal gypsum plaster, cement sand external plaster.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -97,7 +100,7 @@ const EMPTY_FORM = {
 export function BoqSectionsPage() {
   const [projects, setProjects] = useState([]);
   const [boqs, setBoqs] = useState([]);
-  const [sections, setSections] = useState(DEFAULT_SECTIONS);
+  const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

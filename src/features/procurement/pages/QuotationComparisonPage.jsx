@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_COMPARISONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -68,6 +70,7 @@ const DEFAULT_COMPARISONS = [
     notes: 'JSW L1 quote saves ₹10,500 against budget.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -88,7 +91,7 @@ const EMPTY_FORM = {
 export function QuotationComparisonPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [comparisons, setComparisons] = useState(DEFAULT_COMPARISONS);
+  const [comparisons, setComparisons] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

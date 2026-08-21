@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_PAYABLES = [
+
   {
     id: 1,
     project_id: 1,
@@ -80,11 +82,12 @@ const DEFAULT_PAYABLES = [
     last_payment_date: '2026-08-12'
   }
 ];
+*/
 
 export function VendorPayablesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [payables, setPayables] = useState(DEFAULT_PAYABLES);
+  const [payables, setPayables] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

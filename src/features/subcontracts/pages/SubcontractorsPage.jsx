@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { subcontractsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_SUBCONTRACTORS = [
+
   {
     id: 1,
     contractor_code: 'SUB-2026-001',
@@ -84,6 +86,7 @@ const DEFAULT_SUBCONTRACTORS = [
     notes: 'Specialized in Italian marble laying and epoxy flooring.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   contractor_code: '',
@@ -106,7 +109,7 @@ const EMPTY_FORM = {
 
 export function SubcontractorsPage() {
   const { hasPermission } = useAuth();
-  const [contractors, setContractors] = useState(DEFAULT_SUBCONTRACTORS);
+  const [contractors, setContractors] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

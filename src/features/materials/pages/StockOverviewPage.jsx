@@ -17,7 +17,9 @@ import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
 import { materialManagementApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_STOCK = [
+
   {
     id: 1,
     material_code: 'MAT-CEM-001',
@@ -89,9 +91,10 @@ const DEFAULT_STOCK = [
     status: 'In Stock'
   },
 ];
+*/
 
 export function StockOverviewPage() {
-  const [stock, setStock] = useState(DEFAULT_STOCK);
+  const [stock, setStock] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

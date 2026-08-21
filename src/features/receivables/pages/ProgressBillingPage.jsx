@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_PROGRESS_BILLS = [
+
   {
     id: 1,
     project_id: 1,
@@ -90,6 +92,7 @@ const DEFAULT_PROGRESS_BILLS = [
     notes: 'PEB anchor bolts foundation and pre-engineered primary frames.'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -112,7 +115,7 @@ const EMPTY_FORM = {
 export function ProgressBillingPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [bills, setBills] = useState(DEFAULT_PROGRESS_BILLS);
+  const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

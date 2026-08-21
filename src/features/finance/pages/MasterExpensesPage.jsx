@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, expensesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_BILLS = [
+
   {
     id: 1,
     project_id: 1,
@@ -78,6 +80,7 @@ const DEFAULT_BILLS = [
     payment_status: 'Pending Payment'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -97,7 +100,7 @@ const EMPTY_FORM = {
 export function MasterExpensesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [bills, setBills] = useState(DEFAULT_BILLS);
+  const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

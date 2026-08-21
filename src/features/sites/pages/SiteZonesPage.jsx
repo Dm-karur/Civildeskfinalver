@@ -20,7 +20,9 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { siteZonesApi, sitesApi, projectsApi, mastersApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_ZONES = [
+
   {
     id: 1,
     project_id: 1,
@@ -86,6 +88,7 @@ const DEFAULT_ZONES = [
     description: 'Embankment widening, sub-grade preparation, and DBM bituminous base course.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -103,7 +106,7 @@ const EMPTY_FORM = {
 export function SiteZonesPage() {
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
-  const [zones, setZones] = useState(DEFAULT_ZONES);
+  const [zones, setZones] = useState([]);
   const [masters, setMasters] = useState({});
   const [loading, setLoading] = useState(false);
 

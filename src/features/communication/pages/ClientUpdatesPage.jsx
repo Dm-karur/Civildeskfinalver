@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, clientsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_CLIENT_UPDATES = [
+
   {
     id: 1,
     notice_no: 'CL-NOT-2026-014',
@@ -61,11 +63,12 @@ const DEFAULT_CLIENT_UPDATES = [
     status: 'Acknowledged by Client PM'
   }
 ];
+*/
 
 export function ClientUpdatesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [updates, setUpdates] = useState(DEFAULT_CLIENT_UPDATES);
+  const [updates, setUpdates] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

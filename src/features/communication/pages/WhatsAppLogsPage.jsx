@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_WHATSAPP_LOGS = [
+
   {
     id: 1,
     msg_id: 'WA-MSG-2026-084',
@@ -67,10 +69,11 @@ const DEFAULT_WHATSAPP_LOGS = [
     status: 'Delivered & Read'
   }
 ];
+*/
 
 export function WhatsAppLogsPage() {
   const { hasPermission } = useAuth();
-  const [logs, setLogs] = useState(DEFAULT_WHATSAPP_LOGS);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

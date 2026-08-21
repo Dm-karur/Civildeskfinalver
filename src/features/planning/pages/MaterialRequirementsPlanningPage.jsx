@@ -28,7 +28,9 @@ const MATERIAL_CATEGORIES = [
   { id: 'chemicals', name: 'Admixtures & Waterproofing' },
 ];
 
+/* 
 const DEFAULT_REQUIREMENTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -125,6 +127,7 @@ const DEFAULT_REQUIREMENTS = [
     approved_brands: 'IOCL / BPCL / HPCL'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -142,7 +145,7 @@ const EMPTY_FORM = {
 
 export function MaterialRequirementsPlanningPage() {
   const [projects, setProjects] = useState([]);
-  const [items, setItems] = useState(DEFAULT_REQUIREMENTS);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

@@ -21,7 +21,9 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 
+/* 
 const DEFAULT_SHORTAGES = [
+
   {
     id: 1,
     project_id: 1,
@@ -95,6 +97,7 @@ const DEFAULT_SHORTAGES = [
     mitigation_action: 'IOCL refinery tanker slot confirmed for Saturday morning delivery.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -113,7 +116,7 @@ const EMPTY_FORM = {
 
 export function MaterialShortagesPage() {
   const [projects, setProjects] = useState([]);
-  const [shortages, setShortages] = useState(DEFAULT_SHORTAGES);
+  const [shortages, setShortages] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

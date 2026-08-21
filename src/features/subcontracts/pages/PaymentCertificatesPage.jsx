@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_CERTIFICATES = [
+
   {
     id: 1,
     project_id: 1,
@@ -84,6 +86,7 @@ const DEFAULT_CERTIFICATES = [
     notes: 'Mobilization advance certificate against bank guarantee.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -104,7 +107,7 @@ const EMPTY_FORM = {
 export function PaymentCertificatesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [certificates, setCertificates] = useState(DEFAULT_CERTIFICATES);
+  const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

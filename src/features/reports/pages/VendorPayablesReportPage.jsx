@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_PAYABLES_REPORTS = [
+
   {
     id: 1,
     vendor_name: 'Tata Steel Ltd (Distribution Branch)',
@@ -75,11 +77,12 @@ const DEFAULT_PAYABLES_REPORTS = [
     status: 'Fully Paid'
   }
 ];
+*/
 
 export function VendorPayablesReportPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [payables, setPayables] = useState(DEFAULT_PAYABLES_REPORTS);
+  const [payables, setPayables] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

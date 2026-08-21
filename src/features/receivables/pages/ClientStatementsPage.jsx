@@ -17,7 +17,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_STATEMENT_ENTRIES = [
+
   {
     id: 1,
     project_id: 1,
@@ -97,11 +99,12 @@ const DEFAULT_STATEMENT_ENTRIES = [
     running_balance: 994000
   }
 ];
+*/
 
 export function ClientStatementsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [entries, setEntries] = useState(DEFAULT_STATEMENT_ENTRIES);
+  const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

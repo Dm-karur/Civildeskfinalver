@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, dailyReportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_DPRS = [
+
   {
     id: 1,
     project_id: 1,
@@ -81,6 +83,7 @@ const DEFAULT_DPRS = [
     work_summary: 'Base slab blinding concrete poured and cured.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -101,7 +104,7 @@ const EMPTY_FORM = {
 export function DailyProgressReportsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [reports, setReports] = useState(DEFAULT_DPRS);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

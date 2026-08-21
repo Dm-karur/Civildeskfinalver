@@ -29,7 +29,9 @@ const LEAVE_TYPES = [
   { id: 'emergency', name: 'Emergency Family Leave' },
 ];
 
+/* 
 const DEFAULT_LEAVE_APPLICATIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -111,6 +113,7 @@ const DEFAULT_LEAVE_APPLICATIONS = [
     approved_by: 'K. Balaji'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -131,7 +134,7 @@ const EMPTY_FORM = {
 
 export function LabourLeavePage() {
   const [projects, setProjects] = useState([]);
-  const [leaves, setLeaves] = useState(DEFAULT_LEAVE_APPLICATIONS);
+  const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

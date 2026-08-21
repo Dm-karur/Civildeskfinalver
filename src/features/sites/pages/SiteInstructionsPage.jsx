@@ -30,7 +30,9 @@ const INSTRUCTION_CATEGORIES = [
   { id: 'material', name: 'Material Rejection / Rework' },
 ];
 
+/* 
 const DEFAULT_INSTRUCTIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -116,6 +118,7 @@ const DEFAULT_INSTRUCTIONS = [
     compliance_notes: 'Pending re-compaction and sand replacement test result.'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -137,7 +140,7 @@ const EMPTY_FORM = {
 export function SiteInstructionsPage() {
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
-  const [instructions, setInstructions] = useState(DEFAULT_INSTRUCTIONS);
+  const [instructions, setInstructions] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

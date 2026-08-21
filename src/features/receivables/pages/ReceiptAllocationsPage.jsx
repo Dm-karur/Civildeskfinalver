@@ -22,7 +22,9 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
+/* 
 const DEFAULT_ALLOCATIONS = [
+
   {
     id: 1,
     project_id: 1,
@@ -75,6 +77,7 @@ const DEFAULT_ALLOCATIONS = [
     notes: 'Advance invoice settlement credit.'
   }
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -92,7 +95,7 @@ const EMPTY_FORM = {
 export function ReceiptAllocationsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [allocations, setAllocations] = useState(DEFAULT_ALLOCATIONS);
+  const [allocations, setAllocations] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters

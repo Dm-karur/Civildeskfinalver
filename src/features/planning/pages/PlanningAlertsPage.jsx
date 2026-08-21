@@ -30,7 +30,9 @@ const ALERT_CATEGORIES = [
   { id: 'weather', name: 'Weather & Site Obstruction' },
 ];
 
+/* 
 const DEFAULT_ALERTS = [
+
   {
     id: 1,
     project_id: 1,
@@ -100,6 +102,7 @@ const DEFAULT_ALERTS = [
     status: 'Active'
   },
 ];
+*/
 
 const EMPTY_FORM = {
   project_id: '',
@@ -115,7 +118,7 @@ const EMPTY_FORM = {
 
 export function PlanningAlertsPage() {
   const [projects, setProjects] = useState([]);
-  const [alerts, setAlerts] = useState(DEFAULT_ALERTS);
+  const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters
