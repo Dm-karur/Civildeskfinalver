@@ -97,11 +97,21 @@ import { DailyPhotosPage } from '../../features/daily-operations/pages/DailyPhot
 import { DailyApprovalsPage } from '../../features/daily-operations/pages/DailyApprovalsPage';
 import { DailyHistoryPage } from '../../features/daily-operations/pages/DailyHistoryPage';
 // Phase 2 — Subcontract Management
-import { SubcontractorsPage, WorkOrdersPage, SubcontractMeasurementsPage, RABillsPage, SubcontractPaymentsPage } from '../../features/subcontracts/pages/SubcontractPages';
+import { SubcontractorsPage } from '../../features/subcontracts/pages/SubcontractorsPage';
+import { WorkOrdersPage } from '../../features/subcontracts/pages/WorkOrdersPage';
+import { WorkOrderApprovalPage } from '../../features/subcontracts/pages/WorkOrderApprovalPage';
+import { SubcontractMeasurementsPage } from '../../features/subcontracts/pages/SubcontractMeasurementsPage';
+import { PaymentCertificatesPage } from '../../features/subcontracts/pages/PaymentCertificatesPage';
+import { SubcontractRABillsPage } from '../../features/subcontracts/pages/SubcontractRABillsPage';
+import { RABillApprovalPage } from '../../features/subcontracts/pages/RABillApprovalPage';
+import { SubcontractPaymentsPage } from '../../features/subcontracts/pages/SubcontractPaymentsPage';
+import { PackageCompletionPage } from '../../features/subcontracts/pages/PackageCompletionPage';
+import { RetentionLedgerPage } from '../../features/subcontracts/pages/RetentionLedgerPage';
 // Phase 3 — Finance & Cost Control
 import { ExpenseRequestsPage, ExpenseBillsPage, ExpensePaymentsPage, ProjectCostSummaryPage } from '../../features/finance/pages/FinancePages';
 // Phase 3 — Reports & Analytics
-import { ProjectProgressReportPage, BudgetVsActualReportPage, MaterialReportPage, SubcontractReportPage, ExpenseReportPage } from '../../features/reports/pages/ReportPages';
+import { ProjectProgressReportPage, BudgetVsActualReportPage, MaterialReportPage, ExpenseReportPage } from '../../features/reports/pages/ReportPages';
+import { SubcontractReportPage } from '../../features/reports/pages/SubcontractReportPage';
 import { LabourReportPage } from '../../features/reports/pages/LabourReportPage';
 // Phase 2/3 — Additional Masters
 import { LabourCategoriesPage, LabourContractorsPage } from '../../features/masters/pages/LabourMasterPages';
@@ -232,14 +242,15 @@ export const router = createBrowserRouter([
           // ─── 9. Subcontract Management ────────────────────
           { path: 'subcontracts/subcontractors', element: R('subcontractors.view', SubcontractorsPage) },
           { path: 'subcontracts/work-orders', element: R('work_orders.view', WorkOrdersPage) },
-          { path: 'subcontracts/work-order-approval', element: R('work_orders.approve', WorkOrdersPage) },
+          { path: 'subcontracts/work-order-approval', element: R('work_orders.approve', WorkOrderApprovalPage) },
           { path: 'subcontracts/measurements', element: R('measurements.view', SubcontractMeasurementsPage) },
-          { path: 'subcontracts/certificates', element: R('measurements.view', SubcontractMeasurementsPage) },
-          { path: 'subcontracts/ra-bills', element: R('ra_bills.view', RABillsPage) },
-          { path: 'subcontracts/bill-approval', element: R('ra_bills.certify', RABillsPage) },
+          { path: 'subcontracts/certificates', element: R('measurements.view', PaymentCertificatesPage) },
+          { path: 'subcontracts/ra-bills', element: R('ra_bills.view', SubcontractRABillsPage) },
+          { path: 'subcontracts/bill-approval', element: R('ra_bills.certify', RABillApprovalPage) },
           { path: 'subcontracts/payments', element: R('payments.view', SubcontractPaymentsPage) },
-          { path: 'subcontracts/completion', element: R('work_progress.view', WorkOrdersPage) },
-          { path: 'subcontracts/retention', element: R('ra_bills.view', RABillsPage) },
+          { path: 'subcontracts/completion', element: R('work_progress.view', PackageCompletionPage) },
+          { path: 'subcontracts/retention', element: R('ra_bills.view', RetentionLedgerPage) },
+          { path: 'reports/subcontracts', element: R('report.view', SubcontractReportPage) },
 
           // ─── 10. Client Billing & Receivables ─────────────
           { path: 'receivables/contracts', element: R('client.view', ProjectsListPage) },
