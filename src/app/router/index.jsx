@@ -86,7 +86,16 @@ import { VendorInvoicesPage } from '../../features/procurement/pages/VendorInvoi
 import { ProcurementReturnsPage } from '../../features/procurement/pages/ProcurementReturnsPage';
 import { ProcurementTrackingPage } from '../../features/procurement/pages/ProcurementTrackingPage';
 // Phase 2 — Daily Site Operations
-import { DailyWorkReportPage } from '../../features/daily-operations/pages/DailyWorkReportPage';
+import { DailyProgressReportsPage } from '../../features/daily-operations/pages/DailyProgressReportsPage';
+import { WorkCompletionPage } from '../../features/daily-operations/pages/WorkCompletionPage';
+import { SiteMeasurementsPage } from '../../features/daily-operations/pages/SiteMeasurementsPage';
+import { DailyManpowerPage } from '../../features/daily-operations/pages/DailyManpowerPage';
+import { DailyEquipmentPage } from '../../features/daily-operations/pages/DailyEquipmentPage';
+import { DailyMaterialsPage } from '../../features/daily-operations/pages/DailyMaterialsPage';
+import { DailyIssuesPage } from '../../features/daily-operations/pages/DailyIssuesPage';
+import { DailyPhotosPage } from '../../features/daily-operations/pages/DailyPhotosPage';
+import { DailyApprovalsPage } from '../../features/daily-operations/pages/DailyApprovalsPage';
+import { DailyHistoryPage } from '../../features/daily-operations/pages/DailyHistoryPage';
 // Phase 2 — Subcontract Management
 import { SubcontractorsPage, WorkOrdersPage, SubcontractMeasurementsPage, RABillsPage, SubcontractPaymentsPage } from '../../features/subcontracts/pages/SubcontractPages';
 // Phase 3 — Finance & Cost Control
@@ -209,16 +218,16 @@ export const router = createBrowserRouter([
           { path: 'procurement/tracking', element: R('purchase_orders.view', ProcurementTrackingPage) },
 
           // ─── 8. Daily Site Operations ─────────────────────
-          { path: 'daily-operations/reports', element: R('daily_reports.view', DailyWorkReportPage) },
-          { path: 'daily-operations/completion', element: R('work_progress.record', DailyWorkReportPage) },
-          { path: 'daily-operations/measurements', element: R('measurements.view', DailyWorkReportPage) },
-          { path: 'daily-operations/manpower', element: R('daily_reports.view', DailyWorkReportPage) },
-          { path: 'daily-operations/equipment', element: R('daily_reports.view', DailyWorkReportPage) },
-          { path: 'daily-operations/materials', element: R('daily_reports.view', DailyWorkReportPage) },
-          { path: 'daily-operations/issues', element: R('site_issues.view', DailyWorkReportPage) },
-          { path: 'daily-operations/photos', element: R('site_photos.manage', DailyWorkReportPage) },
-          { path: 'daily-operations/approvals', element: R('daily_reports.approve', DailyWorkReportPage) },
-          { path: 'daily-operations/history', element: R('daily_reports.view', DailyWorkReportPage) },
+          { path: 'daily-operations/reports', element: R('daily_reports.view', DailyProgressReportsPage) },
+          { path: 'daily-operations/completion', element: R('work_progress.record', WorkCompletionPage) },
+          { path: 'daily-operations/measurements', element: R('measurements.view', SiteMeasurementsPage) },
+          { path: 'daily-operations/manpower', element: R('daily_reports.view', DailyManpowerPage) },
+          { path: 'daily-operations/equipment', element: R('daily_reports.view', DailyEquipmentPage) },
+          { path: 'daily-operations/materials', element: R('daily_reports.view', DailyMaterialsPage) },
+          { path: 'daily-operations/issues', element: R('site_issues.view', DailyIssuesPage) },
+          { path: 'daily-operations/photos', element: R('site_photos.manage', DailyPhotosPage) },
+          { path: 'daily-operations/approvals', element: R('daily_reports.approve', DailyApprovalsPage) },
+          { path: 'daily-operations/history', element: R('daily_reports.view', DailyHistoryPage) },
 
           // ─── 9. Subcontract Management ────────────────────
           { path: 'subcontracts/subcontractors', element: R('subcontractors.view', SubcontractorsPage) },
