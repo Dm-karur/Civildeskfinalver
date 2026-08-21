@@ -41,6 +41,7 @@ import { BudgetRevisionsPage } from '../../features/budgets/pages/BudgetRevision
 import { BudgetVariationsPage } from '../../features/budgets/pages/BudgetVariationsPage';
 import { BudgetApprovalsPage } from '../../features/budgets/pages/BudgetApprovalsPage';
 import { PlanningActivitiesPage } from '../../features/planning/pages/PlanningActivitiesPage';
+import { WorkProgrammePage } from '../../features/planning/pages/WorkProgrammePage';
 // Phase 2 — Labour & Attendance
 import { LabourRegisterPage } from '../../features/labour/pages/LabourRegisterPage';
 import { LabourDeploymentPage } from '../../features/labour/pages/LabourDeploymentPage';
@@ -129,7 +130,7 @@ export const router = createBrowserRouter([
           { path: 'takeoff/convert', element: R('boq.view', ConvertTakeoffPage) },
           // ─── 4. Project Planning ─────────────────────────
           { path: 'planning/activities', element: R('planning.view', PlanningActivitiesPage) },
-          { path: 'planning/work-programme', element: R('report.view', ProjectProgressReportPage) },
+          { path: 'planning/work-programme', element: R('planning.view', WorkProgrammePage) },
           { path: 'planning/boq-mapping', element: R('boq.view', BoqListPage) },
           { path: 'planning/planned-vs-completed', element: R('report.view', ProjectProgressReportPage) },
           { path: 'planning/look-ahead', element: R('report.view', ProjectProgressReportPage) },
