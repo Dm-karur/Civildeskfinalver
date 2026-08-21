@@ -4,6 +4,7 @@ import { DashboardPage } from '../../features/dashboard/pages/DashboardPage';
 import { LoginPage } from '../../features/auth/pages/LoginPage';
 import { ProjectsListPage } from '../../features/projects/pages/ProjectsListPage';
 import { ProjectCreatePage } from '../../features/projects/pages/ProjectCreatePage';
+import { ProjectClientsPage } from '../../features/projects/pages/ProjectClientsPage';
 import { ClientsListPage } from '../../features/clients/pages/ClientsListPage';
 import { CompanyListPage } from '../../features/settings/pages/CompanyListPage';
 import { BranchListPage } from '../../features/settings/pages/BranchListPage';
@@ -76,7 +77,7 @@ export const router = createBrowserRouter([
           // ─── 1. Projects ─────────────────────────────────
           { path: 'projects', element: R('project.view', ProjectsListPage) },
           { path: 'projects/new', element: R('project.create', ProjectCreatePage) },
-          { path: 'projects/clients', element: R('client.view', ClientsListPage) },
+          { path: 'projects/clients', element: R('project.view', ProjectClientsPage) },
           { path: 'projects/team', element: R('project.view', ProjectsListPage) },
           { path: 'projects/overview', element: R('project.view', ProjectsListPage) },
           { path: 'projects/documents', element: R('project.view', ProjectsListPage) },
