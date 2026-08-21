@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Users, HardHat, CheckCircle2, Clock, IndianRupee,
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRightLeft,
-  Building, MapPin, Sun, Moon, Sparkles, UserCheck
+  Building, MapPin, Sun, Moon, Sparkles, UserCheck,
+  Calendar, Layers, ShieldCheck, Printer, Check
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -41,6 +42,7 @@ const DEFAULT_DEPLOYMENTS = [
     assigned_until: '2026-08-31',
     agreed_wage_rate: 950,
     status_name: 'Active On Site',
+    attendance_status: 'Present',
     supervisor_name: 'Er. Rajesh Kumar',
     notes: 'Assigned to column shuttering and level 2 peripheral masonry.'
   },
@@ -61,6 +63,7 @@ const DEFAULT_DEPLOYMENTS = [
     assigned_until: '2026-08-31',
     agreed_wage_rate: 780,
     status_name: 'Active On Site',
+    attendance_status: 'Present',
     supervisor_name: 'Er. Rajesh Kumar',
     notes: 'Material handling and mortar preparation.'
   },
@@ -81,6 +84,7 @@ const DEFAULT_DEPLOYMENTS = [
     assigned_until: '2026-08-25',
     agreed_wage_rate: 750,
     status_name: 'Active On Site',
+    attendance_status: 'Present',
     supervisor_name: 'S. Natesan',
     notes: 'Basement housekeeping and curing water pump operations.'
   },
@@ -101,6 +105,7 @@ const DEFAULT_DEPLOYMENTS = [
     assigned_until: '2026-08-30',
     agreed_wage_rate: 1200,
     status_name: 'Active On Site',
+    attendance_status: 'Present',
     supervisor_name: 'K. Balaji',
     notes: 'Box culvert raft rebar cutting & bending fabrication.'
   },
@@ -134,6 +139,7 @@ export function LabourDeploymentPage() {
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
   const [shiftFilter, setShiftFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -256,6 +262,7 @@ export function LabourDeploymentPage() {
         assigned_until: form.assigned_until,
         agreed_wage_rate: Number(form.agreed_wage_rate || 850),
         status_name: form.status_name,
+        attendance_status: 'Present',
         supervisor_name: form.supervisor_name || 'Site Incharge',
         notes: form.notes,
       };
@@ -280,8 +287,12 @@ export function LabourDeploymentPage() {
   const confirmDelete = () => {
     if (!deleteItem?.id) return;
     setItems(prev => prev.filter(i => i.id !== deleteItem.id));
-    toast.success('Deployment assignment removed.');
+    toast.success('Deployment assignment released.');
     setDeleteItem(null);
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   // Filtered List
@@ -289,6 +300,7 @@ export function LabourDeploymentPage() {
     return items.filter(i => {
       if (selectedProjectId !== 'all' && String(i.project_id) !== String(selectedProjectId)) return false;
       if (shiftFilter !== 'all' && i.shift_type !== shiftFilter) return false;
+      if (categoryFilter !== 'all' && i.category_name !== categoryFilter) return false;
       if (statusFilter !== 'all' && i.status_name !== statusFilter) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -301,7 +313,7 @@ export function LabourDeploymentPage() {
       }
       return true;
     });
-  }, [items, selectedProjectId, shiftFilter, statusFilter, search]);
+  }, [items, selectedProjectId, shiftFilter, categoryFilter, statusFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -311,6 +323,16 @@ export function LabourDeploymentPage() {
   const dayShiftCount = useMemo(() => items.filter(i => i.shift_type === 'Day').length, [items]);
   const nightShiftCount = useMemo(() => items.filter(i => i.shift_type === 'Night').length, [items]);
   const totalDailyWageCommitment = useMemo(() => items.reduce((acc, i) => acc + Number(i.agreed_wage_rate || 0), 0), [items]);
+
+  // Skill category list
+  const categoryCounts = useMemo(() => {
+    const map = {};
+    items.forEach(i => {
+      const cat = i.category_name || 'General Helper';
+      map[cat] = (map[cat] || 0) + 1;
+    });
+    return map;
+  }, [items]);
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
@@ -352,6 +374,37 @@ export function LabourDeploymentPage() {
             status="neutral"
             icon={<IndianRupee className="w-4 h-4 text-primary" />}
           />
+        </div>
+
+        {/* Gang Skill Allocation Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs scrollbar-none">
+          <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider shrink-0 flex items-center gap-1">
+            <HardHat className="w-3.5 h-3.5 text-primary" /> Gang Breakdown:
+          </span>
+          {Object.entries(categoryCounts).map(([cat, count]) => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(categoryFilter === cat ? 'all' : cat)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                categoryFilter === cat
+                  ? 'bg-primary text-white font-semibold shadow-xs'
+                  : 'bg-surface border border-border text-text-secondary hover:bg-surface-muted'
+              }`}
+            >
+              <span>{cat}</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${categoryFilter === cat ? 'bg-white/20 text-white' : 'bg-surface-muted text-primary'}`}>
+                {count}
+              </span>
+            </button>
+          ))}
+          {categoryFilter !== 'all' && (
+            <button
+              onClick={() => setCategoryFilter('all')}
+              className="text-[11px] text-primary hover:underline font-semibold shrink-0 ml-1"
+            >
+              Clear Filter
+            </button>
+          )}
         </div>
 
         {/* Filter and Search Bar */}
@@ -406,6 +459,16 @@ export function LabourDeploymentPage() {
           </div>
 
           <div className="flex items-center gap-2 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<Printer className="w-3.5 h-3.5" />}
+              onClick={handlePrint}
+              className="text-xs h-8 shadow-xs"
+              title="Print Gate Deployment Sheet"
+            >
+              Print Sheet
+            </Button>
             {hasPermission('labour.create') && (
               <Button
                 variant="primary"
