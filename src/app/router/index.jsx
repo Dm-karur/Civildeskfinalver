@@ -135,9 +135,15 @@ import { ProjectProfitabilityPage } from '../../features/finance/pages/ProjectPr
 import { CashFlowPage } from '../../features/finance/pages/CashFlowPage';
 import { ExpenseRequestsPage } from '../../features/finance/pages/FinancePages';
 // Phase 3 — Reports & Analytics
-import { ProjectProgressReportPage, BudgetVsActualReportPage, MaterialReportPage, ExpenseReportPage } from '../../features/reports/pages/ReportPages';
+import { ProjectProgressReportPage } from '../../features/reports/pages/ProjectProgressReportPage';
+import { BoqProgressReportPage } from '../../features/reports/pages/BoqProgressReportPage';
+import { BudgetVsActualReportPage } from '../../features/reports/pages/BudgetVsActualReportPage';
+import { MaterialConsumptionReportPage } from '../../features/reports/pages/MaterialConsumptionReportPage';
+import { MaterialShortageReportPage } from '../../features/reports/pages/MaterialShortageReportPage';
+import { LabourDeploymentReportPage } from '../../features/reports/pages/LabourDeploymentReportPage';
+import { LabourCostReportPage } from '../../features/reports/pages/LabourCostReportPage';
 import { SubcontractReportPage } from '../../features/reports/pages/SubcontractReportPage';
-import { LabourReportPage } from '../../features/reports/pages/LabourReportPage';
+import { ExpenseReportPage } from '../../features/reports/pages/ReportPages';
 // Phase 2/3 — Additional Masters
 import { LabourCategoriesPage, LabourContractorsPage } from '../../features/masters/pages/LabourMasterPages';
 import { MaterialCategoriesPage, SuppliersPage, ExpenseCategoriesPage } from '../../features/masters/pages/MaterialProcurementMasterPages';
@@ -307,17 +313,17 @@ export const router = createBrowserRouter([
 
           // ─── 12. Reports & Analytics ─────────────────────
           { path: 'reports/project-progress', element: R('report.view', ProjectProgressReportPage) },
-          { path: 'reports/boq-progress', element: R('report.view', ProjectProgressReportPage) },
+          { path: 'reports/boq-progress', element: R('report.view', BoqProgressReportPage) },
           { path: 'reports/budget-vs-actual', element: R('report.view', BudgetVsActualReportPage) },
-          { path: 'reports/material-consumption', element: R('report.view', MaterialReportPage) },
-          { path: 'reports/material-shortage', element: R('report.view', MaterialReportPage) },
-          { path: 'reports/labour-deployment', element: R('report.view', LabourReportPage) },
-          { path: 'reports/labour-cost', element: R('report.view', LabourReportPage) },
-          { path: 'reports/labour', element: R('report.view', LabourReportPage) },
+          { path: 'reports/material-consumption', element: R('report.view', MaterialConsumptionReportPage) },
+          { path: 'reports/material-shortage', element: R('report.view', MaterialShortageReportPage) },
+          { path: 'reports/labour-deployment', element: R('report.view', LabourDeploymentReportPage) },
+          { path: 'reports/labour-cost', element: R('report.view', LabourCostReportPage) },
+          { path: 'reports/labour', element: R('report.view', LabourDeploymentReportPage) },
           { path: 'reports/subcontracts', element: R('report.view', SubcontractReportPage) },
           { path: 'reports/client-receivables', element: R('report.view', ExpenseReportPage) },
           { path: 'reports/vendor-payables', element: R('report.view', ExpenseReportPage) },
-          { path: 'reports/project-profitability', element: R('report.view', ProjectCostSummaryPage) },
+          { path: 'reports/project-profitability', element: R('report.view', ProjectProfitabilityPage) },
           { path: 'reports/daily-site', element: R('report.view', ProjectProgressReportPage) },
           { path: 'reports/management-summary', element: R('management_review.view', ProjectProgressReportPage) },
 
