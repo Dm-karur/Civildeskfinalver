@@ -17,62 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_MANAGEMENT_PORTFOLIO = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    client_name: 'DLF Urban Infra Corp',
-    contract_value: 285000000,
-    physical_progress: 32.5,
-    schedule_health: 'On Track (SPI 0.93)',
-    billed_revenue: 85000000,
-    actual_costs: 75400000,
-    net_operating_profit: 9600000,
-    cpi: 1.06,
-    spi: 0.93,
-    cash_flow_balance: 5450000,
-    executive_status: 'Normal Operations'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    client_name: 'NHAI',
-    contract_value: 165000000,
-    physical_progress: 51.0,
-    schedule_health: 'Ahead of Schedule (SPI 1.06)',
-    billed_revenue: 76725000,
-    actual_costs: 67600000,
-    net_operating_profit: 9125000,
-    cpi: 1.08,
-    spi: 1.06,
-    cash_flow_balance: 8388750,
-    executive_status: 'Optimal / High Performing'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    client_name: 'Tata Logistics & Warehousing',
-    contract_value: 92000000,
-    physical_progress: 63.0,
-    schedule_health: 'On Track (SPI 0.97)',
-    billed_revenue: 55384000,
-    actual_costs: 49600000,
-    net_operating_profit: 5784000,
-    cpi: 1.03,
-    spi: 0.97,
-    cash_flow_balance: 800000,
-    executive_status: 'Requires Cash Flow Buffer Watch'
-  }
-];
-*/
 
 export function ManagementSummaryReportPage() {
   const { hasPermission } = useAuth();

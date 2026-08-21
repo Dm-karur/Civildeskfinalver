@@ -22,68 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, dailyReportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_DPRS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Tower Core 1 & North Wing',
-    zone_name: 'Level 2 Floor Slab',
-    report_date: '2026-08-21',
-    weather: 'Sunny & Clear (32°C)',
-    overall_progress: 68.5,
-    total_manpower: 48,
-    total_equipment: 6,
-    material_consumption_summary: '42 m³ M30 Concrete, 3.2 MT Steel',
-    issues_count: 0,
-    status_name: 'Approved',
-    submitted_by: 'Er. Rajesh Kumar (Site Incharge)',
-    approved_by: 'Er. Suresh Babu (Project Director)',
-    work_summary: 'Completed casting of Core 1 columns and beam reinforcement fixing.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Tower Core 2 & South Wing',
-    zone_name: 'Level 1 Shear Wall',
-    report_date: '2026-08-20',
-    weather: 'Partly Cloudy (29°C)',
-    overall_progress: 66.0,
-    total_manpower: 52,
-    total_equipment: 7,
-    material_consumption_summary: '150 Bags Cement, 1.8 MT Rebar',
-    issues_count: 1,
-    status_name: 'Submitted for Review',
-    submitted_by: 'Er. Rajesh Kumar (Site Incharge)',
-    approved_by: 'Pending PM Review',
-    work_summary: 'Shear wall formwork staging completed; MEP conduit inserts verified.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    site_name: 'Ch. 16+300 Box Culvert Site',
-    zone_name: 'Culvert Raft Foundation',
-    report_date: '2026-08-21',
-    weather: 'Clear (34°C)',
-    overall_progress: 42.0,
-    total_manpower: 34,
-    total_equipment: 4,
-    material_consumption_summary: '65 Ton Aggregates, 8 MT Steel',
-    issues_count: 0,
-    status_name: 'Approved',
-    submitted_by: 'K. Balaji (Highway PM)',
-    approved_by: 'Client Resident Engineer',
-    work_summary: 'Base slab blinding concrete poured and cured.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

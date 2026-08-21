@@ -22,61 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_VARIATIONS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    variation_no: 'VO-2026-001',
-    contract_no: 'CTR-2026-001',
-    variation_date: '2026-06-15',
-    title: 'Additional Basement MLCP Stilt Floor & High-Speed Elevator Structural Shafts',
-    original_contract_value: 285000000,
-    variation_amount: 18500000, // +₹1.85 Cr
-    price_escalation_amount: 4200000, // +₹42 Lakhs
-    revised_contract_value: 307700000, // ₹30.77 Cr
-    approval_ref: 'METRO/PMC/VO/2026/014',
-    status: 'Approved by Client',
-    notes: 'Structural consultant issued revised architectural drawings Rev-4.'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    variation_no: 'VO-2026-002',
-    contract_no: 'CTR-2026-002',
-    variation_date: '2026-07-20',
-    title: 'Addition of 2 Nos High-Level Box Culverts at Ch. 18+400 & 22+100',
-    original_contract_value: 165000000,
-    variation_amount: 9800000, // +₹98 Lakhs
-    price_escalation_amount: 0,
-    revised_contract_value: 174800000, // ₹17.48 Cr
-    approval_ref: 'NHAI/PIU/VAR/2026/088',
-    status: 'Approved by Client',
-    notes: 'Hydraulic drainage study mandated increased waterway discharge area.'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    contract_no: 'CTR-2026-003',
-    variation_date: '2026-08-10',
-    title: 'Upgradation to Laser-Screed FM2 Ultra-Flat Concrete Flooring',
-    original_contract_value: 92000000,
-    variation_amount: 4500000,
-    price_escalation_amount: 0,
-    revised_contract_value: 96500000,
-    approval_ref: 'VLIP/TECH/2026/021',
-    status: 'In Client Review',
-    notes: 'Automated VNA forklift operation required higher floor flatness tolerance.'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

@@ -18,62 +18,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_TRACKING_ORDERS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    po_no: 'PO-2026-088',
-    supplier_name: 'UltraTech Cement Distributors Ltd',
-    supplier_phone: '+91 98421 88412',
-    material_name: 'OPC 53 Grade Cement (500 Bags)',
-    site_name: 'Main Central Godown Bay 1',
-    expected_delivery: '2026-08-25',
-    current_stage: 'In-Transit (Truck Dispatched)',
-    stage_step: 3, // 1: PO Issued, 2: Dispatched, 3: In Transit, 4: GRN Inwarded, 5: QC Passed
-    transit_location: 'Approaching Karur Bypass Toll (Vehicle TN-45-AZ-1024)',
-    delay_status: 'On Schedule (ETA: 4 Hours)',
-    notes: 'Driver contacted; truck passing Salem toll gate at 1:30 PM.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    po_no: 'PO-2026-089',
-    supplier_name: 'JSW Steel Regional Supply Hub',
-    supplier_phone: '+91 94432 99102',
-    material_name: 'Fe 550D TMT Rebar 16mm (15.0 MT)',
-    site_name: 'Steel Stacking Yard',
-    expected_delivery: '2026-08-24',
-    current_stage: 'Partially Delivered (12.5 MT Inwarded)',
-    stage_step: 4,
-    transit_location: 'Balance 2.5 MT Loading at Bellary Hub',
-    delay_status: 'On Schedule',
-    notes: 'Second trip expected on 23rd Aug.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    po_no: 'PO-2026-090',
-    supplier_name: 'Sri Amman Blue Metal Quarries',
-    supplier_phone: '+91 97890 22310',
-    material_name: '20mm Blue Metal Aggregate (120 Tons)',
-    site_name: 'Ch. 16+300 Box Culvert Site',
-    expected_delivery: '2026-08-22',
-    current_stage: 'QC Cleared & Stored (100%)',
-    stage_step: 5,
-    transit_location: 'Site Bunker (Delivered & Weighed)',
-    delay_status: 'Delivered On-Time',
-    notes: 'GRN-2026-083 closed.'
-  },
-];
-*/
 
 export function ProcurementTrackingPage() {
   const { hasPermission } = useAuth();

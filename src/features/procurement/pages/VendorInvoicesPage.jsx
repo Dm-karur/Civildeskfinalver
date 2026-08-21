@@ -22,74 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_INVOICES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    invoice_no: 'INV-2026-4412',
-    invoice_date: '2026-08-20',
-    due_date: '2026-09-19',
-    po_reference: 'PO-2026-088',
-    grn_reference: 'GRN-2026-081',
-    supplier_name: 'UltraTech Cement Distributors Ltd',
-    supplier_gstin: '33AABCU9812K1Z5',
-    material_name: 'OPC 53 Grade Cement (400 Bags)',
-    taxable_amount: 136000,
-    gst_amount: 38080,
-    tds_deduction: 2720,
-    net_payable: 171360,
-    three_way_match: 'Matched (PO + GRN + Invoice)',
-    status: 'Approved for Payout',
-    notes: 'GRN batch 1 quantities and rates verified with PO-2026-088.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    invoice_no: 'INV-JSW-819',
-    invoice_date: '2026-08-19',
-    due_date: '2026-09-18',
-    po_reference: 'PO-2026-089',
-    grn_reference: 'GRN-2026-082',
-    supplier_name: 'JSW Steel Regional Supply Hub',
-    supplier_gstin: '29AAACJ8810M1Z2',
-    material_name: 'Fe 550D TMT Rebar 16mm (12.5 MT)',
-    taxable_amount: 612500,
-    gst_amount: 110250,
-    tds_deduction: 12250,
-    net_payable: 710500,
-    three_way_match: 'Matched (PO + GRN + Invoice)',
-    status: 'Pending Finance Clearance',
-    notes: 'Weighbridge slip copy attached with e-way bill.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    invoice_no: 'INV-AMN-102',
-    invoice_date: '2026-08-21',
-    due_date: '2026-09-20',
-    po_reference: 'PO-2026-090',
-    grn_reference: 'GRN-2026-083',
-    supplier_name: 'Sri Amman Blue Metal Quarries',
-    supplier_gstin: '33AABCS4412L1Z9',
-    material_name: '20mm Blue Metal Aggregate (120 Tons)',
-    taxable_amount: 165600,
-    gst_amount: 8280,
-    tds_deduction: 3312,
-    net_payable: 170568,
-    three_way_match: 'Matched (PO + GRN + Invoice)',
-    status: 'Paid',
-    notes: 'NEFT payment processed ref UTR-98212001.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

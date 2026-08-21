@@ -17,65 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, projectCostingApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_COST_DATA = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    contract_value: 285000000, // ₹28.5 Cr
-    budgeted_cost: 232000000, // ₹23.2 Cr
-    materials_cost: 18450000, // ₹1.845 Cr
-    labour_cost: 6820000, // ₹68.2 Lakhs
-    subcontract_cost: 14200000, // ₹1.42 Cr
-    equipment_cost: 2450000, // ₹24.5 Lakhs
-    overhead_cost: 1680000, // ₹16.8 Lakhs
-    actual_cost_incurred: 43600000, // ₹4.36 Cr
-    projected_final_cost: 228500000,
-    cost_variance: 3500000, // +₹35 Lakhs savings
-    cpi: 1.04,
-    status: 'On Track (Healthy Margin)'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    contract_value: 165000000, // ₹16.5 Cr
-    budgeted_cost: 138000000, // ₹13.8 Cr
-    materials_cost: 11200000,
-    labour_cost: 3950000,
-    subcontract_cost: 5800000,
-    equipment_cost: 4100000,
-    overhead_cost: 1150000,
-    actual_cost_incurred: 26200000,
-    projected_final_cost: 139500000,
-    cost_variance: -1500000,
-    cpi: 0.98,
-    status: 'Within Acceptable Buffer'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    contract_value: 92000000, // ₹9.2 Cr
-    budgeted_cost: 76000000, // ₹7.6 Cr
-    materials_cost: 7200000,
-    labour_cost: 1850000,
-    subcontract_cost: 3400000,
-    equipment_cost: 980000,
-    overhead_cost: 650000,
-    actual_cost_incurred: 14080000,
-    projected_final_cost: 74800000,
-    cost_variance: 1200000,
-    cpi: 1.05,
-    status: 'On Track (Healthy Margin)'
-  }
-];
-*/
 
 export function ProjectCostPage() {
   const { hasPermission } = useAuth();

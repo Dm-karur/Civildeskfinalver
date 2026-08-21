@@ -22,74 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_ISSUES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Tower A Core - Level 2',
-    issue_no: 'MIN-2026-112',
-    issue_date: '2026-08-20',
-    contractor_name: 'Sri Murugan Labour Services',
-    work_activity: 'Level 2 Column & Shear Wall Concreting',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement',
-    issued_qty: 250,
-    uom: 'Bags',
-    unit_rate: 385,
-    total_value: 96250,
-    issued_by: 'M. Shanmugam (Store Incharge)',
-    received_by: 'S. Natesan (Foreman)',
-    status: 'Issued & Debited',
-    notes: 'Issued against approved Indent MRN-2026-081.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Steel Fabrication Yard',
-    issue_no: 'MIN-2026-113',
-    issue_date: '2026-08-20',
-    contractor_name: 'Sri Murugan Labour Services',
-    work_activity: 'Core 1 Column Splice Rebar Cutting',
-    material_code: 'MAT-STL-002',
-    material_name: 'Fe 550D TMT Rebar 16mm',
-    issued_qty: 4.5,
-    uom: 'MT',
-    unit_rate: 58500,
-    total_value: 263250,
-    issued_by: 'M. Shanmugam (Store Incharge)',
-    received_by: 'G. Arumugam (Barbending Lead)',
-    status: 'Issued & Debited',
-    notes: 'Direct issue from yard rebar stack.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    site_name: 'Ch. 16+300 Box Culvert Site',
-    issue_no: 'MIN-2026-114',
-    issue_date: '2026-08-21',
-    contractor_name: 'API Test Labour Contractor',
-    work_activity: 'Culvert Raft Bed Concrete Batching',
-    material_code: 'MAT-AGG-003',
-    material_name: '20mm Blue Metal Aggregate',
-    issued_qty: 40,
-    uom: 'Ton',
-    unit_rate: 1450,
-    total_value: 58000,
-    issued_by: 'K. Balaji (PM)',
-    received_by: 'Site Mixer Operator',
-    status: 'Issued & Debited',
-    notes: 'Batching plant feeder issue.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

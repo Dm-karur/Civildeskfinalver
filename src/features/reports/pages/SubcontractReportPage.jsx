@@ -16,79 +16,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, reportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_REPORT_DATA = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    trade: 'RCC Structure & Masonry',
-    wo_count: 2,
-    total_wo_value: 4850000,
-    billed_amount: 1420000,
-    certified_amount: 1420000,
-    paid_amount: 1250000,
-    retention_held: 71000,
-    balance_payable: 3600000,
-    progress_pct: 29.3,
-    performance_rating: 'Grade A (94%)'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    contractor_name: 'Apex MEP Engineers & Contractors',
-    trade: 'Electrical & Plumbing',
-    wo_count: 1,
-    total_wo_value: 1820000,
-    billed_amount: 380000,
-    certified_amount: 380000,
-    paid_amount: 334400,
-    retention_held: 19000,
-    balance_payable: 1485600,
-    progress_pct: 20.9,
-    performance_rating: 'Grade A (91%)'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    trade: 'Box Culverts & Earthworks',
-    wo_count: 1,
-    total_wo_value: 2650000,
-    billed_amount: 265000,
-    certified_amount: 265000,
-    paid_amount: 259700,
-    retention_held: 0,
-    balance_payable: 2390300,
-    progress_pct: 10.0,
-    performance_rating: 'Grade A (90%)'
-  },
-  {
-    id: 4,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    contractor_name: 'Kavitha Flooring & Civil Solutions',
-    trade: 'Dewatering & Piling',
-    wo_count: 1,
-    total_wo_value: 1250000,
-    billed_amount: 1250000,
-    certified_amount: 1250000,
-    paid_amount: 1218750,
-    retention_held: 31250,
-    balance_payable: 0,
-    progress_pct: 100.0,
-    performance_rating: 'Grade A+ (96%)'
-  },
-];
-*/
 
 export function SubcontractReportPage() {
   const { hasPermission } = useAuth();

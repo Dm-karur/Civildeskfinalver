@@ -22,75 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_EQUIPMENT_COSTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    asset_name: 'Potain Tower Crane (50m Jib)',
-    ownership_type: 'Rental (Heavy Plant Lease)',
-    vendor_name: 'Apex Heavy Crane Rentals',
-    operating_hours: 380,
-    rental_cost: 950000,
-    fuel_cost: 320000,
-    maintenance_cost: 45000,
-    total_operating_cost: 1315000, // ₹13.15 Lakhs
-    cost_per_hour: 3460,
-    status: 'Active (Daily Logged)'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    asset_name: 'Schwing Stetter Concrete Boom Pump',
-    ownership_type: 'Rental (Per Pour Basis)',
-    vendor_name: 'Super Pump Services LLP',
-    operating_hours: 140,
-    rental_cost: 420000,
-    fuel_cost: 180000,
-    maintenance_cost: 25000,
-    total_operating_cost: 625000,
-    cost_per_hour: 4464,
-    status: 'Active'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    asset_name: '125 KVA Silent Diesel Generator (DG Set)',
-    ownership_type: 'Company Owned Plant',
-    vendor_name: 'Internal Asset #EQ-DG-04',
-    operating_hours: 420,
-    rental_cost: 0,
-    fuel_cost: 450000,
-    maintenance_cost: 60000,
-    total_operating_cost: 510000,
-    cost_per_hour: 1214,
-    status: 'Active'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    asset_name: 'CAT 320D Hydraulic Excavator (0.9 Cu.m)',
-    ownership_type: 'Rental Plant',
-    vendor_name: 'Tamilnadu Earthmovers',
-    operating_hours: 480,
-    rental_cost: 1200000,
-    fuel_cost: 720000,
-    maintenance_cost: 85000,
-    total_operating_cost: 2005000,
-    cost_per_hour: 4177,
-    status: 'Active'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

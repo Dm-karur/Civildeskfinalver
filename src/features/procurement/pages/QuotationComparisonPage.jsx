@@ -22,55 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_COMPARISONS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    cs_no: 'CS-2026-012',
-    date: '2026-08-21',
-    rfq_reference: 'RFQ-2026-031',
-    material_scope: 'OPC 53 Grade Cement (500 Bags)',
-    bidders_count: 3,
-    l1_vendor: 'UltraTech Cement Distributors Ltd',
-    l1_rate: 382.2,
-    l1_total: 191100,
-    l2_vendor: 'Dalmia Bharat Cements (₹390.4 / bag)',
-    l3_vendor: 'The Ramco Cements (₹397.4 / bag)',
-    budget_ceiling: 192500,
-    variance_savings: 1400,
-    recommended_vendor: 'UltraTech Cement Distributors Ltd',
-    status: 'Approved for PO Award',
-    approved_by: 'Er. Suresh Babu (Project Director)',
-    notes: 'L1 vendor complies with IS 12269 and offers 30-day credit with doorstep delivery.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    cs_no: 'CS-2026-013',
-    date: '2026-08-21',
-    rfq_reference: 'RFQ-2026-032',
-    material_scope: 'Fe 550D TMT Rebar 16mm (15.0 MT)',
-    bidders_count: 3,
-    l1_vendor: 'JSW Steel Regional Supply Hub',
-    l1_rate: 57800,
-    l1_total: 867000,
-    l2_vendor: 'Tata Tiscon (₹58,500 / MT)',
-    l3_vendor: 'Jindal Panther (₹59,200 / MT)',
-    budget_ceiling: 877500,
-    variance_savings: 10500,
-    recommended_vendor: 'JSW Steel Regional Supply Hub',
-    status: 'Pending Management Approval',
-    approved_by: 'Er. Suresh Babu (Project Director)',
-    notes: 'JSW L1 quote saves ₹10,500 against budget.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

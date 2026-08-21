@@ -22,59 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_SUBCONTRACT_COSTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    package_title: 'RCC Structure & Framing Package',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    work_order_no: 'WO-2026-012',
-    contract_value: 4850000, // ₹48.5 Lakhs
-    certified_value: 1420000,
-    paid_value: 1250000,
-    retention_held: 71000,
-    remaining_commitment: 3430000,
-    financial_progress_pct: 29.3,
-    status: 'In Progress (Active Billing)'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    package_title: 'Electrical Conduit & Plumbing Rough-ins',
-    contractor_name: 'Apex MEP Engineers & Contractors',
-    work_order_no: 'WO-2026-013',
-    contract_value: 1820000,
-    certified_value: 380000,
-    paid_value: 334400,
-    retention_held: 19000,
-    remaining_commitment: 1440000,
-    financial_progress_pct: 20.9,
-    status: 'In Progress'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    package_title: 'Basement Deep Dewatering & Piling',
-    contractor_name: 'Kavitha Flooring & Civil Solutions',
-    work_order_no: 'WO-2026-008',
-    contract_value: 1250000,
-    certified_value: 1250000,
-    paid_value: 1218750,
-    retention_held: 31250,
-    remaining_commitment: 0,
-    financial_progress_pct: 100.0,
-    status: 'Completed (100% Certified)'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

@@ -17,59 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, reportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_PROJECT_PROGRESS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    contract_value: 285000000,
-    planned_physical_pct: 35.0,
-    actual_physical_pct: 32.5,
-    schedule_variance_pct: -2.5,
-    financial_billed_pct: 29.8,
-    current_milestone: 'Superstructure Level 3 RCC Casting',
-    spi: 0.93,
-    start_date: '2026-01-15',
-    target_completion_date: '2027-12-31',
-    health_status: 'On Track (Minor Schedule Buffer)'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    contract_value: 165000000,
-    planned_physical_pct: 48.0,
-    actual_physical_pct: 51.0,
-    schedule_variance_pct: +3.0,
-    financial_billed_pct: 46.5,
-    current_milestone: 'Subgrade & Wet Mix Macadam (WMM)',
-    spi: 1.06,
-    start_date: '2025-11-01',
-    target_completion_date: '2027-06-30',
-    health_status: 'Ahead of Schedule'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    contract_value: 92000000,
-    planned_physical_pct: 65.0,
-    actual_physical_pct: 63.0,
-    schedule_variance_pct: -2.0,
-    financial_billed_pct: 60.2,
-    current_milestone: 'PEB Structural Steel Erection & Roofing',
-    spi: 0.97,
-    start_date: '2026-02-01',
-    target_completion_date: '2026-11-30',
-    health_status: 'On Track'
-  }
-];
-*/
 
 export function ProjectProgressReportPage() {
   const { hasPermission } = useAuth();

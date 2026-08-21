@@ -17,71 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_MESSAGES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    thread_topic: 'Level 3 Slab Concrete Pour Schedule & RMC Slump Quality',
-    channel: 'Structural & Concrete',
-    sender_name: 'Er. Rajesh Kumar',
-    sender_role: 'Resident Project Manager',
-    last_message_preview: 'UltraTech RMC transit mixers scheduled starting 06:30 AM tomorrow. QC team please verify 120mm slump on site.',
-    replies_count: 5,
-    last_updated: '2026-08-21 14:20',
-    priority: 'High / Critical',
-    status: 'Active Thread'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    thread_topic: 'Fe 550D 25mm Rebar Delivery Buffer Stock Requirement',
-    channel: 'Procurement & Store',
-    sender_name: 'S. Chandran',
-    sender_role: 'Senior Store Incharge',
-    last_message_preview: 'TMT 25mm stock has reached 4.2 MT minimum threshold. Tata Steel indent PO #1042 needs expedited dispatch.',
-    replies_count: 3,
-    last_updated: '2026-08-21 11:45',
-    priority: 'High / Critical',
-    status: 'Active Thread'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    thread_topic: 'WMM Base Compaction Field Density Test (FDT) Approval',
-    channel: 'Quality & Testing',
-    sender_name: 'Er. K. Natarajan',
-    sender_role: 'Highway Quality Lead',
-    last_message_preview: 'Chainage 14+500 FDT achieved 98.4% MDD. Third party NABL lab test certificates attached for record.',
-    replies_count: 2,
-    last_updated: '2026-08-21 09:30',
-    priority: 'Normal',
-    status: 'Resolved'
-  },
-  {
-    id: 4,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    thread_topic: 'Basement Sump Electrical Conduits & Plumbing Sleeve Clashes',
-    channel: 'MEP Coordination',
-    sender_name: 'Apex MEP Engineers',
-    sender_role: 'MEP Subcontract Lead',
-    last_message_preview: 'Clash resolved as per consultant markup Rev R2. Revised sleeve layout drawing shared on portal.',
-    replies_count: 8,
-    last_updated: '2026-08-20 17:15',
-    priority: 'Normal',
-    status: 'Resolved'
-  }
-];
-*/
 
 export function ProjectMessagesPage() {
   const { hasPermission } = useAuth();

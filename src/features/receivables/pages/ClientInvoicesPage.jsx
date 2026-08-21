@@ -22,74 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_INVOICES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    invoice_no: 'INV-2026-042',
-    invoice_date: '2026-08-05',
-    due_date: '2026-08-25',
-    client_name: 'Metro Infrastructure & Realty Corp Ltd',
-    billing_type: 'RA Progress Bill 3',
-    taxable_amount: 14200000, // ₹1.42 Cr
-    gst_amount: 2556000, // 18% GST (CGST+SGST)
-    gross_invoice_amount: 16756000, // ₹1.675 Cr
-    tds_amount: 284000, // 2% TDS
-    retention_deduction: 710000, // 5% Retention
-    net_receivable: 15762000,
-    amount_received: 15762000,
-    balance_due: 0,
-    status: 'Fully Settled',
-    notes: 'Level 2 & 3 RCC column casting and slab casting billing.'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    invoice_no: 'INV-2026-043',
-    invoice_date: '2026-08-15',
-    due_date: '2026-09-05',
-    client_name: 'National Highways Authority / State PWD',
-    billing_type: 'Milestone 2 Progress Claim',
-    taxable_amount: 21500000, // ₹2.15 Cr
-    gst_amount: 3870000, // 18% GST
-    gross_invoice_amount: 25370000,
-    tds_amount: 430000,
-    retention_deduction: 1075000,
-    net_receivable: 23865000,
-    amount_received: 10000000,
-    balance_due: 13865000,
-    status: 'Partially Paid',
-    notes: 'Embankment and subgrade completion Km 14 to 20.'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    invoice_no: 'INV-2026-044',
-    invoice_date: '2026-08-20',
-    due_date: '2026-09-10',
-    client_name: 'Vibrant Logistics & Industrial Parks LLP',
-    billing_type: 'PEB Structural Erection Bill',
-    taxable_amount: 9800000,
-    gst_amount: 1764000,
-    gross_invoice_amount: 11564000,
-    tds_amount: 196000,
-    retention_deduction: 490000,
-    net_receivable: 10878000,
-    amount_received: 0,
-    balance_due: 10878000,
-    status: 'Issued (Pending Payment)',
-    notes: 'Primary PEB portal frames and roof purlin installation.'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

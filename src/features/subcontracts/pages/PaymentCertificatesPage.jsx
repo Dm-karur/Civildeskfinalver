@@ -22,71 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_CERTIFICATES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    certificate_no: 'IPC-2026-018',
-    issue_date: '2026-08-20',
-    period_from: '2026-08-01',
-    period_to: '2026-08-15',
-    work_order_no: 'WO-2026-012',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    gross_certified_value: 924000,
-    retention_deduction: 46200, // 5%
-    advance_recovery: 92400, // 10%
-    tds_deduction: 18480, // 2%
-    net_certified_amount: 766920,
-    status_name: 'Certified for Payment',
-    certified_by: 'Er. Suresh Babu (Project Director)',
-    notes: 'Joint measurement sheets verified; quality cube results cleared.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    certificate_no: 'IPC-2026-019',
-    issue_date: '2026-08-21',
-    period_from: '2026-08-01',
-    period_to: '2026-08-15',
-    work_order_no: 'WO-2026-013',
-    contractor_name: 'Apex MEP Engineers & Contractors',
-    gross_certified_value: 380000,
-    retention_deduction: 19000, // 5%
-    advance_recovery: 19000, // 5%
-    tds_deduction: 7600, // 2%
-    net_certified_amount: 334400,
-    status_name: 'Certified for Payment',
-    certified_by: 'Er. Suresh Babu (Project Director)',
-    notes: 'Electrical slab inserts verified with MEP consultant.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    certificate_no: 'IPC-2026-020',
-    issue_date: '2026-08-21',
-    period_from: '2026-08-10',
-    period_to: '2026-08-20',
-    work_order_no: 'WO-2026-014',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    gross_certified_value: 265000,
-    retention_deduction: 0,
-    advance_recovery: 0,
-    tds_deduction: 5300,
-    net_certified_amount: 259700,
-    status_name: 'Disbursed (Settled)',
-    certified_by: 'K. Balaji (Highway PM)',
-    notes: 'Mobilization advance certificate against bank guarantee.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

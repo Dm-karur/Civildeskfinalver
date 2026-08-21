@@ -17,71 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_DOCUMENTS = [
 
-  {
-    id: 1,
-    doc_no: 'DRG-STR-L3-004',
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    doc_title: 'Level 3 RCC Slab & Beam Reinforcement Detailing GFC Drawing',
-    category: 'GFC Structural Drawing',
-    revision: 'Rev R2 (AFC)',
-    issued_by: 'Vanguard Structural Consultants',
-    issued_date: '2026-08-18',
-    file_size: '14.5 MB',
-    file_format: 'PDF / CAD',
-    status: 'GFC Approved'
-  },
-  {
-    id: 2,
-    doc_no: 'ARCH-FLR-002',
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    doc_title: 'Ground Floor Lobby & Commercial Storefront Architectural Layout',
-    category: 'Architectural Layout',
-    revision: 'Rev R1',
-    issued_by: 'L&T Architects & Urban Planners',
-    issued_date: '2026-08-10',
-    file_size: '22.0 MB',
-    file_format: 'PDF',
-    status: 'GFC Approved'
-  },
-  {
-    id: 3,
-    doc_no: 'HW-GEO-SOIL-01',
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    doc_title: 'Subgrade CBR & Standard Proctor Soil Compaction Test Certificate',
-    category: 'Soil & Lab Quality Report',
-    revision: 'Rev R0 (Final)',
-    issued_by: 'Geotech NABL Testing Labs',
-    issued_date: '2026-08-12',
-    file_size: '4.8 MB',
-    file_format: 'PDF',
-    status: 'Certified'
-  },
-  {
-    id: 4,
-    doc_no: 'MEP-HVAC-B1-02',
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    doc_title: 'Basement 1 Smoke Extraction & Duct Routing Coordination Plan',
-    category: 'MEP Coordination Drawing',
-    revision: 'Rev R3 (Coordinated)',
-    issued_by: 'Apex MEP Consultants',
-    issued_date: '2026-08-19',
-    file_size: '11.2 MB',
-    file_format: 'PDF',
-    status: 'GFC Approved'
-  }
-];
-*/
 
 export function CommunicationDocumentsPage() {
   const { hasPermission } = useAuth();

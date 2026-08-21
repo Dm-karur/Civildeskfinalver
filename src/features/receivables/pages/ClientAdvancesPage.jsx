@@ -22,68 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_ADVANCES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    advance_no: 'ADV-2026-001',
-    contract_no: 'CTR-2026-001',
-    client_name: 'Metro Infrastructure & Realty Corp Ltd',
-    claim_date: '2026-02-05',
-    advance_type: 'Mobilization Advance (10%)',
-    advance_amount: 28500000, // ₹2.85 Cr
-    abg_reference_no: 'ABG-HDFC-2026-99120',
-    abg_validity_date: '2027-10-31',
-    recovered_amount: 9500000, // Recovered across RA 1-3
-    balance_outstanding: 19000000,
-    recovery_mechanism: '10% deduction per RA Bill',
-    status: 'Disbursed & In Recovery',
-    notes: 'Advance Bank Guarantee (ABG) verified and accepted by client escrow agent.'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    advance_no: 'ADV-2026-002',
-    contract_no: 'CTR-2026-002',
-    client_name: 'National Highways Authority / State PWD',
-    claim_date: '2026-04-10',
-    advance_type: 'Mobilization Advance (10%)',
-    advance_amount: 16500000, // ₹1.65 Cr
-    abg_reference_no: 'ABG-SBI-2026-44109',
-    abg_validity_date: '2027-06-30',
-    recovered_amount: 3300000,
-    balance_outstanding: 13200000,
-    recovery_mechanism: '10% deduction per milestone bill',
-    status: 'Disbursed & In Recovery',
-    notes: 'Mobilization claim passed by Highway Project Engineer.'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    advance_no: 'ADV-2026-003',
-    contract_no: 'CTR-2026-003',
-    client_name: 'Vibrant Logistics & Industrial Parks LLP',
-    claim_date: '2026-07-05',
-    advance_type: 'Material Advance (15%)',
-    advance_amount: 13800000, // ₹1.38 Cr
-    abg_reference_no: 'ABG-ICIC-2026-88124',
-    abg_validity_date: '2027-01-31',
-    recovered_amount: 13800000,
-    balance_outstanding: 0,
-    recovery_mechanism: 'Full recovery across initial PEB steel deliveries',
-    status: '100% Fully Recovered',
-    notes: 'Structural steel procurement advance; fully adjusted against RA 1.'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

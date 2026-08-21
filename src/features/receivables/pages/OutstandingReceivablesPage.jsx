@@ -21,68 +21,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_OUTSTANDINGS = [
 
-  {
-    id: 1,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    invoice_no: 'INV-2026-043',
-    invoice_date: '2026-08-15',
-    due_date: '2026-09-05',
-    client_name: 'National Highways Authority / State PWD',
-    billing_type: 'Milestone 2 Progress Claim',
-    gross_amount: 25370000,
-    amount_received: 10000000,
-    outstanding_balance: 13865000, // ₹1.38 Cr
-    aging_bucket: 'Current (0-30 Days)',
-    days_overdue: 0,
-    recovery_officer: 'Er. Rajesh Kumar',
-    last_followup: 'Client confirmed balance tranche will be released in next treasury budget run.',
-    status: 'In Normal Credit Cycle'
-  },
-  {
-    id: 2,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    invoice_no: 'INV-2026-044',
-    invoice_date: '2026-08-20',
-    due_date: '2026-09-10',
-    client_name: 'Vibrant Logistics & Industrial Parks LLP',
-    billing_type: 'PEB Structural Erection Bill',
-    gross_amount: 11564000,
-    amount_received: 0,
-    outstanding_balance: 10878000, // ₹1.08 Cr
-    aging_bucket: 'Current (0-30 Days)',
-    days_overdue: 0,
-    recovery_officer: 'Er. Suresh Babu',
-    last_followup: 'Invoice submitted to accounts; site architect verified roof purlins.',
-    status: 'In Normal Credit Cycle'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    invoice_no: 'INV-2026-031',
-    invoice_date: '2026-05-10',
-    due_date: '2026-05-30',
-    client_name: 'Metro Infrastructure & Realty Corp Ltd',
-    billing_type: 'Basement Deep Excavation Claim',
-    gross_amount: 8200000,
-    amount_received: 6000000,
-    outstanding_balance: 2200000, // ₹22 Lakhs
-    aging_bucket: '61 - 90 Days',
-    days_overdue: 82,
-    recovery_officer: 'Er. Rajesh Kumar',
-    last_followup: 'Final measurement clarification meeting held with Project Director.',
-    status: 'Overdue (Follow-up Escalated)'
-  }
-];
-*/
 
 export function OutstandingReceivablesPage() {
   const { hasPermission } = useAuth();

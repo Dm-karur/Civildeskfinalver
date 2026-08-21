@@ -17,53 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, clientsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_CLIENT_UPDATES = [
 
-  {
-    id: 1,
-    notice_no: 'CL-NOT-2026-014',
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    client_name: 'DLF Urban Infra Corp',
-    notice_type: 'Milestone Completion Intimation',
-    subject: 'Completion of Basement Raft & Level 1 RCC Superstructure Milestone',
-    dispatch_channels: 'Client Portal • Email • Hardcopy',
-    sent_date: '2026-08-20',
-    acknowledged_date: '2026-08-21',
-    status: 'Acknowledged by Client PM'
-  },
-  {
-    id: 2,
-    notice_no: 'CL-NOT-2026-013',
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    client_name: 'DLF Urban Infra Corp',
-    notice_type: 'Billing Intimation',
-    subject: 'Submission of Running Account (RA) Bill #03 for ₹85,00,000/-',
-    dispatch_channels: 'Email • Client Portal',
-    sent_date: '2026-08-18',
-    acknowledged_date: '2026-08-19',
-    status: 'Under Client Review'
-  },
-  {
-    id: 3,
-    notice_no: 'CL-NOT-2026-012',
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    client_name: 'National Highways Authority of India (NHAI)',
-    notice_type: 'Monthly Progress Circular',
-    subject: 'Monthly Physical Progress Dossier (July-August 2026) - 51% Milestone Achieved',
-    dispatch_channels: 'Email • Official Letter',
-    sent_date: '2026-08-15',
-    acknowledged_date: '2026-08-16',
-    status: 'Acknowledged by Client PM'
-  }
-];
-*/
 
 export function ClientUpdatesPage() {
   const { hasPermission } = useAuth();

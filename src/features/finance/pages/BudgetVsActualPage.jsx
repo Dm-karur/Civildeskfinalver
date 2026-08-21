@@ -22,71 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_BUDGET_DATA = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    cost_code: 'WBS-100',
-    cost_head: 'Basement & Deep Substructure RCC',
-    approved_budget: 48000000, // ₹4.8 Cr
-    committed_value: 41000000,
-    actual_incurred: 39500000,
-    variance_amount: 8500000, // ₹85 Lakhs remaining
-    variance_pct: 17.7,
-    status: 'Within Budget (17.7% Buffer)',
-    notes: 'Raft foundation, retaining wall and basement slab completed.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    cost_code: 'WBS-200',
-    cost_head: 'Superstructure Framing (Level 1 to 12 RCC)',
-    approved_budget: 92000000, // ₹9.2 Cr
-    committed_value: 68000000,
-    actual_incurred: 24500000,
-    variance_amount: 67500000,
-    variance_pct: 73.4,
-    status: 'Within Budget (Active Progress)',
-    notes: 'Level 2 & 3 casting in progress; steel consumption tracked within 1.5% wastage.'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    cost_code: 'WBS-300',
-    cost_head: 'Internal MEP, Firefighting & HVAC Rough-ins',
-    approved_budget: 35000000,
-    committed_value: 22000000,
-    actual_incurred: 7200000,
-    variance_amount: 27800000,
-    variance_pct: 79.4,
-    status: 'Within Budget',
-    notes: 'Electrical conduits and plumbing sleeves cast in RCC slabs.'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    cost_code: 'WBS-HW-01',
-    cost_head: 'Earthwork Embankment & Subgrade Formation',
-    approved_budget: 32000000,
-    committed_value: 29000000,
-    actual_incurred: 21500000,
-    variance_amount: 10500000,
-    variance_pct: 32.8,
-    status: 'Within Budget',
-    notes: 'Borrow area excavation and 98% modified proctor compaction achieved.'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

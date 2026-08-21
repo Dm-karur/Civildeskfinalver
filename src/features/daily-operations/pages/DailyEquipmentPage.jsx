@@ -22,65 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_EQUIPMENT_LOGS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    date: '2026-08-21',
-    equipment_code: 'EQP-CRN-001',
-    equipment_name: 'Tower Crane 5 Ton (TC-1)',
-    operator_name: 'S. Ganesan',
-    running_hours: 8.0,
-    idle_hours: 0.5,
-    breakdown_hours: 0.0,
-    fuel_consumed_litres: 0, // Electric powered
-    assigned_work: 'Lifting rebar bundles & shuttering ply to Level 2',
-    location: 'Core 1 Tower Base',
-    status: 'Operational (Normal)',
-    notes: 'Pre-shift wire rope and limit switch safety checks OK.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    date: '2026-08-21',
-    equipment_code: 'EQP-PMP-002',
-    equipment_name: 'Schwing Stetter Stationary Concrete Pump',
-    operator_name: 'V. Prakash',
-    running_hours: 5.5,
-    idle_hours: 1.0,
-    breakdown_hours: 0.5,
-    fuel_consumed_litres: 48,
-    assigned_work: 'Level 2 Column Concrete Pumping',
-    location: 'Ground Floor Pour Bay',
-    status: 'Operational (Normal)',
-    notes: 'Pipe cleaning sponge ball flush done after pour.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    date: '2026-08-21',
-    equipment_code: 'EQP-ROL-005',
-    equipment_name: 'Vibratory Soil Compactor Roller 10 Ton',
-    operator_name: 'R. Velu',
-    running_hours: 7.0,
-    idle_hours: 0.5,
-    breakdown_hours: 0.0,
-    fuel_consumed_litres: 65,
-    assigned_work: 'GSB sub-base compaction passes',
-    location: 'Ch. 16+200 to 16+500',
-    status: 'Operational (Normal)',
-    notes: 'Amplitude and vibration frequency calibrated.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

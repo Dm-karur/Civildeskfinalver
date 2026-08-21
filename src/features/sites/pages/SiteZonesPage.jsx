@@ -20,75 +20,7 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { siteZonesApi, sitesApi, projectsApi, mastersApi } from '../../../api/apiservice';
 
-/* 
-const DEFAULT_ZONES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_id: 1,
-    site_name: 'Tower A Main Construction Plot',
-    zone_code: 'ZN-FND-01',
-    zone_name: 'Basement & Raft Foundation Zone',
-    zone_type_name: 'Substructure & Foundation',
-    planned_start_date: '2026-06-01',
-    planned_end_date: '2026-08-31',
-    progress_percentage: 100,
-    status_name: 'Completed',
-    description: 'Raft casting, double basement retaining wall, and waterproofing area.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_id: 1,
-    site_name: 'Tower A Main Construction Plot',
-    zone_code: 'ZN-POD-02',
-    zone_name: 'Podium & Parking Structure',
-    zone_type_name: 'Podium & Parking',
-    planned_start_date: '2026-08-01',
-    planned_end_date: '2026-11-30',
-    progress_percentage: 65,
-    status_name: 'In Progress',
-    description: 'Ground plus 3 levels multi-tier vehicular parking and ramp casting.'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_id: 1,
-    site_name: 'Tower A Main Construction Plot',
-    zone_code: 'ZN-TWR-03',
-    zone_name: 'Main Commercial High-Rise Core (Floors 4-15)',
-    zone_type_name: 'Tower Core & Shell',
-    planned_start_date: '2026-10-01',
-    planned_end_date: '2027-04-30',
-    progress_percentage: 20,
-    status_name: 'In Progress',
-    description: 'Slipform shear wall core, post-tensioned floor slabs and service shafts.'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    site_id: 2,
-    site_name: 'Package 3 Main Carriageway',
-    zone_code: 'ZN-KM-12-18',
-    zone_name: 'Section KM 12+000 to KM 18+500',
-    zone_type_name: 'Road Alignment & Earthwork',
-    planned_start_date: '2026-07-01',
-    planned_end_date: '2027-02-28',
-    progress_percentage: 45,
-    status_name: 'In Progress',
-    description: 'Embankment widening, sub-grade preparation, and DBM bituminous base course.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

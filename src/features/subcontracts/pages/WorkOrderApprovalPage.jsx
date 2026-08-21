@@ -18,68 +18,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_APPROVAL_WOS = [
 
-  {
-    id: 1,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    work_order_no: 'WO-2026-014',
-    work_order_date: '2026-08-15',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    package_title: 'Minor Box Culverts & Drain Construction',
-    start_date: '2026-08-20',
-    completion_date: '2026-11-30',
-    total_order_value: 2650000,
-    retention_pct: 5.0,
-    advance_pct: 10.0,
-    status_name: 'Pending Director Approval',
-    submitted_by: 'K. Balaji (Highway PM)',
-    designated_approver: 'Er. Suresh Babu (Project Director)',
-    scope_summary: 'Excavation, PCC blinding, RCC raft and wing wall construction for 4 box culverts.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    work_order_no: 'WO-2026-012',
-    work_order_date: '2026-08-01',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    package_title: 'RCC Sub-structure & Superstructure Work Package',
-    start_date: '2026-08-05',
-    completion_date: '2027-02-28',
-    total_order_value: 4850000,
-    retention_pct: 5.0,
-    advance_pct: 10.0,
-    status_name: 'Authorized & Active',
-    submitted_by: 'Er. Rajesh Kumar',
-    designated_approver: 'Er. Suresh Babu (Project Director)',
-    scope_summary: 'Includes complete labour, formwork staging, shuttering, rebar tying and concrete pouring up to Level 10.'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    work_order_no: 'WO-2026-013',
-    work_order_date: '2026-08-10',
-    contractor_name: 'Apex MEP Engineers & Contractors',
-    package_title: 'Electrical Conduit & Plumbing Piping Rough-ins',
-    start_date: '2026-08-15',
-    completion_date: '2026-12-31',
-    total_order_value: 1820000,
-    retention_pct: 5.0,
-    advance_pct: 5.0,
-    status_name: 'Authorized & Active',
-    submitted_by: 'Er. Rajesh Kumar',
-    designated_approver: 'Er. Suresh Babu (Project Director)',
-    scope_summary: 'Electrical slab inserts, DB dressing, drainage shafts and rainwater down-take pipes.'
-  },
-];
-*/
 
 export function WorkOrderApprovalPage() {
   const { hasPermission } = useAuth();

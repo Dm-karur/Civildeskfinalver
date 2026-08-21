@@ -22,65 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_MEASUREMENTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    measurement_no: 'SMB-2026-031',
-    measurement_date: '2026-08-20',
-    period_from: '2026-08-01',
-    period_to: '2026-08-15',
-    work_order_no: 'WO-2026-012',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    work_item: 'Level 2 Column Formwork & Concrete Pouring (42 m³ @ ₹2,200/m³)',
-    total_measured_amount: 92400,
-    status_name: 'Verified & Certified for RA Bill',
-    measured_by: 'Er. Rajesh Kumar (Site Incharge)',
-    witnessed_by: 'Er. S. Murugesan (Contractor Partner)',
-    notes: 'Measurements cross-verified with column dimensions on drawing DWG-STR-202.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    measurement_no: 'SMB-2026-032',
-    measurement_date: '2026-08-21',
-    period_from: '2026-08-01',
-    period_to: '2026-08-15',
-    work_order_no: 'WO-2026-013',
-    contractor_name: 'Apex MEP Engineers & Contractors',
-    work_item: 'Level 2 Floor Slab PVC Conduit Laying (650 Rmt @ ₹65/Rmt)',
-    total_measured_amount: 42250,
-    status_name: 'Verified & Certified for RA Bill',
-    measured_by: 'Er. Rajesh Kumar',
-    witnessed_by: 'V. Sundaram (MEP Engineer)',
-    notes: 'All junction boxes and pull-boxes counted and verified.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    measurement_no: 'SMB-2026-033',
-    measurement_date: '2026-08-21',
-    period_from: '2026-08-10',
-    period_to: '2026-08-20',
-    work_order_no: 'WO-2026-014',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    work_item: 'Box Culvert Excavation & PCC Raft (180 m³ @ ₹450/m³)',
-    total_measured_amount: 81000,
-    status_name: 'Draft Measurement (Under Verification)',
-    measured_by: 'K. Balaji (Highway PM)',
-    witnessed_by: 'Contractor Site Agent',
-    notes: 'Trench depths verified with auto-level readings.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

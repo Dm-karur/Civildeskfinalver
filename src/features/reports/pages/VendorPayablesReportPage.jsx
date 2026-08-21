@@ -17,67 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_PAYABLES_REPORTS = [
 
-  {
-    id: 1,
-    vendor_name: 'Tata Steel Ltd (Distribution Branch)',
-    category_name: 'Reinforcement Steel Supplier',
-    project_name: 'Metro Commercial Tower Block A',
-    total_invoiced: 35620000,
-    payments_released: 31500000,
-    tds_deducted: 35620,
-    retention_debit_note: 0,
-    balance_payable: 4084380,
-    aging_bucket: '31-60 Days',
-    priority: 'Critical (Material Supply Hold Risk)',
-    status: 'Pending Payment'
-  },
-  {
-    id: 2,
-    vendor_name: 'UltraTech RMC Plants & Logistics',
-    category_name: 'Ready-Mix Concrete Supplier',
-    project_name: 'Metro Commercial Tower Block A',
-    total_invoiced: 17640000,
-    payments_released: 15200000,
-    tds_deducted: 17640,
-    retention_debit_note: 0,
-    balance_payable: 2422360,
-    aging_bucket: '0-30 Days',
-    priority: 'High',
-    status: 'Approved for Release'
-  },
-  {
-    id: 3,
-    vendor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    category_name: 'Subcontractor (RCC & Masonry)',
-    project_name: 'Metro Commercial Tower Block A',
-    total_invoiced: 14200000,
-    payments_released: 12500000,
-    tds_deducted: 250000,
-    retention_debit_note: 710000,
-    balance_payable: 740000,
-    aging_bucket: '0-30 Days',
-    priority: 'Normal',
-    status: 'Scheduled in Next Batch'
-  },
-  {
-    id: 4,
-    vendor_name: 'Sany Heavy Equipment Machinery Leasing',
-    category_name: 'Equipment Lessor',
-    project_name: 'Highway Expansion Package 3',
-    total_invoiced: 4800000,
-    payments_released: 4800000,
-    tds_deducted: 96000,
-    retention_debit_note: 0,
-    balance_payable: 0,
-    aging_bucket: 'Settled',
-    priority: 'Normal',
-    status: 'Fully Paid'
-  }
-];
-*/
 
 export function VendorPayablesReportPage() {
   const { hasPermission } = useAuth();

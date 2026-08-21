@@ -18,62 +18,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_HISTORY_LOGS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    date: '2026-08-21',
-    dpr_revision: 'Rev 0 (Original)',
-    weather: 'Sunny & Clear (32°C)',
-    total_manpower: 48,
-    total_equipment_hrs: 20.5,
-    key_milestone: 'Completed Level 2 Core 1 column casting (42 m³ M30 Concrete)',
-    submitted_by: 'Er. Rajesh Kumar',
-    approved_by: 'Er. Suresh Babu (Project Director)',
-    approved_at: '2026-08-21 06:15 PM',
-    status: 'Archived into Site Diary',
-    audit_notes: 'Verified against weighbridge tickets and slump test registers.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    date: '2026-08-20',
-    dpr_revision: 'Rev 1 (Amended for QA Test)',
-    weather: 'Partly Cloudy (29°C)',
-    total_manpower: 52,
-    total_equipment_hrs: 22.0,
-    key_milestone: 'Shear wall formwork staging completed; MEP conduit inspection',
-    submitted_by: 'Er. Rajesh Kumar',
-    approved_by: 'Er. Suresh Babu (Project Director)',
-    approved_at: '2026-08-20 07:00 PM',
-    status: 'Archived into Site Diary',
-    audit_notes: 'Rev 1 updated with consultant sketch SK-042 references.'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    date: '2026-08-19',
-    dpr_revision: 'Rev 0 (Original)',
-    weather: 'Light Rain (27°C)',
-    total_manpower: 44,
-    total_equipment_hrs: 16.5,
-    key_milestone: 'Core 1 shear wall starter casting and rebar bundle stacking',
-    submitted_by: 'Er. Rajesh Kumar',
-    approved_by: 'Er. Suresh Babu (Project Director)',
-    approved_at: '2026-08-19 06:30 PM',
-    status: 'Archived into Site Diary',
-    audit_notes: 'Rain delay of 45 mins recorded.'
-  },
-];
-*/
 
 export function DailyHistoryPage() {
   const { hasPermission } = useAuth();

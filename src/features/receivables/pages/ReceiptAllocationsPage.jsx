@@ -22,62 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_ALLOCATIONS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    allocation_no: 'ALC-2026-042',
-    allocation_date: '2026-08-10',
-    client_name: 'Metro Infrastructure & Realty Corp Ltd',
-    receipt_no: 'RCT-2026-042',
-    receipt_amount: 15762000,
-    allocated_invoice_no: 'INV-2026-042',
-    invoice_title: 'RA Progress Bill 3',
-    allocated_amount: 15762000,
-    unallocated_balance: 0,
-    status: '100% Fully Allocated',
-    notes: 'Exact match reconciliation against RA Progress Bill 3.'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    allocation_no: 'ALC-2026-043',
-    allocation_date: '2026-08-18',
-    client_name: 'National Highways Authority / State PWD',
-    receipt_no: 'RCT-2026-043',
-    receipt_amount: 10000000,
-    allocated_invoice_no: 'INV-2026-043',
-    invoice_title: 'Milestone 2 Progress Claim',
-    allocated_amount: 10000000,
-    unallocated_balance: 0,
-    status: '100% Fully Allocated',
-    notes: 'Partial settlement against ₹2.38 Cr net invoice claim.'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    allocation_no: 'ALC-2026-044',
-    allocation_date: '2026-07-08',
-    client_name: 'Vibrant Logistics & Industrial Parks LLP',
-    receipt_no: 'RCT-2026-044',
-    receipt_amount: 13800000,
-    allocated_invoice_no: 'ADV-2026-003',
-    invoice_title: 'Material Advance Invoice',
-    allocated_amount: 13800000,
-    unallocated_balance: 0,
-    status: '100% Fully Allocated',
-    notes: 'Advance invoice settlement credit.'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

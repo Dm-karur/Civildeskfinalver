@@ -17,59 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, clientsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_RECEIVABLES_REPORTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    client_name: 'DLF Urban Infra Corp',
-    contract_value: 285000000,
-    cumulative_billed: 85000000,
-    cumulative_received: 71250000,
-    tds_deducted: 1425000,
-    retention_held: 3562500,
-    outstanding_balance: 8762500,
-    aging_bucket: '31-60 Days',
-    overdue_days: 34,
-    status: 'Pending Collection'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    client_name: 'National Highways Authority of India (NHAI)',
-    contract_value: 165000000,
-    cumulative_billed: 76725000,
-    cumulative_received: 72888750,
-    tds_deducted: 1457750,
-    retention_held: 3644500,
-    outstanding_balance: 0,
-    aging_bucket: 'Current (0-30 Days)',
-    overdue_days: 0,
-    status: 'Fully Settled'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    client_name: 'Tata Logistics & Warehousing Ltd',
-    contract_value: 92000000,
-    cumulative_billed: 55384000,
-    cumulative_received: 48000000,
-    tds_deducted: 960000,
-    retention_held: 2400000,
-    outstanding_balance: 4024000,
-    aging_bucket: '61-90 Days',
-    overdue_days: 68,
-    status: 'Overdue Follow-up'
-  }
-];
-*/
 
 export function ClientReceivablesReportPage() {
   const { hasPermission } = useAuth();

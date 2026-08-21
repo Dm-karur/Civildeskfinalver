@@ -17,75 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, reportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_LABOUR_COST_REPORTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    trade_name: 'Shuttering & Formwork Carpenters',
-    gang_contractor: 'Balaji Formwork Gang',
-    mandays_deployed: 1420,
-    nmr_wages: 1278000,
-    piecerate_wages: 850000,
-    overtime_wages: 124000,
-    total_labour_cost: 2252000, // ₹22.52 Lakhs
-    avg_cost_per_day: 1586,
-    productivity_index: '1.08 (Above Target)',
-    status: 'Optimal Cost'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    trade_name: 'Barbenders & Steel Fixers',
-    gang_contractor: 'Saravanan Rebar Crew',
-    mandays_deployed: 1180,
-    nmr_wages: 1062000,
-    piecerate_wages: 720000,
-    overtime_wages: 98000,
-    total_labour_cost: 1880000,
-    avg_cost_per_day: 1593,
-    productivity_index: '1.05',
-    status: 'Optimal Cost'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    trade_name: 'Civil Masons (Brickwork & Plastering)',
-    gang_contractor: 'Murugan Mason Gang',
-    mandays_deployed: 960,
-    nmr_wages: 864000,
-    piecerate_wages: 450000,
-    overtime_wages: 65000,
-    total_labour_cost: 1379000,
-    avg_cost_per_day: 1436,
-    productivity_index: '0.98',
-    status: 'Optimal Cost'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    trade_name: 'Heavy Plant Operators & Drivers',
-    gang_contractor: 'Highway Machinery Crew',
-    mandays_deployed: 840,
-    nmr_wages: 924000,
-    piecerate_wages: 0,
-    overtime_wages: 185000,
-    total_labour_cost: 1109000,
-    avg_cost_per_day: 1320,
-    productivity_index: '1.02',
-    status: 'Optimal Cost'
-  }
-];
-*/
 
 export function LabourCostReportPage() {
   const { hasPermission } = useAuth();

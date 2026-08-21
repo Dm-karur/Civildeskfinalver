@@ -17,67 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, reportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_BUDGET_REPORTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    cost_code: 'WBS-100',
-    cost_head: 'Basement & Deep Substructure RCC',
-    budget_amount: 48000000, // ₹4.8 Cr
-    committed_amount: 41000000,
-    actual_amount: 39500000,
-    variance: 8500000, // +₹85 Lakhs
-    utilization_pct: 82.3,
-    status: 'Within Budget (17.7% Buffer)'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    cost_code: 'WBS-200',
-    cost_head: 'Superstructure Framing (RCC Columns/Slabs)',
-    budget_amount: 92000000,
-    committed_amount: 68000000,
-    actual_amount: 24500000,
-    variance: 67500000,
-    utilization_pct: 26.6,
-    status: 'Within Budget (Active Progress)'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    cost_code: 'WBS-300',
-    cost_head: 'Internal MEP, Firefighting & HVAC Rough-ins',
-    budget_amount: 35000000,
-    committed_amount: 22000000,
-    actual_amount: 7200000,
-    variance: 27800000,
-    utilization_pct: 20.6,
-    status: 'Within Budget'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    cost_code: 'WBS-HW-01',
-    cost_head: 'Earthwork Embankment & Subgrade Formation',
-    budget_amount: 32000000,
-    committed_amount: 29000000,
-    actual_amount: 21500000,
-    variance: 10500000,
-    utilization_pct: 67.2,
-    status: 'Within Budget'
-  }
-];
-*/
 
 export function BudgetVsActualReportPage() {
   const { hasPermission } = useAuth();

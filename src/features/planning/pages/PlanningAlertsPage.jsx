@@ -30,79 +30,7 @@ const ALERT_CATEGORIES = [
   { id: 'weather', name: 'Weather & Site Obstruction' },
 ];
 
-/* 
-const DEFAULT_ALERTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    alert_code: 'ALT-SCH-01',
-    title: 'Podium Level 2 Peripheral Column Casting Slipped by 8 Days',
-    category_id: 'schedule',
-    category_name: 'Critical Path Slippage',
-    priority: 'Critical',
-    triggered_at: '2026-08-20',
-    aging_days: 1,
-    impacted_scope: 'ACT-0201-COL (Threatens Level 3 Slab Cycle)',
-    assigned_to: 'Er. Rajesh Kumar (Planning Incharge)',
-    mitigation_plan: 'Deployed second tower crane hook time; authorized 2 hours daily night shift overtime.',
-    status: 'Active'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    alert_code: 'ALT-MAT-02',
-    title: 'Zero Stock for PT 12.7mm Multi-Strand Anchor Castings',
-    category_id: 'material',
-    category_name: 'Material Stockout & Delay',
-    priority: 'Critical',
-    triggered_at: '2026-08-19',
-    aging_days: 2,
-    impacted_scope: 'ACT-0202-PT (Post-Tensioning Tendon Stressing)',
-    assigned_to: 'Vikram Mehta (Procurement Lead)',
-    mitigation_plan: 'Emergency air freight dispatched from Chennai factory hub; arrival by Aug 23.',
-    status: 'In Progress'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    alert_code: 'ALT-TECH-03',
-    title: 'Basement 2 Fire Header Valve Schedule Revision R3 Pending Sign-off',
-    category_id: 'technical',
-    category_name: 'Drawing & Technical RFI',
-    priority: 'High',
-    triggered_at: '2026-08-18',
-    aging_days: 3,
-    impacted_scope: 'ACT-0301-MEP (Pump Room Header Piping)',
-    assigned_to: 'S. Natesan (MEP Coordinator)',
-    mitigation_plan: 'Coordinated video review call with Lead MEP Consultant scheduled today 4 PM.',
-    status: 'Active'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    alert_code: 'ALT-WEATH-04',
-    title: 'Monsoon Heavy Downpour Warning for Ch. 14+000 to 18+000',
-    category_id: 'weather',
-    category_name: 'Weather & Site Obstruction',
-    priority: 'Medium',
-    triggered_at: '2026-08-21',
-    aging_days: 0,
-    impacted_scope: 'ACT-HWY-01 (DBM Bituminous Paving Course)',
-    assigned_to: 'K. Balaji (Highway Project Director)',
-    mitigation_plan: 'Paving halted during rain; diverted machinery to concrete culvert haunch works.',
-    status: 'Active'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

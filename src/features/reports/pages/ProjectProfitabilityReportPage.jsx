@@ -17,62 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_PROFITABILITY_REPORTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    contract_value: 285000000, // ₹28.5 Cr
-    recognized_revenue: 85000000,
-    direct_costs: 71200000,
-    gross_profit: 13800000, // ₹1.38 Cr
-    gross_margin_pct: 16.2,
-    site_overheads: 4200000,
-    net_operating_profit: 9600000, // ₹96 Lakhs
-    net_margin_pct: 11.3,
-    cpi: 1.06,
-    projected_final_profit_pct: 12.8,
-    status: 'Healthy Margin'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    contract_value: 165000000, // ₹16.5 Cr
-    recognized_revenue: 76725000,
-    direct_costs: 64500000,
-    gross_profit: 12225000,
-    gross_margin_pct: 15.9,
-    site_overheads: 3100000,
-    net_operating_profit: 9125000,
-    net_margin_pct: 11.9,
-    cpi: 1.08,
-    projected_final_profit_pct: 13.5,
-    status: 'High Margin'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    contract_value: 92000000, // ₹9.2 Cr
-    recognized_revenue: 55384000,
-    direct_costs: 47200000,
-    gross_profit: 8184000,
-    gross_margin_pct: 14.8,
-    site_overheads: 2400000,
-    net_operating_profit: 5784000,
-    net_margin_pct: 10.4,
-    cpi: 1.03,
-    projected_final_profit_pct: 11.2,
-    status: 'Healthy Margin'
-  }
-];
-*/
 
 export function ProjectProfitabilityReportPage() {
   const { hasPermission } = useAuth();

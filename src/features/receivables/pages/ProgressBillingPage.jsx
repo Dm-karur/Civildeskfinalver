@@ -22,77 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_PROGRESS_BILLS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    bill_no: 'RA-CLIENT-003',
-    bill_date: '2026-08-05',
-    period_from: '2026-07-01',
-    period_to: '2026-07-31',
-    client_name: 'Metro Infrastructure & Realty Corp Ltd',
-    cumulative_work_done: 42500000, // ₹4.25 Cr
-    previous_billed_value: 28300000,
-    current_period_gross: 14200000, // ₹1.42 Cr
-    retention_deduction: 710000, // 5%
-    advance_recovery: 1420000, // 10%
-    tds_deduction: 284000, // 2%
-    gst_addition: 2556000, // 18%
-    net_payable_amount: 14342000,
-    status: 'Certified & Settled',
-    certified_by: 'Er. N. Sundararajan (PMC Chief QS)',
-    notes: 'Level 2 & 3 RCC column casting, slab beam reinforcement verified.'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    bill_no: 'RA-CLIENT-002',
-    bill_date: '2026-08-15',
-    period_from: '2026-07-15',
-    period_to: '2026-08-10',
-    client_name: 'National Highways Authority / State PWD',
-    cumulative_work_done: 24000000,
-    previous_billed_value: 2500000,
-    current_period_gross: 21500000,
-    retention_deduction: 1075000,
-    advance_recovery: 2150000,
-    tds_deduction: 430000,
-    gst_addition: 3870000,
-    net_payable_amount: 21715000,
-    status: 'Certified by Authority Engineer',
-    certified_by: 'K. Balaji (Authority Engineer)',
-    notes: 'Subgrade layer compaction and granular sub-base (GSB) Km 14 to 20.'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    bill_no: 'RA-CLIENT-001',
-    bill_date: '2026-08-20',
-    period_from: '2026-07-20',
-    period_to: '2026-08-15',
-    client_name: 'Vibrant Logistics & Industrial Parks LLP',
-    cumulative_work_done: 13800000,
-    previous_billed_value: 0,
-    current_period_gross: 13800000,
-    retention_deduction: 690000,
-    advance_recovery: 1380000,
-    tds_deduction: 276000,
-    gst_addition: 2484000,
-    net_payable_amount: 13938000,
-    status: 'Submitted for Client Verification',
-    certified_by: 'Pending Client Inspection',
-    notes: 'PEB anchor bolts foundation and pre-engineered primary frames.'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

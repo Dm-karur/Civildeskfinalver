@@ -17,59 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_EMAIL_LOGS = [
 
-  {
-    id: 1,
-    email_id: 'EML-2026-1092',
-    subject: 'Official Work Order SWO-2026-001 Issued for Level 3 RCC Formwork Package',
-    recipient_email: 'contracts@balajiformwork.com',
-    recipient_name: 'Balaji Formwork Contractors',
-    sender_email: 'transmittals@civildesk.in',
-    attachments: 'SWO-2026-001.pdf (2.4 MB), BOQ-Scope-Annexure.pdf (1.1 MB)',
-    timestamp: '2026-08-21 15:10',
-    smtp_response: '250 OK - Message accepted for delivery',
-    status: 'Delivered (250 OK)'
-  },
-  {
-    id: 2,
-    email_id: 'EML-2026-1091',
-    subject: 'Running Account (RA) Bill #03 Certified Statement & Tax Invoice',
-    recipient_email: 'accounts.payable@dlf.in',
-    recipient_name: 'DLF Finance & Commercial Team',
-    sender_email: 'billing@civildesk.in',
-    attachments: 'RA-Bill-03-Certified.pdf (4.8 MB), Measurement-Sheets.xlsx (850 KB)',
-    timestamp: '2026-08-21 12:00',
-    smtp_response: '250 OK - Delivered to recipient mail server',
-    status: 'Delivered (250 OK)'
-  },
-  {
-    id: 3,
-    email_id: 'EML-2026-1090',
-    subject: 'GFC Structural Drawing Revision R2 Released for Immediate Site Execution',
-    recipient_email: 'site.pm@civildesk.in, quality.lead@civildesk.in',
-    recipient_name: 'Site Resident Engineering Team',
-    sender_email: 'design.hub@civildesk.in',
-    attachments: 'DRG-STR-L3-004-RevR2.pdf (14.5 MB)',
-    timestamp: '2026-08-20 18:30',
-    smtp_response: '250 OK - Delivered',
-    status: 'Delivered (250 OK)'
-  },
-  {
-    id: 4,
-    email_id: 'EML-2026-1089',
-    subject: 'Monthly Progress Dossier & Weather Extension Formal Notice (NHAI Package 3)',
-    recipient_email: 'projectdirector.nhai@gov.in',
-    recipient_name: 'NHAI Project Director Office',
-    sender_email: 'management@civildesk.in',
-    attachments: 'NHAI-Pkg3-Monthly-Dossier-August.pdf (8.2 MB)',
-    timestamp: '2026-08-19 16:45',
-    smtp_response: '250 OK - Delivered',
-    status: 'Delivered (250 OK)'
-  }
-];
-*/
 
 export function EmailLogsPage() {
   const { hasPermission } = useAuth();

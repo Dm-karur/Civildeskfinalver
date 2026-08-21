@@ -21,71 +21,7 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { boqApi, projectsApi } from '../../../api/apiservice';
 
-/* 
-const DEFAULT_SECTIONS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    boq_id: 1,
-    boq_code: 'BOQ-001',
-    boq_name: 'Greenfield Residency Approved BOQ',
-    section_code: 'SEC-01-EARTH',
-    section_name: 'Earthwork, Excavation & Site Preparation',
-    parent_section_id: null,
-    item_count: 8,
-    section_amount: 1850000,
-    description: 'Bulk basement excavation, disposal, dewatering, and compaction.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    boq_id: 1,
-    boq_code: 'BOQ-001',
-    boq_name: 'Greenfield Residency Approved BOQ',
-    section_code: 'SEC-02-CONC',
-    section_name: 'Plain & Reinforced Cement Concrete (RCC)',
-    parent_section_id: null,
-    item_count: 14,
-    section_amount: 8650000,
-    description: 'PCC, Raft slab M40, Column shear walls M50, and floor slabs.'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    boq_id: 1,
-    boq_code: 'BOQ-001',
-    boq_name: 'Greenfield Residency Approved BOQ',
-    section_code: 'SEC-03-STEEL',
-    section_name: 'Reinforcement Steel & Structural Steel Works',
-    parent_section_id: null,
-    item_count: 6,
-    section_amount: 6200000,
-    description: 'Fe550D TMT cutting, bending, binding, and structural embeds.'
-  },
-  {
-    id: 4,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    boq_id: 1,
-    boq_code: 'BOQ-001',
-    boq_name: 'Greenfield Residency Approved BOQ',
-    section_code: 'SEC-04-MASON',
-    section_name: 'Masonry, Plastering & Waterproofing Works',
-    parent_section_id: null,
-    item_count: 11,
-    section_amount: 4922500,
-    description: 'AAC block masonry, internal gypsum plaster, cement sand external plaster.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

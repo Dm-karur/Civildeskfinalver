@@ -17,62 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_CASHFLOW = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    month_period: 'August 2026',
-    cash_inflows: 15583080, // Client progress remittance
-    material_outflow: 5310000,
-    labour_outflow: 2252000,
-    subcontract_outflow: 1250000,
-    equipment_outflow: 1315000,
-    overhead_outflow: 543000,
-    total_outflows: 10670000,
-    net_cash_flow: 4913080, // +₹49.13 Lakhs positive cash flow
-    cumulative_cash_buffer: 18450000, // ₹1.84 Cr surplus
-    status: 'Positive Operating Cash Flow'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    month_period: 'July 2026',
-    cash_inflows: 12800000,
-    material_outflow: 4800000,
-    labour_outflow: 1950000,
-    subcontract_outflow: 1100000,
-    equipment_outflow: 950000,
-    overhead_outflow: 480000,
-    total_outflows: 9280000,
-    net_cash_flow: 3520000,
-    cumulative_cash_buffer: 13536920,
-    status: 'Positive Operating Cash Flow'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    month_period: 'June 2026',
-    cash_inflows: 13500000,
-    material_outflow: 4200000,
-    labour_outflow: 1820000,
-    subcontract_outflow: 980000,
-    equipment_outflow: 850000,
-    overhead_outflow: 420000,
-    total_outflows: 8270000,
-    net_cash_flow: 5230000,
-    cumulative_cash_buffer: 10016920,
-    status: 'Positive Operating Cash Flow'
-  }
-];
-*/
 
 export function CashFlowPage() {
   const { hasPermission } = useAuth();

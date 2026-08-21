@@ -22,71 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_OTHER_EXPENSES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    voucher_no: 'EXP-SITE-2026-088',
-    expense_date: '2026-08-18',
-    category: 'Material Quality Testing Lab Fees',
-    payee_name: 'NABL Certified Civil Testing Laboratories',
-    description: 'Concrete cube 7-day and 28-day compressive strength testing.',
-    amount: 68000,
-    payment_mode: 'Corporate NEFT Transfer',
-    approved_by: 'Er. Suresh Babu (Project Director)',
-    status: 'Approved & Settled'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    voucher_no: 'EXP-SITE-2026-089',
-    expense_date: '2026-08-19',
-    category: 'Safety PPE & Site Signages',
-    payee_name: 'Industrial Safety Equipment Co',
-    description: '100 Nos safety helmets, reflective jackets and safety harness lanyards.',
-    amount: 145000,
-    payment_mode: 'Company Bank Transfer',
-    approved_by: 'Er. Suresh Babu',
-    status: 'Approved & Settled'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    voucher_no: 'EXP-SITE-2026-090',
-    expense_date: '2026-08-20',
-    category: 'Site Electricity & Temporary Water',
-    payee_name: 'State Electricity Board / Tanker Services',
-    description: 'Monthly high-tension temporary construction power bill.',
-    amount: 285000,
-    payment_mode: 'Online Electricity Bill Portal',
-    approved_by: 'Er. Suresh Babu',
-    status: 'Approved & Settled'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    voucher_no: 'EXP-SITE-2026-091',
-    expense_date: '2026-08-21',
-    category: 'Site Office Petty Cash',
-    payee_name: 'Site Commercial Incharge',
-    description: 'Staff travel, courier, tea/refreshments and survey consumables.',
-    amount: 45000,
-    payment_mode: 'Site Petty Cash Imprest',
-    approved_by: 'K. Balaji (Highway PM)',
-    status: 'Approved & Settled'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

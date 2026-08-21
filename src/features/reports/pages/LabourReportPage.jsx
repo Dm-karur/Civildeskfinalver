@@ -17,79 +17,7 @@ import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 
-/* 
-const DEFAULT_LABOUR_REPORTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Tower A Core - Level 2',
-    contractor_name: 'Sri Murugan Labour Services',
-    trade_category: 'Masonry & Concrete Gang',
-    worker_count: 24,
-    total_mandays: 144,
-    regular_hours: 1152,
-    ot_hours: 48,
-    total_wages: 138500,
-    avg_daily_cost: 961.8,
-    attendance_rate: 96.5,
-    status: 'Optimal Deployment'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Basement 1 & 2 Utility Zone',
-    contractor_name: 'Direct Company Roll',
-    trade_category: 'General Utility & Housekeeping',
-    worker_count: 8,
-    total_mandays: 48,
-    regular_hours: 384,
-    ot_hours: 12,
-    total_wages: 39500,
-    avg_daily_cost: 822.9,
-    attendance_rate: 98.0,
-    status: 'Optimal Deployment'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    site_name: 'Ch. 16+300 Box Culvert Site',
-    contractor_name: 'API Test Labour Contractor',
-    trade_category: 'Steel Barbending Squad',
-    worker_count: 18,
-    total_mandays: 108,
-    regular_hours: 864,
-    ot_hours: 64,
-    total_wages: 122400,
-    avg_daily_cost: 1133.3,
-    attendance_rate: 94.2,
-    status: 'High OT Usage'
-  },
-  {
-    id: 4,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Tower A Core - Level 1',
-    contractor_name: 'Sri Murugan Labour Services',
-    trade_category: 'Shuttering Carpentry Gang',
-    worker_count: 22,
-    total_mandays: 132,
-    regular_hours: 1056,
-    ot_hours: 38,
-    total_wages: 124800,
-    avg_daily_cost: 945.4,
-    attendance_rate: 95.8,
-    status: 'Optimal Deployment'
-  },
-];
-*/
 
 export function LabourReportPage() {
   const [projects, setProjects] = useState([]);

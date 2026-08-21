@@ -22,49 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_RFQS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    rfq_no: 'RFQ-2026-031',
-    rfq_date: '2026-08-20',
-    submission_deadline: '2026-08-23',
-    pr_reference: 'PR-2026-041',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement',
-    required_qty: 500,
-    uom: 'Bags',
-    invited_vendors: 'UltraTech, Dalmia Bharat, Ramco Cements',
-    vendor_count: 3,
-    status: 'Bids Received (3/3)',
-    created_by: 'Procurement Cell',
-    notes: 'IS 12269 certified fresh cement bags delivery at site yard.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    rfq_no: 'RFQ-2026-032',
-    rfq_date: '2026-08-21',
-    submission_deadline: '2026-08-24',
-    pr_reference: 'PR-2026-042',
-    material_code: 'MAT-STL-002',
-    material_name: 'Fe 550D TMT Rebar 16mm',
-    required_qty: 15.0,
-    uom: 'MT',
-    invited_vendors: 'Tata Tiscon, JSW Steel, Jindal Panther',
-    vendor_count: 3,
-    status: 'Enquiry Floated (Awaiting Bids)',
-    created_by: 'Procurement Cell',
-    notes: 'Primary steel mill test certificates mandatory.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',
