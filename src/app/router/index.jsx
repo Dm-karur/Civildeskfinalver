@@ -63,9 +63,15 @@ import { LabourWageApprovalPage } from '../../features/labour/pages/LabourWageAp
 // Phase 2 — Materials & Inventory
 import { MaterialCataloguePage } from '../../features/materials/pages/MaterialCataloguePage';
 import { StockOverviewPage } from '../../features/materials/pages/StockOverviewPage';
+import { ProjectStockPage } from '../../features/materials/pages/ProjectStockPage';
 import { MaterialRequestsPage } from '../../features/materials/pages/MaterialRequestsPage';
 import { StockReceiptsPage } from '../../features/materials/pages/StockReceiptsPage';
-import { StockIssuesPage, StockTransfersPage, MaterialReturnsPage, StockAdjustmentsPage, DeliveryChallansPage, MaterialConsumptionPage } from '../../features/materials/pages/StockTransactionsPage';
+import { StockIssuesPage } from '../../features/materials/pages/StockIssuesPage';
+import { StockTransfersPage } from '../../features/materials/pages/StockTransfersPage';
+import { MaterialReturnsPage } from '../../features/materials/pages/MaterialReturnsPage';
+import { StockAdjustmentsPage } from '../../features/materials/pages/StockAdjustmentsPage';
+import { DeliveryChallansPage } from '../../features/materials/pages/DeliveryChallansPage';
+import { MaterialConsumptionPage } from '../../features/materials/pages/MaterialConsumptionPage';
 import { StockLedgerPage } from '../../features/materials/pages/StockLedgerPage';
 // Phase 2 — Procurement
 import { PurchaseOrdersPage, PurchaseRequisitionsPage } from '../../features/procurement/pages/ProcurementPages';
@@ -168,7 +174,7 @@ export const router = createBrowserRouter([
           // ─── 6. Materials & Inventory ─────────────────────
           { path: 'materials/catalogue', element: R('materials.view', MaterialCataloguePage) },
           { path: 'materials/stock', element: R('material_stock.view', StockOverviewPage) },
-          { path: 'materials/project-stock', element: R('material_stock.view', StockOverviewPage) },
+          { path: 'materials/project-stock', element: R('material_stock.view', ProjectStockPage) },
           { path: 'materials/requests', element: R('materials.view', MaterialRequestsPage) },
           { path: 'materials/receipts', element: R('material_receipts.view', StockReceiptsPage) },
           { path: 'materials/issues', element: R('material_stock.view', StockIssuesPage) },

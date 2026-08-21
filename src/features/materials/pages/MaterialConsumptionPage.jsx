@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  ArrowDownToLine, CheckCircle2, XCircle, Clock, IndianRupee,
-  Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight, Truck,
-  ShieldCheck, Check, AlertCircle, Sparkles, Building, Layers, Printer
+  TrendingDown, CheckCircle2, IndianRupee, Layers,
+  Search, Filter, Eye, Edit, Trash2, Plus, Building,
+  ShieldCheck, Check, AlertCircle, Sparkles, Printer, AlertTriangle, BarChart3
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -19,106 +19,102 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, materialManagementApi } from '../../../api/apiservice';
+import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-const DEFAULT_RECEIPTS = [
+const DEFAULT_CONSUMPTIONS = [
   {
     id: 1,
     project_id: 1,
     project_code: 'PRJ-2026-001',
     project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Main Central Yard Bay 1',
-    receipt_no: 'GRN-2026-081',
-    receipt_date: '2026-08-20',
-    supplier_name: 'UltraTech Cement Distributors Ltd',
-    supplier_challan_no: 'DC-UT-9812',
-    invoice_no: 'INV-2026-4412',
-    vehicle_no: 'TN-45-AZ-1024',
+    consumption_no: 'MCN-2026-061',
+    date: '2026-08-20',
+    site_name: 'Tower A Core - Level 2',
+    work_activity: 'Level 2 Slab M30 Concrete Pour (45 cum)',
     material_code: 'MAT-CEM-001',
     material_name: 'OPC 53 Grade Cement',
-    received_qty: 400,
     uom: 'Bags',
+    theoretical_qty: 324,
+    actual_consumed_qty: 330,
+    variance_qty: 6,
+    wastage_pct: 1.85,
     unit_rate: 385,
-    total_amount: 154000,
-    quality_status: 'Accepted (QC Passed)',
-    status_name: 'Received & Stored',
-    inspected_by: 'Er. Senthil Nathan (QA/QC Engineer)',
-    notes: 'Manufacturer test certificate verified. Clean 50kg intact bags.'
+    actual_cost: 127050,
+    status: 'Within Tolerance (<= 2%)',
+    incharge: 'Er. Rajesh Kumar',
+    notes: 'Pump line priming surge accounted for 3 bags.'
   },
   {
     id: 2,
     project_id: 1,
     project_code: 'PRJ-2026-001',
     project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Steel Stacking Yard',
-    receipt_no: 'GRN-2026-082',
-    receipt_date: '2026-08-19',
-    supplier_name: 'JSW Steel Regional Supply Hub',
-    supplier_challan_no: 'JSW-CH-3312',
-    invoice_no: 'INV-JSW-819',
-    vehicle_no: 'KA-01-MJ-8842',
+    consumption_no: 'MCN-2026-062',
+    date: '2026-08-19',
+    site_name: 'Steel Yard',
+    work_activity: 'Core 1 Column Splice Rebar BBS (12.0 MT)',
     material_code: 'MAT-STL-002',
     material_name: 'Fe 550D TMT Rebar 16mm',
-    received_qty: 12.5,
     uom: 'MT',
+    theoretical_qty: 12.0,
+    actual_consumed_qty: 12.35,
+    variance_qty: 0.35,
+    wastage_pct: 2.92,
     unit_rate: 58500,
-    total_amount: 731250,
-    quality_status: 'Accepted (QC Passed)',
-    status_name: 'Received & Stored',
-    inspected_by: 'Er. Senthil Nathan (QA/QC Engineer)',
-    notes: 'Weighbridge slip attached. Heat numbers verified on bundle tags.'
+    actual_cost: 722475,
+    status: 'Within Tolerance (<= 3%)',
+    incharge: 'Er. Rajesh Kumar',
+    notes: 'Standard end-bit offcuts collected in scrap bin.'
   },
   {
     id: 3,
     project_id: 2,
     project_code: 'PRJ-2026-002',
     project_name: 'Highway Expansion Package 3',
-    site_name: 'Ch. 16+300 Aggregate Bunker',
-    receipt_no: 'GRN-2026-083',
-    receipt_date: '2026-08-21',
-    supplier_name: 'Sri Amman Blue Metal Quarries',
-    supplier_challan_no: 'AMN-8819',
-    invoice_no: 'INV-AMN-102',
-    vehicle_no: 'TN-47-D-9918',
+    consumption_no: 'MCN-2026-063',
+    date: '2026-08-21',
+    site_name: 'Ch. 16+300 Box Culvert Site',
+    work_activity: 'Culvert Raft Bed Concrete (35 cum)',
     material_code: 'MAT-AGG-003',
     material_name: '20mm Blue Metal Aggregate',
-    received_qty: 45,
     uom: 'Ton',
+    theoretical_qty: 42,
+    actual_consumed_qty: 45,
+    variance_qty: 3,
+    wastage_pct: 7.14,
     unit_rate: 1450,
-    total_amount: 65250,
-    quality_status: 'Accepted (QC Passed)',
-    status_name: 'Received & Stored',
-    inspected_by: 'K. Balaji (PM)',
-    notes: 'Sieve analysis sample taken for flakiness index test.'
+    actual_cost: 65250,
+    status: 'Wastage Overrun (> 5%)',
+    incharge: 'K. Balaji (PM)',
+    notes: 'Site stockpile base ground contamination loss.'
   },
 ];
 
 const EMPTY_FORM = {
   project_id: '',
-  site_name: '',
-  receipt_no: '',
-  receipt_date: '',
-  supplier_name: '',
-  supplier_challan_no: '',
-  invoice_no: '',
-  vehicle_no: '',
+  consumption_no: '',
+  date: '',
+  site_name: 'Tower A Core - Level 2',
+  work_activity: '',
   material_code: 'MAT-CEM-001',
   material_name: 'OPC 53 Grade Cement',
-  received_qty: '100',
   uom: 'Bags',
+  theoretical_qty: '100',
+  actual_consumed_qty: '102',
+  variance_qty: '2',
+  wastage_pct: '2.0',
   unit_rate: '385',
-  total_amount: '38500',
-  quality_status: 'Accepted (QC Passed)',
-  status_name: 'Received & Stored',
-  inspected_by: 'QC Engineer',
+  actual_cost: '39270',
+  status: 'Within Tolerance (<= 2%)',
+  incharge: 'Site Engineer',
   notes: '',
 };
 
-export function StockReceiptsPage() {
+export function MaterialConsumptionPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [receipts, setReceipts] = useState(DEFAULT_RECEIPTS);
+  const [consumptions, setConsumptions] = useState(DEFAULT_CONSUMPTIONS);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -137,20 +133,12 @@ export function StockReceiptsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects & API Data
+  // Load Projects
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      projectsApi.list().catch(() => ({ data: [] })),
-      materialManagementApi.receipts.list().catch(() => ({ data: [] }))
-    ]).then(([projRes, recRes]) => {
-      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
-      setProjects(Array.isArray(pList) ? pList : []);
-      const rList = recRes?.data?.material_receipts ?? recRes?.data?.data ?? [];
-      if (Array.isArray(rList) && rList.length > 0) {
-        setReceipts(rList);
-      }
-    }).finally(() => setLoading(false));
+    projectsApi.list().then(res => {
+      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
+      setProjects(Array.isArray(list) ? list : []);
+    }).catch(() => setProjects([]));
   }, []);
 
   // Form Handlers
@@ -161,8 +149,8 @@ export function StockReceiptsPage() {
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
-      receipt_no: `GRN-2026-08${receipts.length + 1}`,
-      receipt_date: today,
+      consumption_no: `MCN-2026-06${consumptions.length + 1}`,
+      date: today,
     });
     setErrors({});
     setIsAddOpen(true);
@@ -171,22 +159,21 @@ export function StockReceiptsPage() {
   const handleOpenEdit = (item) => {
     setForm({
       project_id: String(item.project_id || '1'),
+      consumption_no: item.consumption_no || '',
+      date: item.date || '',
       site_name: item.site_name || '',
-      receipt_no: item.receipt_no || '',
-      receipt_date: item.receipt_date || '',
-      supplier_name: item.supplier_name || '',
-      supplier_challan_no: item.supplier_challan_no || '',
-      invoice_no: item.invoice_no || '',
-      vehicle_no: item.vehicle_no || '',
+      work_activity: item.work_activity || '',
       material_code: item.material_code || '',
       material_name: item.material_name || '',
-      received_qty: String(item.received_qty || '100'),
       uom: item.uom || 'Nos',
+      theoretical_qty: String(item.theoretical_qty || '100'),
+      actual_consumed_qty: String(item.actual_consumed_qty || '102'),
+      variance_qty: String(item.variance_qty || '2'),
+      wastage_pct: String(item.wastage_pct || '2.0'),
       unit_rate: String(item.unit_rate || '385'),
-      total_amount: String(item.total_amount || '38500'),
-      quality_status: item.quality_status || 'Accepted (QC Passed)',
-      status_name: item.status_name || 'Received & Stored',
-      inspected_by: item.inspected_by || 'QC Engineer',
+      actual_cost: String(item.actual_cost || '39270'),
+      status: item.status || 'Within Tolerance (<= 2%)',
+      incharge: item.incharge || 'Site Engineer',
       notes: item.notes || '',
     });
     setErrors({});
@@ -196,10 +183,16 @@ export function StockReceiptsPage() {
   const handleFormChange = (field, value) => {
     setForm(prev => {
       const next = { ...prev, [field]: value };
-      if (field === 'received_qty' || field === 'unit_rate') {
-        const qty = Number(field === 'received_qty' ? value : prev.received_qty) || 0;
+      if (field === 'theoretical_qty' || field === 'actual_consumed_qty' || field === 'unit_rate') {
+        const theo = Number(field === 'theoretical_qty' ? value : prev.theoretical_qty) || 0;
+        const act = Number(field === 'actual_consumed_qty' ? value : prev.actual_consumed_qty) || 0;
         const rate = Number(field === 'unit_rate' ? value : prev.unit_rate) || 0;
-        next.total_amount = String(Math.round(qty * rate));
+        const diff = Number((act - theo).toFixed(2));
+        const pct = theo > 0 ? Number(((diff / theo) * 100).toFixed(2)) : 0;
+        next.variance_qty = String(diff);
+        next.wastage_pct = String(pct);
+        next.actual_cost = String(Math.round(act * rate));
+        next.status = pct > 5.0 ? 'Wastage Overrun (> 5%)' : 'Within Tolerance';
       }
       return next;
     });
@@ -209,8 +202,7 @@ export function StockReceiptsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.receipt_no.trim()) errs.receipt_no = 'GRN No is required';
-    if (!form.supplier_name.trim()) errs.supplier_name = 'Supplier is required';
+    if (!form.consumption_no.trim()) errs.consumption_no = 'Consumption No is required';
     if (!form.material_name.trim()) errs.material_name = 'Material item is required';
 
     if (Object.keys(errs).length > 0) {
@@ -221,45 +213,47 @@ export function StockReceiptsPage() {
     setSaving(true);
     try {
       const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const qty = Number(form.received_qty || 0);
+      const theo = Number(form.theoretical_qty || 0);
+      const act = Number(form.actual_consumed_qty || 0);
       const rate = Number(form.unit_rate || 0);
+      const diff = Number((act - theo).toFixed(2));
+      const pct = theo > 0 ? Number(((diff / theo) * 100).toFixed(2)) : 0;
 
-      const newReceipt = {
+      const newCons = {
         id: editingItem?.id || Date.now(),
         project_id: Number(form.project_id || 1),
         project_code: selectedProj?.project_code || 'PRJ-2026-001',
         project_name: selectedProj?.project_name || 'Civil Project',
-        site_name: form.site_name || 'Central Yard',
-        receipt_no: form.receipt_no,
-        receipt_date: form.receipt_date,
-        supplier_name: form.supplier_name,
-        supplier_challan_no: form.supplier_challan_no,
-        invoice_no: form.invoice_no,
-        vehicle_no: form.vehicle_no,
+        consumption_no: form.consumption_no,
+        date: form.date,
+        site_name: form.site_name,
+        work_activity: form.work_activity,
         material_code: form.material_code,
         material_name: form.material_name,
-        received_qty: qty,
         uom: form.uom,
+        theoretical_qty: theo,
+        actual_consumed_qty: act,
+        variance_qty: diff,
+        wastage_pct: pct,
         unit_rate: rate,
-        total_amount: Number(form.total_amount || qty * rate),
-        quality_status: form.quality_status,
-        status_name: form.status_name,
-        inspected_by: form.inspected_by,
+        actual_cost: Math.round(act * rate),
+        status: pct > 5.0 ? 'Wastage Overrun (> 5%)' : 'Within Tolerance (<= 3%)',
+        incharge: form.incharge,
         notes: form.notes,
       };
 
       if (editingItem?.id) {
-        setReceipts(prev => prev.map(r => r.id === editingItem.id ? newReceipt : r));
-        toast.success('Goods receipt updated.');
+        setConsumptions(prev => prev.map(c => c.id === editingItem.id ? newCons : c));
+        toast.success('Consumption record updated.');
       } else {
-        setReceipts(prev => [newReceipt, ...prev]);
-        toast.success('Goods received note (GRN) logged into inventory.');
+        setConsumptions(prev => [newCons, ...prev]);
+        toast.success('Material consumption vs BOQ norms logged.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
     } catch {
-      toast.error('Failed to save goods receipt.');
+      toast.error('Failed to save consumption record.');
     } finally {
       setSaving(false);
     }
@@ -267,8 +261,8 @@ export function StockReceiptsPage() {
 
   const confirmDelete = () => {
     if (!deleteItem?.id) return;
-    setReceipts(prev => prev.filter(r => r.id !== deleteItem.id));
-    toast.success('Goods receipt removed.');
+    setConsumptions(prev => prev.filter(c => c.id !== deleteItem.id));
+    toast.success('Consumption record removed.');
     setDeleteItem(null);
   };
 
@@ -278,39 +272,44 @@ export function StockReceiptsPage() {
 
   // Filtered List
   const filtered = useMemo(() => {
-    return receipts.filter(r => {
-      if (selectedProjectId !== 'all' && String(r.project_id) !== String(selectedProjectId)) return false;
-      if (statusFilter !== 'all' && r.quality_status !== statusFilter) return false;
+    return consumptions.filter(c => {
+      if (selectedProjectId !== 'all' && String(c.project_id) !== String(selectedProjectId)) return false;
+      if (statusFilter !== 'all' && !c.status.includes(statusFilter)) return false;
       if (search) {
         const q = search.toLowerCase();
-        const no = (r.receipt_no || '').toLowerCase();
-        const sup = (r.supplier_name || '').toLowerCase();
-        const mat = (r.material_name || '').toLowerCase();
-        const ch = (r.supplier_challan_no || '').toLowerCase();
-        const veh = (r.vehicle_no || '').toLowerCase();
-        if (!no.includes(q) && !sup.includes(q) && !mat.includes(q) && !ch.includes(q) && !veh.includes(q)) return false;
+        const no = (c.consumption_no || '').toLowerCase();
+        const mat = (c.material_name || '').toLowerCase();
+        const act = (c.work_activity || '').toLowerCase();
+        const site = (c.site_name || '').toLowerCase();
+        if (!no.includes(q) && !mat.includes(q) && !act.includes(q) && !site.includes(q)) return false;
       }
       return true;
     });
-  }, [receipts, selectedProjectId, statusFilter, search]);
+  }, [consumptions, selectedProjectId, statusFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const totalInwardValue = useMemo(() => receipts.reduce((acc, r) => acc + Number(r.total_amount || 0), 0), [receipts]);
-  const qcPassedCount = useMemo(() => receipts.filter(r => r.quality_status.includes('Accepted') || r.quality_status.includes('Passed')).length, [receipts]);
+  const totalCost = useMemo(() => consumptions.reduce((acc, c) => acc + Number(c.actual_cost || 0), 0), [consumptions]);
+  const overrunCount = useMemo(() => consumptions.filter(c => c.status.includes('Overrun')).length, [consumptions]);
+
+  const getStatusVariant = (status) => {
+    if (status.includes('Overrun')) return 'error';
+    if (status.includes('Tolerance')) return 'success';
+    return 'neutral';
+  };
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Materials & Inventory', href: '/materials/catalogue' },
-    { label: 'Stock Receipts' }
+    { label: 'Material Consumption' }
   ];
 
   return (
     <PageContainer>
       <PageHeader
-        title="Inward Goods Receipts (GRN) & Gate Entry"
+        title="Material Consumption vs BOQ Norms & Wastage"
         breadcrumbs={breadcrumbs}
       />
 
@@ -318,28 +317,28 @@ export function StockReceiptsPage() {
         {/* KPI Summary Ribbon */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard
-            label="Total Inward GRNs"
-            value={receipts.length}
+            label="Total Pour Logs"
+            value={consumptions.length}
             status="primary"
-            icon={<ArrowDownToLine className="w-4 h-4" />}
+            icon={<BarChart3 className="w-4 h-4" />}
           />
           <KpiCard
-            label="Total Inward Value"
-            value={`₹${totalInwardValue.toLocaleString('en-IN')}`}
+            label="Total Consumed Cost"
+            value={`₹${totalCost.toLocaleString('en-IN')}`}
             status="success"
             icon={<IndianRupee className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
-            label="QC Accepted Deliveries"
-            value={`${qcPassedCount} Lots`}
-            status="neutral"
-            icon={<CheckCircle2 className="w-4 h-4 text-sky-500" />}
+            label="Wastage Overrun Alerts"
+            value={`${overrunCount} Pours`}
+            status={overrunCount > 0 ? 'warning' : 'success'}
+            icon={<AlertTriangle className="w-4 h-4 text-amber-500" />}
           />
           <KpiCard
-            label="Vehicles Inward Gate"
-            value={`${receipts.length} Trucks`}
+            label="Average Wastage %"
+            value="2.35% (Good)"
             status="neutral"
-            icon={<Truck className="w-4 h-4 text-primary" />}
+            icon={<CheckCircle2 className="w-4 h-4 text-primary" />}
           />
         </div>
 
@@ -358,12 +357,12 @@ export function StockReceiptsPage() {
               />
             </div>
 
-            <div className="w-full sm:w-44">
+            <div className="w-full sm:w-48">
               <Select
                 options={[
-                  { value: 'all', label: 'All Quality Status' },
-                  { value: 'Accepted (QC Passed)', label: 'Accepted (QC Passed)' },
-                  { value: 'Rejected', label: 'Rejected (Defective)' },
+                  { value: 'all', label: 'All Wastage Status' },
+                  { value: 'Tolerance', label: 'Within Permissible Tolerance' },
+                  { value: 'Overrun', label: 'Wastage Overrun (> 5%)' },
                 ]}
                 value={statusFilter}
                 onChange={setStatusFilter}
@@ -373,7 +372,7 @@ export function StockReceiptsPage() {
 
             <div className="w-full sm:w-56">
               <SearchField
-                placeholder="Search GRN, supplier, vehicle, challan..."
+                placeholder="Search pour activity, material, site..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -387,7 +386,7 @@ export function StockReceiptsPage() {
               leftIcon={<Printer className="w-3.5 h-3.5" />}
               onClick={handlePrint}
               className="text-xs h-8 shadow-xs"
-              title="Print Inward Register"
+              title="Print Consumption Register"
             >
               Print Register
             </Button>
@@ -398,7 +397,7 @@ export function StockReceiptsPage() {
               onClick={handleOpenAdd}
               className="text-xs h-8 shadow-xs"
             >
-              Inward Receipt (GRN)
+              Log Consumption
             </Button>
           </div>
         </div>
@@ -421,76 +420,77 @@ export function StockReceiptsPage() {
               <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
                   <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2 w-28">GRN No.</th>
-                  <th className="px-3 py-2">Supplier & Challan</th>
+                  <th className="px-3 py-2 w-28">Log Ref</th>
+                  <th className="px-3 py-2">Work Scope & Activity</th>
                   <th className="px-3 py-2">Material Item</th>
-                  <th className="px-3 py-2 text-center w-28 hidden md:table-cell">Vehicle No.</th>
-                  <th className="px-3 py-2 text-right w-24">Received Qty</th>
-                  <th className="px-3 py-2 text-right w-28">Total Value</th>
-                  <th className="px-3 py-2 text-center w-28">Quality Status</th>
-                  <th className="px-3 py-2 text-center w-24">Actions</th>
+                  <th className="px-3 py-2 text-right w-24">BOQ Norm</th>
+                  <th className="px-3 py-2 text-right w-24">Actual Qty</th>
+                  <th className="px-3 py-2 text-right w-24">Wastage %</th>
+                  <th className="px-3 py-2 text-right w-28">Actual Cost</th>
+                  <th className="px-3 py-2 text-center w-28">Status</th>
+                  <th className="px-3 py-2 text-center w-20">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {loading ? (
                   <tr>
-                    <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      Loading stock receipts...
+                    <td colSpan="10" className="text-center py-8 text-text-muted text-[12px]">
+                      Loading material consumption logs...
                     </td>
                   </tr>
                 ) : paged.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      No goods receipts found matching criteria.
+                    <td colSpan="10" className="text-center py-8 text-text-muted text-[12px]">
+                      No consumption logs found matching criteria.
                     </td>
                   </tr>
                 ) : (
-                  paged.map((r, idx) => (
-                    <tr key={r.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
+                  paged.map((c, idx) => (
+                    <tr key={c.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
                       <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
                         {(page - 1) * perPage + idx + 1}
                       </td>
                       <td className="px-3 py-2">
                         <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                          {r.receipt_no}
+                          {c.consumption_no}
                         </span>
-                        <span className="text-[10px] text-text-muted font-mono block pt-0.5">{r.receipt_date}</span>
+                        <span className="text-[10px] text-text-muted font-mono block pt-0.5">{c.date}</span>
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={r.supplier_name}>
-                            {r.supplier_name}
-                          </span>
-                          <span className="text-[10px] text-text-muted font-mono truncate">
-                            DC: {r.supplier_challan_no} • Inv: {r.invoice_no}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={r.material_name}>
-                            {r.material_name}
+                          <span className="font-semibold text-text-primary text-[12px] truncate" title={c.work_activity}>
+                            {c.work_activity}
                           </span>
                           <span className="text-[10px] text-text-muted truncate">
-                            {r.site_name}
+                            {c.site_name}
                           </span>
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-center hidden md:table-cell font-mono text-[11px] text-text-secondary">
-                        {r.vehicle_no || '—'}
+                      <td className="px-3 py-2">
+                        <span className="font-semibold text-text-primary text-[12px] truncate block" title={c.material_name}>
+                          {c.material_name}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
+                        {c.theoretical_qty} {c.uom}
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
-                        {r.received_qty} {r.uom}
+                        {c.actual_consumed_qty} {c.uom}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-[11px]">
+                        <span className={c.wastage_pct > 5.0 ? 'text-red-600' : 'text-emerald-600'}>
+                          +{c.wastage_pct}%
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
-                        ₹{Number(r.total_amount).toLocaleString('en-IN')}
+                        ₹{Number(c.actual_cost).toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-center">
                         <Badge
-                          variant="success"
+                          variant={getStatusVariant(c.status)}
                           className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
                         >
-                          {r.quality_status}
+                          {c.status}
                         </Badge>
                       </td>
                       <td className="px-3 py-2">
@@ -499,8 +499,8 @@ export function StockReceiptsPage() {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
-                            title="View GRN 360"
-                            onClick={() => setViewingItem(r)}
+                            title="View Consumption 360"
+                            onClick={() => setViewingItem(c)}
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
@@ -509,7 +509,7 @@ export function StockReceiptsPage() {
                             size="sm"
                             className="h-6 w-6 p-0"
                             title="Edit"
-                            onClick={() => handleOpenEdit(r)}
+                            onClick={() => handleOpenEdit(c)}
                           >
                             <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
@@ -525,37 +525,36 @@ export function StockReceiptsPage() {
 
         {/* Mobile View - Cards List for Phones (< sm) */}
         <div className="block sm:hidden space-y-3">
-          {paged.map((r, idx) => (
-            <div key={r.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+          {paged.map((c, idx) => (
+            <div key={c.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="font-mono text-[10px] font-bold text-primary block">{r.receipt_no} • {r.receipt_date}</span>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{r.material_name}</h4>
-                  <span className="text-[11px] text-text-muted">{r.supplier_name}</span>
+                  <span className="font-mono text-[10px] font-bold text-primary block">{c.consumption_no} • {c.date}</span>
+                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{c.work_activity}</h4>
+                  <span className="text-[11px] text-text-muted">{c.material_name}</span>
                 </div>
                 <Badge
-                  variant="success"
+                  variant={getStatusVariant(c.status)}
                   className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
                 >
-                  QC Passed
+                  +{c.wastage_pct}%
                 </Badge>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Received Qty</span>
-                  <span className="font-mono font-bold text-text-primary text-[11px]">{r.received_qty} {r.uom}</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Norm vs Actual</span>
+                  <span className="font-mono text-text-primary text-[11px]">{c.theoretical_qty} ➔ {c.actual_consumed_qty} {c.uom}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Total Value</span>
-                  <span className="font-mono font-bold text-primary text-[12px]">₹{Number(r.total_amount).toLocaleString('en-IN')}</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Actual Cost</span>
+                  <span className="font-mono font-bold text-primary text-[12px]">₹{Number(c.actual_cost).toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-border/60 text-xs">
-                <span className="text-[10px] text-text-muted font-mono">{r.vehicle_no}</span>
-                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(r)}>
-                  <Eye className="w-3 h-3 mr-1" /> View GRN
+              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(c)}>
+                  <Eye className="w-3 h-3 mr-1" /> View Log
                 </Button>
               </div>
             </div>
@@ -575,18 +574,18 @@ export function StockReceiptsPage() {
         </div>
       </div>
 
-      {/* View GRN 360 Modal */}
+      {/* View Consumption 360 Modal */}
       {viewingItem && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <ArrowDownToLine className="w-4 h-4" />
+                  <BarChart3 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.receipt_no}</h3>
-                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.supplier_name} • {viewingItem.receipt_date}</span>
+                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.consumption_no}</h3>
+                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.material_name} • {viewingItem.date}</span>
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
@@ -594,18 +593,18 @@ export function StockReceiptsPage() {
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Material Delivered</span> <span className="font-semibold text-text-primary">{viewingItem.material_name}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Quantity Inwarded</span> <span className="font-bold text-primary font-mono text-sm">{viewingItem.received_qty} {viewingItem.uom}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Total Inward Value</span> <span className="font-bold text-emerald-600 font-mono text-sm">₹{Number(viewingItem.total_amount).toLocaleString('en-IN')}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Quality Inspection</span> <span className="font-semibold text-emerald-600">{viewingItem.quality_status}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Supplier Challan</span> <span className="font-mono">{viewingItem.supplier_challan_no}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Delivery Vehicle</span> <span className="font-mono text-text-primary">{viewingItem.vehicle_no}</span></div>
-                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Yard Storage Bay</span> <span className="text-text-primary font-medium">{viewingItem.site_name}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">BOQ Standard Norm</span> <span className="font-mono text-text-primary">{viewingItem.theoretical_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Actual Site Consumed</span> <span className="font-mono font-bold text-primary">{viewingItem.actual_consumed_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Wastage Variance</span> <span className={`font-bold font-mono ${viewingItem.wastage_pct > 5.0 ? 'text-red-600' : 'text-emerald-600'}`}>+{viewingItem.variance_qty} {viewingItem.uom} (+{viewingItem.wastage_pct}%)</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Total Material Cost</span> <span className="font-bold text-emerald-600 font-mono text-sm">₹{Number(viewingItem.actual_cost).toLocaleString('en-IN')}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Wastage Compliance</span> <span className="font-semibold text-emerald-600">{viewingItem.status}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Site Incharge</span> <span className="text-text-primary">{viewingItem.incharge}</span></div>
+                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Work Activity & Scope</span> <span className="text-text-primary font-medium">{viewingItem.work_activity}</span></div>
               </div>
 
               {viewingItem.notes && (
                 <div className="border border-border rounded-lg p-3 space-y-1">
-                  <span className="font-bold text-text-primary block text-[11px]">QA/QC Engineer Remarks:</span>
+                  <span className="font-bold text-text-primary block text-[11px]">Site Consumption Notes & Root Cause:</span>
                   <p className="text-text-secondary bg-surface-muted/30 p-2 rounded border border-border/50">{viewingItem.notes}</p>
                 </div>
               )}
@@ -613,7 +612,7 @@ export function StockReceiptsPage() {
 
             <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
               <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print GRN Slip
+                <Printer className="w-3.5 h-3.5 mr-1" /> Print Consumption Log
               </Button>
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
@@ -621,20 +620,20 @@ export function StockReceiptsPage() {
         </div>
       )}
 
-      {/* Add / Edit GRN Modal */}
+      {/* Add / Edit Consumption Modal */}
       <EntityEditModal
         isOpen={Boolean(isAddOpen || editingItem)}
         onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
       >
         <EntityEditModal.Header
-          icon={ArrowDownToLine}
-          title={editingItem ? 'Edit Goods Receipt (GRN)' : 'Inward Goods Receipt (GRN)'}
-          subtitle="Log supplier gate delivery, vehicle challan, received quantities, and QC verification."
+          icon={BarChart3}
+          title={editingItem ? 'Edit Consumption Log' : 'Log Material Consumption & Wastage'}
+          subtitle="Compare theoretical BOQ design mix requirements against actual site consumption."
           onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
         />
-        <form id="grn-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form id="mcn-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="Supplier & Delivery Gate Entry">
+            <EntityEditModal.Section title="Pour & Work Scope Details">
               <EntityEditModal.Grid>
                 <FormField label="Parent Project" required error={errors.project_id}>
                   <Select
@@ -644,55 +643,39 @@ export function StockReceiptsPage() {
                   />
                 </FormField>
 
-                <FormField label="GRN Number" required error={errors.receipt_no}>
+                <FormField label="Consumption Ref No" required error={errors.consumption_no}>
                   <Input
-                    value={form.receipt_no}
-                    onChange={(e) => handleFormChange('receipt_no', e.target.value)}
-                    placeholder="GRN-2026-085"
+                    value={form.consumption_no}
+                    onChange={(e) => handleFormChange('consumption_no', e.target.value)}
+                    placeholder="MCN-2026-065"
                   />
                 </FormField>
 
-                <FormField label="Supplier Name" required error={errors.supplier_name} className="md:col-span-2">
+                <FormField label="Work Activity / Pour Scope" required className="md:col-span-2">
                   <Input
-                    value={form.supplier_name}
-                    onChange={(e) => handleFormChange('supplier_name', e.target.value)}
-                    placeholder="e.g. UltraTech Cement Distributors Ltd"
+                    value={form.work_activity}
+                    onChange={(e) => handleFormChange('work_activity', e.target.value)}
+                    placeholder="e.g. Level 2 Slab M30 Concrete Pour (45 cum)"
                   />
                 </FormField>
 
-                <FormField label="Supplier Delivery Challan">
+                <FormField label="Site Location" className="md:col-span-2">
                   <Input
-                    value={form.supplier_challan_no}
-                    onChange={(e) => handleFormChange('supplier_challan_no', e.target.value)}
-                    placeholder="DC-9812"
-                  />
-                </FormField>
-
-                <FormField label="Vehicle Number">
-                  <Input
-                    value={form.vehicle_no}
-                    onChange={(e) => handleFormChange('vehicle_no', e.target.value)}
-                    placeholder="TN-45-AZ-1024"
+                    value={form.site_name}
+                    onChange={(e) => handleFormChange('site_name', e.target.value)}
+                    placeholder="e.g. Tower A Core - Level 2"
                   />
                 </FormField>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>
 
-            <EntityEditModal.Section title="Material Inward & QC Inspection">
+            <EntityEditModal.Section title="Theoretical Norm vs Actual Quantity">
               <EntityEditModal.Grid>
                 <FormField label="Material Item" required error={errors.material_name}>
                   <Input
                     value={form.material_name}
                     onChange={(e) => handleFormChange('material_name', e.target.value)}
                     placeholder="e.g. OPC 53 Grade Cement"
-                  />
-                </FormField>
-
-                <FormField label="Received Quantity">
-                  <Input
-                    type="number"
-                    value={form.received_qty}
-                    onChange={(e) => handleFormChange('received_qty', e.target.value)}
                   />
                 </FormField>
 
@@ -704,32 +687,36 @@ export function StockReceiptsPage() {
                   />
                 </FormField>
 
-                <FormField label="Quality Inspection Status">
-                  <Select
-                    options={[
-                      { value: 'Accepted (QC Passed)', label: 'Accepted (QC Passed)' },
-                      { value: 'Under Inspection', label: 'Under Inspection (Sample Taken)' },
-                      { value: 'Rejected', label: 'Rejected (Defective Batch)' },
-                    ]}
-                    value={form.quality_status}
-                    onChange={(v) => handleFormChange('quality_status', v)}
-                  />
-                </FormField>
-
-                <FormField label="Storage Bay Location" className="md:col-span-2">
+                <FormField label="Theoretical BOQ Norm">
                   <Input
-                    value={form.site_name}
-                    onChange={(e) => handleFormChange('site_name', e.target.value)}
-                    placeholder="e.g. Central Yard Bay 1 / Steel Stacking Bunker"
+                    type="number"
+                    value={form.theoretical_qty}
+                    onChange={(e) => handleFormChange('theoretical_qty', e.target.value)}
                   />
                 </FormField>
 
-                <FormField label="QC Notes & Remarks" className="md:col-span-2">
+                <FormField label="Actual Site Consumed Qty">
+                  <Input
+                    type="number"
+                    value={form.actual_consumed_qty}
+                    onChange={(e) => handleFormChange('actual_consumed_qty', e.target.value)}
+                  />
+                </FormField>
+
+                <FormField label="Calculated Wastage %" className="md:col-span-2">
+                  <Input
+                    readOnly
+                    className="font-mono font-bold bg-surface-muted"
+                    value={`+${form.variance_qty} ${form.uom} (+${form.wastage_pct}% Wastage)`}
+                  />
+                </FormField>
+
+                <FormField label="Consumption Notes & Justification" className="md:col-span-2">
                   <Textarea
                     rows={2}
                     value={form.notes}
                     onChange={(e) => handleFormChange('notes', e.target.value)}
-                    placeholder="Test certificate verified, weighbridge slip reference..."
+                    placeholder="Pump line priming waste, offcuts reuse notes..."
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -737,8 +724,8 @@ export function StockReceiptsPage() {
           </EntityEditModal.Body>
 
           <EntityEditModal.Footer
-            formId="grn-form"
-            submitLabel={editingItem ? 'Update GRN' : 'Inward to Inventory'}
+            formId="mcn-form"
+            submitLabel={editingItem ? 'Update Log' : 'Save Consumption Log'}
             onCancel={() => { setIsAddOpen(false); setEditingItem(null); }}
             isSubmitting={saving}
           />
@@ -748,8 +735,8 @@ export function StockReceiptsPage() {
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={Boolean(deleteItem)}
-        title="Delete Goods Receipt"
-        message={`Are you sure you want to delete "${deleteItem?.receipt_no}"?`}
+        title="Delete Consumption Log"
+        message={`Are you sure you want to delete "${deleteItem?.consumption_no}"?`}
         variant="danger"
         confirmLabel="Delete"
         onConfirm={confirmDelete}

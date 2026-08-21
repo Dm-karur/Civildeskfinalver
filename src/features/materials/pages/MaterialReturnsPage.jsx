@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  ArrowDownToLine, CheckCircle2, XCircle, Clock, IndianRupee,
-  Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight, Truck,
-  ShieldCheck, Check, AlertCircle, Sparkles, Building, Layers, Printer
+  RotateCcw, CheckCircle2, IndianRupee, Layers,
+  Search, Filter, Eye, Edit, Trash2, Plus, Building,
+  ShieldCheck, Check, AlertCircle, Sparkles, Printer, AlertTriangle
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -19,111 +19,78 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, materialManagementApi } from '../../../api/apiservice';
+import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-const DEFAULT_RECEIPTS = [
+const DEFAULT_RETURNS = [
   {
     id: 1,
     project_id: 1,
     project_code: 'PRJ-2026-001',
     project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Main Central Yard Bay 1',
-    receipt_no: 'GRN-2026-081',
-    receipt_date: '2026-08-20',
-    supplier_name: 'UltraTech Cement Distributors Ltd',
-    supplier_challan_no: 'DC-UT-9812',
-    invoice_no: 'INV-2026-4412',
-    vehicle_no: 'TN-45-AZ-1024',
+    return_no: 'RTN-2026-021',
+    return_date: '2026-08-20',
+    return_type: 'Site Surplus Return',
+    site_name: 'Tower A Core - Level 2',
+    contractor_name: 'Sri Murugan Labour Services',
     material_code: 'MAT-CEM-001',
     material_name: 'OPC 53 Grade Cement',
-    received_qty: 400,
+    returned_qty: 30,
     uom: 'Bags',
     unit_rate: 385,
-    total_amount: 154000,
-    quality_status: 'Accepted (QC Passed)',
-    status_name: 'Received & Stored',
-    inspected_by: 'Er. Senthil Nathan (QA/QC Engineer)',
-    notes: 'Manufacturer test certificate verified. Clean 50kg intact bags.'
+    return_value: 11550,
+    condition: 'Good (Unopened Bags)',
+    status: 'Stock Restocked & Credited',
+    reason: 'Surplus cement bags returned to central godown after slab casting.'
   },
   {
     id: 2,
     project_id: 1,
     project_code: 'PRJ-2026-001',
     project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Steel Stacking Yard',
-    receipt_no: 'GRN-2026-082',
-    receipt_date: '2026-08-19',
-    supplier_name: 'JSW Steel Regional Supply Hub',
-    supplier_challan_no: 'JSW-CH-3312',
-    invoice_no: 'INV-JSW-819',
-    vehicle_no: 'KA-01-MJ-8842',
-    material_code: 'MAT-STL-002',
-    material_name: 'Fe 550D TMT Rebar 16mm',
-    received_qty: 12.5,
-    uom: 'MT',
-    unit_rate: 58500,
-    total_amount: 731250,
-    quality_status: 'Accepted (QC Passed)',
-    status_name: 'Received & Stored',
-    inspected_by: 'Er. Senthil Nathan (QA/QC Engineer)',
-    notes: 'Weighbridge slip attached. Heat numbers verified on bundle tags.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    site_name: 'Ch. 16+300 Aggregate Bunker',
-    receipt_no: 'GRN-2026-083',
-    receipt_date: '2026-08-21',
-    supplier_name: 'Sri Amman Blue Metal Quarries',
-    supplier_challan_no: 'AMN-8819',
-    invoice_no: 'INV-AMN-102',
-    vehicle_no: 'TN-47-D-9918',
-    material_code: 'MAT-AGG-003',
-    material_name: '20mm Blue Metal Aggregate',
-    received_qty: 45,
-    uom: 'Ton',
-    unit_rate: 1450,
-    total_amount: 65250,
-    quality_status: 'Accepted (QC Passed)',
-    status_name: 'Received & Stored',
-    inspected_by: 'K. Balaji (PM)',
-    notes: 'Sieve analysis sample taken for flakiness index test.'
+    return_no: 'RTN-2026-022',
+    return_date: '2026-08-19',
+    return_type: 'Defective Supplier Return',
+    site_name: 'Main Central Yard',
+    contractor_name: 'UltraTech Cement Distributors Ltd',
+    material_code: 'MAT-CEM-001',
+    material_name: 'OPC 53 Grade Cement',
+    returned_qty: 15,
+    uom: 'Bags',
+    unit_rate: 385,
+    return_value: 5775,
+    condition: 'Torn / Moisture Damaged',
+    status: 'Supplier Credit Note Raised',
+    reason: 'Transit rain damaged bags rejected during inward QC inspection.'
   },
 ];
 
 const EMPTY_FORM = {
   project_id: '',
-  site_name: '',
-  receipt_no: '',
-  receipt_date: '',
-  supplier_name: '',
-  supplier_challan_no: '',
-  invoice_no: '',
-  vehicle_no: '',
+  return_no: '',
+  return_date: '',
+  return_type: 'Site Surplus Return',
+  site_name: 'Site Yard',
+  contractor_name: '',
   material_code: 'MAT-CEM-001',
   material_name: 'OPC 53 Grade Cement',
-  received_qty: '100',
+  returned_qty: '10',
   uom: 'Bags',
   unit_rate: '385',
-  total_amount: '38500',
-  quality_status: 'Accepted (QC Passed)',
-  status_name: 'Received & Stored',
-  inspected_by: 'QC Engineer',
-  notes: '',
+  return_value: '3850',
+  condition: 'Good (Unopened Bags)',
+  reason: '',
 };
 
-export function StockReceiptsPage() {
+export function MaterialReturnsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [receipts, setReceipts] = useState(DEFAULT_RECEIPTS);
+  const [returns, setReturns] = useState(DEFAULT_RETURNS);
   const [loading, setLoading] = useState(false);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const perPage = 10;
@@ -137,20 +104,12 @@ export function StockReceiptsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects & API Data
+  // Load Projects
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      projectsApi.list().catch(() => ({ data: [] })),
-      materialManagementApi.receipts.list().catch(() => ({ data: [] }))
-    ]).then(([projRes, recRes]) => {
-      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
-      setProjects(Array.isArray(pList) ? pList : []);
-      const rList = recRes?.data?.material_receipts ?? recRes?.data?.data ?? [];
-      if (Array.isArray(rList) && rList.length > 0) {
-        setReceipts(rList);
-      }
-    }).finally(() => setLoading(false));
+    projectsApi.list().then(res => {
+      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
+      setProjects(Array.isArray(list) ? list : []);
+    }).catch(() => setProjects([]));
   }, []);
 
   // Form Handlers
@@ -161,8 +120,8 @@ export function StockReceiptsPage() {
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
-      receipt_no: `GRN-2026-08${receipts.length + 1}`,
-      receipt_date: today,
+      return_no: `RTN-2026-02${returns.length + 1}`,
+      return_date: today,
     });
     setErrors({});
     setIsAddOpen(true);
@@ -171,23 +130,19 @@ export function StockReceiptsPage() {
   const handleOpenEdit = (item) => {
     setForm({
       project_id: String(item.project_id || '1'),
+      return_no: item.return_no || '',
+      return_date: item.return_date || '',
+      return_type: item.return_type || 'Site Surplus Return',
       site_name: item.site_name || '',
-      receipt_no: item.receipt_no || '',
-      receipt_date: item.receipt_date || '',
-      supplier_name: item.supplier_name || '',
-      supplier_challan_no: item.supplier_challan_no || '',
-      invoice_no: item.invoice_no || '',
-      vehicle_no: item.vehicle_no || '',
+      contractor_name: item.contractor_name || '',
       material_code: item.material_code || '',
       material_name: item.material_name || '',
-      received_qty: String(item.received_qty || '100'),
+      returned_qty: String(item.returned_qty || '10'),
       uom: item.uom || 'Nos',
       unit_rate: String(item.unit_rate || '385'),
-      total_amount: String(item.total_amount || '38500'),
-      quality_status: item.quality_status || 'Accepted (QC Passed)',
-      status_name: item.status_name || 'Received & Stored',
-      inspected_by: item.inspected_by || 'QC Engineer',
-      notes: item.notes || '',
+      return_value: String(item.return_value || '3850'),
+      condition: item.condition || 'Good (Unopened Bags)',
+      reason: item.reason || '',
     });
     setErrors({});
     setEditingItem(item);
@@ -196,10 +151,10 @@ export function StockReceiptsPage() {
   const handleFormChange = (field, value) => {
     setForm(prev => {
       const next = { ...prev, [field]: value };
-      if (field === 'received_qty' || field === 'unit_rate') {
-        const qty = Number(field === 'received_qty' ? value : prev.received_qty) || 0;
+      if (field === 'returned_qty' || field === 'unit_rate') {
+        const qty = Number(field === 'returned_qty' ? value : prev.returned_qty) || 0;
         const rate = Number(field === 'unit_rate' ? value : prev.unit_rate) || 0;
-        next.total_amount = String(Math.round(qty * rate));
+        next.return_value = String(Math.round(qty * rate));
       }
       return next;
     });
@@ -209,8 +164,7 @@ export function StockReceiptsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.receipt_no.trim()) errs.receipt_no = 'GRN No is required';
-    if (!form.supplier_name.trim()) errs.supplier_name = 'Supplier is required';
+    if (!form.return_no.trim()) errs.return_no = 'Return No is required';
     if (!form.material_name.trim()) errs.material_name = 'Material item is required';
 
     if (Object.keys(errs).length > 0) {
@@ -221,45 +175,42 @@ export function StockReceiptsPage() {
     setSaving(true);
     try {
       const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const qty = Number(form.received_qty || 0);
+      const qty = Number(form.returned_qty || 0);
       const rate = Number(form.unit_rate || 0);
 
-      const newReceipt = {
+      const newReturn = {
         id: editingItem?.id || Date.now(),
         project_id: Number(form.project_id || 1),
         project_code: selectedProj?.project_code || 'PRJ-2026-001',
         project_name: selectedProj?.project_name || 'Civil Project',
-        site_name: form.site_name || 'Central Yard',
-        receipt_no: form.receipt_no,
-        receipt_date: form.receipt_date,
-        supplier_name: form.supplier_name,
-        supplier_challan_no: form.supplier_challan_no,
-        invoice_no: form.invoice_no,
-        vehicle_no: form.vehicle_no,
+        return_no: form.return_no,
+        return_date: form.return_date,
+        return_type: form.return_type,
+        site_name: form.site_name,
+        contractor_name: form.contractor_name,
         material_code: form.material_code,
         material_name: form.material_name,
-        received_qty: qty,
+        returned_qty: qty,
         uom: form.uom,
         unit_rate: rate,
-        total_amount: Number(form.total_amount || qty * rate),
-        quality_status: form.quality_status,
-        status_name: form.status_name,
-        inspected_by: form.inspected_by,
-        notes: form.notes,
+        return_value: Number(form.return_value || qty * rate),
+        condition: form.condition,
+        status: 'Stock Restocked & Credited',
+        reason: form.reason,
       };
 
       if (editingItem?.id) {
-        setReceipts(prev => prev.map(r => r.id === editingItem.id ? newReceipt : r));
-        toast.success('Goods receipt updated.');
+        setReturns(prev => prev.map(r => r.id === editingItem.id ? newReturn : r));
+        toast.success('Material return updated.');
       } else {
-        setReceipts(prev => [newReceipt, ...prev]);
-        toast.success('Goods received note (GRN) logged into inventory.');
+        setReturns(prev => [newReturn, ...prev]);
+        toast.success('Material return logged and inventory credited.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
     } catch {
-      toast.error('Failed to save goods receipt.');
+      toast.error('Failed to save material return.');
     } finally {
       setSaving(false);
     }
@@ -267,8 +218,8 @@ export function StockReceiptsPage() {
 
   const confirmDelete = () => {
     if (!deleteItem?.id) return;
-    setReceipts(prev => prev.filter(r => r.id !== deleteItem.id));
-    toast.success('Goods receipt removed.');
+    setReturns(prev => prev.filter(r => r.id !== deleteItem.id));
+    toast.success('Material return removed.');
     setDeleteItem(null);
   };
 
@@ -278,39 +229,37 @@ export function StockReceiptsPage() {
 
   // Filtered List
   const filtered = useMemo(() => {
-    return receipts.filter(r => {
+    return returns.filter(r => {
       if (selectedProjectId !== 'all' && String(r.project_id) !== String(selectedProjectId)) return false;
-      if (statusFilter !== 'all' && r.quality_status !== statusFilter) return false;
+      if (typeFilter !== 'all' && r.return_type !== typeFilter) return false;
       if (search) {
         const q = search.toLowerCase();
-        const no = (r.receipt_no || '').toLowerCase();
-        const sup = (r.supplier_name || '').toLowerCase();
+        const no = (r.return_no || '').toLowerCase();
         const mat = (r.material_name || '').toLowerCase();
-        const ch = (r.supplier_challan_no || '').toLowerCase();
-        const veh = (r.vehicle_no || '').toLowerCase();
-        if (!no.includes(q) && !sup.includes(q) && !mat.includes(q) && !ch.includes(q) && !veh.includes(q)) return false;
+        const party = (r.contractor_name || '').toLowerCase();
+        const reas = (r.reason || '').toLowerCase();
+        if (!no.includes(q) && !mat.includes(q) && !party.includes(q) && !reas.includes(q)) return false;
       }
       return true;
     });
-  }, [receipts, selectedProjectId, statusFilter, search]);
+  }, [returns, selectedProjectId, typeFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const totalInwardValue = useMemo(() => receipts.reduce((acc, r) => acc + Number(r.total_amount || 0), 0), [receipts]);
-  const qcPassedCount = useMemo(() => receipts.filter(r => r.quality_status.includes('Accepted') || r.quality_status.includes('Passed')).length, [receipts]);
+  const totalReturnValue = useMemo(() => returns.reduce((acc, r) => acc + Number(r.return_value || 0), 0), [returns]);
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Materials & Inventory', href: '/materials/catalogue' },
-    { label: 'Stock Receipts' }
+    { label: 'Material Returns' }
   ];
 
   return (
     <PageContainer>
       <PageHeader
-        title="Inward Goods Receipts (GRN) & Gate Entry"
+        title="Material Returns & Credit Notes"
         breadcrumbs={breadcrumbs}
       />
 
@@ -318,28 +267,28 @@ export function StockReceiptsPage() {
         {/* KPI Summary Ribbon */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard
-            label="Total Inward GRNs"
-            value={receipts.length}
+            label="Total Return Slips"
+            value={returns.length}
             status="primary"
-            icon={<ArrowDownToLine className="w-4 h-4" />}
+            icon={<RotateCcw className="w-4 h-4" />}
           />
           <KpiCard
-            label="Total Inward Value"
-            value={`₹${totalInwardValue.toLocaleString('en-IN')}`}
+            label="Total Credited Value"
+            value={`₹${totalReturnValue.toLocaleString('en-IN')}`}
             status="success"
             icon={<IndianRupee className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
-            label="QC Accepted Deliveries"
-            value={`${qcPassedCount} Lots`}
+            label="Site Surplus Restocked"
+            value="1 Return"
             status="neutral"
             icon={<CheckCircle2 className="w-4 h-4 text-sky-500" />}
           />
           <KpiCard
-            label="Vehicles Inward Gate"
-            value={`${receipts.length} Trucks`}
+            label="Supplier Defective Returns"
+            value="1 Return"
             status="neutral"
-            icon={<Truck className="w-4 h-4 text-primary" />}
+            icon={<AlertTriangle className="w-4 h-4 text-amber-500" />}
           />
         </div>
 
@@ -358,22 +307,22 @@ export function StockReceiptsPage() {
               />
             </div>
 
-            <div className="w-full sm:w-44">
+            <div className="w-full sm:w-48">
               <Select
                 options={[
-                  { value: 'all', label: 'All Quality Status' },
-                  { value: 'Accepted (QC Passed)', label: 'Accepted (QC Passed)' },
-                  { value: 'Rejected', label: 'Rejected (Defective)' },
+                  { value: 'all', label: 'All Return Types' },
+                  { value: 'Site Surplus Return', label: 'Site Surplus Return' },
+                  { value: 'Defective Supplier Return', label: 'Defective Supplier Return' },
                 ]}
-                value={statusFilter}
-                onChange={setStatusFilter}
+                value={typeFilter}
+                onChange={setTypeFilter}
                 className="text-xs h-8"
               />
             </div>
 
             <div className="w-full sm:w-56">
               <SearchField
-                placeholder="Search GRN, supplier, vehicle, challan..."
+                placeholder="Search return no, material, party..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -387,7 +336,7 @@ export function StockReceiptsPage() {
               leftIcon={<Printer className="w-3.5 h-3.5" />}
               onClick={handlePrint}
               className="text-xs h-8 shadow-xs"
-              title="Print Inward Register"
+              title="Print Return Register"
             >
               Print Register
             </Button>
@@ -398,7 +347,7 @@ export function StockReceiptsPage() {
               onClick={handleOpenAdd}
               className="text-xs h-8 shadow-xs"
             >
-              Inward Receipt (GRN)
+              Log Material Return
             </Button>
           </div>
         </div>
@@ -421,27 +370,27 @@ export function StockReceiptsPage() {
               <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
                   <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2 w-28">GRN No.</th>
-                  <th className="px-3 py-2">Supplier & Challan</th>
+                  <th className="px-3 py-2 w-28">Return Ref</th>
+                  <th className="px-3 py-2">Return Type & Party</th>
                   <th className="px-3 py-2">Material Item</th>
-                  <th className="px-3 py-2 text-center w-28 hidden md:table-cell">Vehicle No.</th>
-                  <th className="px-3 py-2 text-right w-24">Received Qty</th>
-                  <th className="px-3 py-2 text-right w-28">Total Value</th>
-                  <th className="px-3 py-2 text-center w-28">Quality Status</th>
-                  <th className="px-3 py-2 text-center w-24">Actions</th>
+                  <th className="px-3 py-2 text-right w-24">Return Qty</th>
+                  <th className="px-3 py-2 text-right w-28">Credit Value</th>
+                  <th className="px-3 py-2 w-32 hidden md:table-cell">Condition</th>
+                  <th className="px-3 py-2 text-center w-28">Status</th>
+                  <th className="px-3 py-2 text-center w-20">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {loading ? (
                   <tr>
                     <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      Loading stock receipts...
+                      Loading material returns...
                     </td>
                   </tr>
                 ) : paged.length === 0 ? (
                   <tr>
                     <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      No goods receipts found matching criteria.
+                      No material return slips found matching criteria.
                     </td>
                   </tr>
                 ) : (
@@ -452,45 +401,40 @@ export function StockReceiptsPage() {
                       </td>
                       <td className="px-3 py-2">
                         <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                          {r.receipt_no}
+                          {r.return_no}
                         </span>
-                        <span className="text-[10px] text-text-muted font-mono block pt-0.5">{r.receipt_date}</span>
+                        <span className="text-[10px] text-text-muted font-mono block pt-0.5">{r.return_date}</span>
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={r.supplier_name}>
-                            {r.supplier_name}
-                          </span>
-                          <span className="text-[10px] text-text-muted font-mono truncate">
-                            DC: {r.supplier_challan_no} • Inv: {r.invoice_no}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={r.material_name}>
-                            {r.material_name}
+                          <span className="font-semibold text-text-primary text-[12px] truncate" title={r.return_type}>
+                            {r.return_type}
                           </span>
                           <span className="text-[10px] text-text-muted truncate">
-                            {r.site_name}
+                            {r.contractor_name || r.site_name}
                           </span>
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-center hidden md:table-cell font-mono text-[11px] text-text-secondary">
-                        {r.vehicle_no || '—'}
+                      <td className="px-3 py-2">
+                        <span className="font-semibold text-text-primary text-[12px] truncate block" title={r.material_name}>
+                          {r.material_name}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
-                        {r.received_qty} {r.uom}
+                        {r.returned_qty} {r.uom}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
-                        ₹{Number(r.total_amount).toLocaleString('en-IN')}
+                      <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
+                        ₹{Number(r.return_value).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 hidden md:table-cell text-text-secondary text-[11px] truncate" title={r.condition}>
+                        {r.condition}
                       </td>
                       <td className="px-3 py-2 text-center">
                         <Badge
                           variant="success"
                           className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
                         >
-                          {r.quality_status}
+                          Credited
                         </Badge>
                       </td>
                       <td className="px-3 py-2">
@@ -499,7 +443,7 @@ export function StockReceiptsPage() {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
-                            title="View GRN 360"
+                            title="View Return 360"
                             onClick={() => setViewingItem(r)}
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
@@ -529,33 +473,33 @@ export function StockReceiptsPage() {
             <div key={r.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="font-mono text-[10px] font-bold text-primary block">{r.receipt_no} • {r.receipt_date}</span>
+                  <span className="font-mono text-[10px] font-bold text-primary block">{r.return_no} • {r.return_date}</span>
                   <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{r.material_name}</h4>
-                  <span className="text-[11px] text-text-muted">{r.supplier_name}</span>
+                  <span className="text-[11px] text-text-muted">{r.return_type}</span>
                 </div>
                 <Badge
                   variant="success"
                   className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
                 >
-                  QC Passed
+                  Credited
                 </Badge>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Received Qty</span>
-                  <span className="font-mono font-bold text-text-primary text-[11px]">{r.received_qty} {r.uom}</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Return Qty</span>
+                  <span className="font-mono font-bold text-text-primary text-[11px]">{r.returned_qty} {r.uom}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Total Value</span>
-                  <span className="font-mono font-bold text-primary text-[12px]">₹{Number(r.total_amount).toLocaleString('en-IN')}</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Credit Value</span>
+                  <span className="font-mono font-bold text-emerald-600 text-[12px]">₹{Number(r.return_value).toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-between pt-1 border-t border-border/60 text-xs">
-                <span className="text-[10px] text-text-muted font-mono">{r.vehicle_no}</span>
+                <span className="text-[10px] text-text-muted font-mono">{r.condition}</span>
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(r)}>
-                  <Eye className="w-3 h-3 mr-1" /> View GRN
+                  <Eye className="w-3 h-3 mr-1" /> View Return
                 </Button>
               </div>
             </div>
@@ -575,18 +519,18 @@ export function StockReceiptsPage() {
         </div>
       </div>
 
-      {/* View GRN 360 Modal */}
+      {/* View Return 360 Modal */}
       {viewingItem && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <ArrowDownToLine className="w-4 h-4" />
+                  <RotateCcw className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.receipt_no}</h3>
-                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.supplier_name} • {viewingItem.receipt_date}</span>
+                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.return_no}</h3>
+                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.material_name} • {viewingItem.return_type}</span>
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
@@ -594,47 +538,42 @@ export function StockReceiptsPage() {
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Material Delivered</span> <span className="font-semibold text-text-primary">{viewingItem.material_name}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Quantity Inwarded</span> <span className="font-bold text-primary font-mono text-sm">{viewingItem.received_qty} {viewingItem.uom}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Total Inward Value</span> <span className="font-bold text-emerald-600 font-mono text-sm">₹{Number(viewingItem.total_amount).toLocaleString('en-IN')}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Quality Inspection</span> <span className="font-semibold text-emerald-600">{viewingItem.quality_status}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Supplier Challan</span> <span className="font-mono">{viewingItem.supplier_challan_no}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Delivery Vehicle</span> <span className="font-mono text-text-primary">{viewingItem.vehicle_no}</span></div>
-                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Yard Storage Bay</span> <span className="text-text-primary font-medium">{viewingItem.site_name}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Returned Quantity</span> <span className="font-bold text-primary font-mono text-sm">{viewingItem.returned_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Credited Amount</span> <span className="font-bold text-emerald-600 font-mono text-sm">₹{Number(viewingItem.return_value).toLocaleString('en-IN')}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Return Date</span> <span className="font-mono">{viewingItem.return_date}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Material Condition</span> <span className="font-semibold text-text-primary">{viewingItem.condition}</span></div>
+                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Source Party / Site</span> <span className="text-text-primary font-medium">{viewingItem.contractor_name || viewingItem.site_name}</span></div>
               </div>
 
-              {viewingItem.notes && (
+              {viewingItem.reason && (
                 <div className="border border-border rounded-lg p-3 space-y-1">
-                  <span className="font-bold text-text-primary block text-[11px]">QA/QC Engineer Remarks:</span>
-                  <p className="text-text-secondary bg-surface-muted/30 p-2 rounded border border-border/50">{viewingItem.notes}</p>
+                  <span className="font-bold text-text-primary block text-[11px]">Return Reason & Inspection Notes:</span>
+                  <p className="text-text-secondary bg-surface-muted/30 p-2 rounded border border-border/50">{viewingItem.reason}</p>
                 </div>
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print GRN Slip
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add / Edit GRN Modal */}
+      {/* Add / Edit Return Modal */}
       <EntityEditModal
         isOpen={Boolean(isAddOpen || editingItem)}
         onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
       >
         <EntityEditModal.Header
-          icon={ArrowDownToLine}
-          title={editingItem ? 'Edit Goods Receipt (GRN)' : 'Inward Goods Receipt (GRN)'}
-          subtitle="Log supplier gate delivery, vehicle challan, received quantities, and QC verification."
+          icon={RotateCcw}
+          title={editingItem ? 'Edit Material Return' : 'Log Material Return (Credit Note)'}
+          subtitle="Record surplus site return back to godown or defective lot return to supplier."
           onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
         />
-        <form id="grn-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form id="rtn-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="Supplier & Delivery Gate Entry">
+            <EntityEditModal.Section title="Return Type & Location">
               <EntityEditModal.Grid>
                 <FormField label="Parent Project" required error={errors.project_id}>
                   <Select
@@ -644,41 +583,36 @@ export function StockReceiptsPage() {
                   />
                 </FormField>
 
-                <FormField label="GRN Number" required error={errors.receipt_no}>
+                <FormField label="Return Note Number" required error={errors.return_no}>
                   <Input
-                    value={form.receipt_no}
-                    onChange={(e) => handleFormChange('receipt_no', e.target.value)}
-                    placeholder="GRN-2026-085"
+                    value={form.return_no}
+                    onChange={(e) => handleFormChange('return_no', e.target.value)}
+                    placeholder="RTN-2026-025"
                   />
                 </FormField>
 
-                <FormField label="Supplier Name" required error={errors.supplier_name} className="md:col-span-2">
-                  <Input
-                    value={form.supplier_name}
-                    onChange={(e) => handleFormChange('supplier_name', e.target.value)}
-                    placeholder="e.g. UltraTech Cement Distributors Ltd"
+                <FormField label="Return Type" required>
+                  <Select
+                    options={[
+                      { value: 'Site Surplus Return', label: 'Site Surplus Return (Restock to Yard)' },
+                      { value: 'Defective Supplier Return', label: 'Defective Supplier Return (Vendor Credit)' },
+                    ]}
+                    value={form.return_type}
+                    onChange={(v) => handleFormChange('return_type', v)}
                   />
                 </FormField>
 
-                <FormField label="Supplier Delivery Challan">
+                <FormField label="Party / Subcontractor / Supplier">
                   <Input
-                    value={form.supplier_challan_no}
-                    onChange={(e) => handleFormChange('supplier_challan_no', e.target.value)}
-                    placeholder="DC-9812"
-                  />
-                </FormField>
-
-                <FormField label="Vehicle Number">
-                  <Input
-                    value={form.vehicle_no}
-                    onChange={(e) => handleFormChange('vehicle_no', e.target.value)}
-                    placeholder="TN-45-AZ-1024"
+                    value={form.contractor_name}
+                    onChange={(e) => handleFormChange('contractor_name', e.target.value)}
+                    placeholder="e.g. Sri Murugan Labour Services"
                   />
                 </FormField>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>
 
-            <EntityEditModal.Section title="Material Inward & QC Inspection">
+            <EntityEditModal.Section title="Material Return Quantities">
               <EntityEditModal.Grid>
                 <FormField label="Material Item" required error={errors.material_name}>
                   <Input
@@ -688,15 +622,15 @@ export function StockReceiptsPage() {
                   />
                 </FormField>
 
-                <FormField label="Received Quantity">
+                <FormField label="Returned Quantity">
                   <Input
                     type="number"
-                    value={form.received_qty}
-                    onChange={(e) => handleFormChange('received_qty', e.target.value)}
+                    value={form.returned_qty}
+                    onChange={(e) => handleFormChange('returned_qty', e.target.value)}
                   />
                 </FormField>
 
-                <FormField label="Unit Valuation Rate (₹)">
+                <FormField label="Unit Rate (₹)">
                   <Input
                     type="number"
                     value={form.unit_rate}
@@ -704,32 +638,28 @@ export function StockReceiptsPage() {
                   />
                 </FormField>
 
-                <FormField label="Quality Inspection Status">
-                  <Select
-                    options={[
-                      { value: 'Accepted (QC Passed)', label: 'Accepted (QC Passed)' },
-                      { value: 'Under Inspection', label: 'Under Inspection (Sample Taken)' },
-                      { value: 'Rejected', label: 'Rejected (Defective Batch)' },
-                    ]}
-                    value={form.quality_status}
-                    onChange={(v) => handleFormChange('quality_status', v)}
-                  />
-                </FormField>
-
-                <FormField label="Storage Bay Location" className="md:col-span-2">
+                <FormField label="Credited Value (₹)">
                   <Input
-                    value={form.site_name}
-                    onChange={(e) => handleFormChange('site_name', e.target.value)}
-                    placeholder="e.g. Central Yard Bay 1 / Steel Stacking Bunker"
+                    readOnly
+                    className="font-mono font-bold text-emerald-600 bg-surface-muted"
+                    value={`₹${Number(form.return_value).toLocaleString('en-IN')}`}
                   />
                 </FormField>
 
-                <FormField label="QC Notes & Remarks" className="md:col-span-2">
+                <FormField label="Material Condition" className="md:col-span-2">
+                  <Input
+                    value={form.condition}
+                    onChange={(e) => handleFormChange('condition', e.target.value)}
+                    placeholder="e.g. Good Unopened / Rain Damaged / Scrap Offcut"
+                  />
+                </FormField>
+
+                <FormField label="Return Reason & Notes" className="md:col-span-2">
                   <Textarea
                     rows={2}
-                    value={form.notes}
-                    onChange={(e) => handleFormChange('notes', e.target.value)}
-                    placeholder="Test certificate verified, weighbridge slip reference..."
+                    value={form.reason}
+                    onChange={(e) => handleFormChange('reason', e.target.value)}
+                    placeholder="Surplus left over after concrete pour..."
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -737,8 +667,8 @@ export function StockReceiptsPage() {
           </EntityEditModal.Body>
 
           <EntityEditModal.Footer
-            formId="grn-form"
-            submitLabel={editingItem ? 'Update GRN' : 'Inward to Inventory'}
+            formId="rtn-form"
+            submitLabel={editingItem ? 'Update Return' : 'Log Return'}
             onCancel={() => { setIsAddOpen(false); setEditingItem(null); }}
             isSubmitting={saving}
           />
@@ -748,8 +678,8 @@ export function StockReceiptsPage() {
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={Boolean(deleteItem)}
-        title="Delete Goods Receipt"
-        message={`Are you sure you want to delete "${deleteItem?.receipt_no}"?`}
+        title="Delete Material Return"
+        message={`Are you sure you want to delete "${deleteItem?.return_no}"?`}
         variant="danger"
         confirmLabel="Delete"
         onConfirm={confirmDelete}
