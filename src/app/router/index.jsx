@@ -9,6 +9,7 @@ import { ProjectTeamPage } from '../../features/projects/pages/ProjectTeamPage';
 import { ProjectOverviewPage } from '../../features/projects/pages/ProjectOverviewPage';
 import { ProjectDocumentsPage } from '../../features/projects/pages/ProjectDocumentsPage';
 import { ProjectMilestonesPage } from '../../features/projects/pages/ProjectMilestonesPage';
+import { ProjectStatusHistoryPage } from '../../features/projects/pages/ProjectStatusHistoryPage';
 import { ClientsListPage } from '../../features/clients/pages/ClientsListPage';
 import { CompanyListPage } from '../../features/settings/pages/CompanyListPage';
 import { BranchListPage } from '../../features/settings/pages/BranchListPage';
@@ -86,7 +87,7 @@ export const router = createBrowserRouter([
           { path: 'projects/overview', element: R('project.view', ProjectOverviewPage) },
           { path: 'projects/documents', element: R('project.view', ProjectDocumentsPage) },
           { path: 'projects/milestones', element: R('project.view', ProjectMilestonesPage) },
-          { path: 'projects/status-history', element: R('project.view', ProjectsListPage) },
+          { path: 'projects/status-history', element: R('project.view', ProjectStatusHistoryPage) },
           { path: 'project-masters/clients', element: R('client.view', ClientsListPage) },
           { path: 'clients', element: <Navigate to="/project-masters/clients" replace /> },
 
