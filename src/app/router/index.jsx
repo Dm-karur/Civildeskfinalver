@@ -107,6 +107,18 @@ import { RABillApprovalPage } from '../../features/subcontracts/pages/RABillAppr
 import { SubcontractPaymentsPage } from '../../features/subcontracts/pages/SubcontractPaymentsPage';
 import { PackageCompletionPage } from '../../features/subcontracts/pages/PackageCompletionPage';
 import { RetentionLedgerPage } from '../../features/subcontracts/pages/RetentionLedgerPage';
+// Phase 3 — Client Billing & Receivables
+import { ClientContractsPage } from '../../features/receivables/pages/ClientContractsPage';
+import { ContractValuesPage } from '../../features/receivables/pages/ContractValuesPage';
+import { ClientAdvancesPage } from '../../features/receivables/pages/ClientAdvancesPage';
+import { AdvanceApprovalPage } from '../../features/receivables/pages/AdvanceApprovalPage';
+import { ClientInvoicesPage } from '../../features/receivables/pages/ClientInvoicesPage';
+import { ProgressBillingPage } from '../../features/receivables/pages/ProgressBillingPage';
+import { ClientReceiptsPage } from '../../features/receivables/pages/ClientReceiptsPage';
+import { ReceiptAllocationsPage } from '../../features/receivables/pages/ReceiptAllocationsPage';
+import { OutstandingReceivablesPage } from '../../features/receivables/pages/OutstandingReceivablesPage';
+import { ClientRetentionPage } from '../../features/receivables/pages/ClientRetentionPage';
+import { ClientStatementsPage } from '../../features/receivables/pages/ClientStatementsPage';
 // Phase 3 — Finance & Cost Control
 import { ExpenseRequestsPage, ExpenseBillsPage, ExpensePaymentsPage, ProjectCostSummaryPage } from '../../features/finance/pages/FinancePages';
 // Phase 3 — Reports & Analytics
@@ -253,17 +265,17 @@ export const router = createBrowserRouter([
           { path: 'reports/subcontracts', element: R('report.view', SubcontractReportPage) },
 
           // ─── 10. Client Billing & Receivables ─────────────
-          { path: 'receivables/contracts', element: R('client.view', ProjectsListPage) },
-          { path: 'receivables/contract-values', element: R('client.view', ProjectsListPage) },
-          { path: 'receivables/advances', element: R('payments.view', ExpensePaymentsPage) },
-          { path: 'receivables/advance-approval', element: R('payments.approve', ExpensePaymentsPage) },
-          { path: 'receivables/invoices', element: R('payments.view', ExpenseBillsPage) },
-          { path: 'receivables/progress-billing', element: R('payments.view', ExpenseBillsPage) },
-          { path: 'receivables/receipts', element: R('payments.view', ExpensePaymentsPage) },
-          { path: 'receivables/allocations', element: R('payments.view', ExpensePaymentsPage) },
-          { path: 'receivables/outstanding', element: R('cashflow.view', ExpenseReportPage) },
-          { path: 'receivables/retention', element: R('cashflow.view', ExpenseReportPage) },
-          { path: 'receivables/statements', element: R('report.view', ExpenseReportPage) },
+          { path: 'receivables/contracts', element: R('client.view', ClientContractsPage) },
+          { path: 'receivables/contract-values', element: R('client.view', ContractValuesPage) },
+          { path: 'receivables/advances', element: R('payments.view', ClientAdvancesPage) },
+          { path: 'receivables/advance-approval', element: R('payments.approve', AdvanceApprovalPage) },
+          { path: 'receivables/invoices', element: R('payments.view', ClientInvoicesPage) },
+          { path: 'receivables/progress-billing', element: R('payments.view', ProgressBillingPage) },
+          { path: 'receivables/receipts', element: R('payments.view', ClientReceiptsPage) },
+          { path: 'receivables/allocations', element: R('payments.view', ReceiptAllocationsPage) },
+          { path: 'receivables/outstanding', element: R('cashflow.view', OutstandingReceivablesPage) },
+          { path: 'receivables/retention', element: R('cashflow.view', ClientRetentionPage) },
+          { path: 'receivables/statements', element: R('report.view', ClientStatementsPage) },
 
           // ─── 11. Finance & Cost Control ───────────────────
           { path: 'finance/project-cost', element: R('project_cost.view', ProjectCostSummaryPage) },
