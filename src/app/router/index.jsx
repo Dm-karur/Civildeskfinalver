@@ -58,6 +58,7 @@ import { LabourTimesheetsPage } from '../../features/labour/pages/LabourTimeshee
 import { LabourOvertimePage } from '../../features/labour/pages/LabourOvertimePage';
 import { LabourLeavePage } from '../../features/labour/pages/LabourLeavePage';
 import { DailyWagesPage } from '../../features/labour/pages/DailyWagesPage';
+import { ManpowerCostPage } from '../../features/labour/pages/ManpowerCostPage';
 // Phase 2 — Materials & Inventory
 import { MaterialCataloguePage } from '../../features/materials/pages/MaterialCataloguePage';
 import { StockOverviewPage } from '../../features/materials/pages/StockOverviewPage';
@@ -159,7 +160,7 @@ export const router = createBrowserRouter([
           { path: 'labour/overtime', element: R('attendance.view', LabourOvertimePage) },
           { path: 'labour/leave', element: R('attendance.view', LabourLeavePage) },
           { path: 'labour/wages', element: R('wages.view', DailyWagesPage) },
-          { path: 'labour/manpower-cost', element: R('wages.view', DailyWagesPage) },
+          { path: 'labour/manpower-cost', element: R('wages.view', ManpowerCostPage) },
           { path: 'labour/wage-approval', element: R('wages.approve', DailyWagesPage) },
 
           // ─── 6. Materials & Inventory ─────────────────────
