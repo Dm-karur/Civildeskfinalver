@@ -46,6 +46,7 @@ import { PlanningBoqMappingPage } from '../../features/planning/pages/PlanningBo
 import { PlannedVsCompletedPage } from '../../features/planning/pages/PlannedVsCompletedPage';
 import { LookAheadSchedulePage } from '../../features/planning/pages/LookAheadSchedulePage';
 import { MaterialRequirementsPlanningPage } from '../../features/planning/pages/MaterialRequirementsPlanningPage';
+import { MaterialForecastPage } from '../../features/planning/pages/MaterialForecastPage';
 // Phase 2 — Labour & Attendance
 import { LabourRegisterPage } from '../../features/labour/pages/LabourRegisterPage';
 import { LabourDeploymentPage } from '../../features/labour/pages/LabourDeploymentPage';
@@ -139,7 +140,7 @@ export const router = createBrowserRouter([
           { path: 'planning/planned-vs-completed', element: R('planning.view', PlannedVsCompletedPage) },
           { path: 'planning/look-ahead', element: R('planning.view', LookAheadSchedulePage) },
           { path: 'planning/material-requirements', element: R('planning.view', MaterialRequirementsPlanningPage) },
-          { path: 'planning/material-forecast', element: R('materials.view', MaterialReportPage) },
+          { path: 'planning/material-forecast', element: R('planning.view', MaterialForecastPage) },
           { path: 'planning/shortages', element: R('material_stock.view', MaterialReportPage) },
           { path: 'planning/alerts', element: R('dashboard.view', DashboardPage) },
 
