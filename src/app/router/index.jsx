@@ -167,7 +167,10 @@ import { LabourContractorsPage } from '../../features/masters/pages/LabourMaster
 import { MaterialCategoriesPage } from '../../features/masters/pages/MaterialCategoriesPage';
 import { BrandsPage } from '../../features/masters/pages/BrandsPage';
 import { WarehousesPage } from '../../features/masters/pages/WarehousesPage';
-import { SuppliersPage, ExpenseCategoriesPage } from '../../features/masters/pages/MaterialProcurementMasterPages';
+import { VendorsPage } from '../../features/masters/pages/VendorsPage';
+import { PaymentTermsPage } from '../../features/masters/pages/PaymentTermsPage';
+import { TaxRatesPage } from '../../features/masters/pages/TaxRatesPage';
+import { ExpenseCategoriesPage } from '../../features/masters/pages/MaterialProcurementMasterPages';
 // Phase 3 — Admin
 import { AuditLogsPage } from '../../features/settings/pages/AuditLogsPage';
 
@@ -388,9 +391,9 @@ export const router = createBrowserRouter([
           { path: 'masters/brands', element: R('materials.view', BrandsPage) },
           { path: 'masters/material-units', element: R('materials.view', UnitsOfMeasurementPage) },
           { path: 'masters/warehouses', element: R('material_stock.view', WarehousesPage) },
-          { path: 'masters/vendors', element: R('purchase_orders.view', SuppliersPage) },
-          { path: 'masters/payment-terms', element: R('master.view', WorkCategoriesPage) },
-          { path: 'masters/tax-rates', element: R('master.view', WorkCategoriesPage) },
+          { path: 'masters/vendors', element: R('purchase_orders.view', VendorsPage) },
+          { path: 'masters/payment-terms', element: R('master.view', PaymentTermsPage) },
+          { path: 'masters/tax-rates', element: R('master.view', TaxRatesPage) },
 
           // ─── Masters — Finance ───────────────────────────
           { path: 'masters/expense-categories', element: R('expenses.view', ExpenseCategoriesPage) },
