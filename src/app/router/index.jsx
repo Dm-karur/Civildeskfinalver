@@ -27,6 +27,7 @@ import { SiteTeamPage } from '../../features/sites/pages/SiteTeamPage';
 import { SiteInstructionsPage } from '../../features/sites/pages/SiteInstructionsPage';
 import { SiteDocumentsPage } from '../../features/sites/pages/SiteDocumentsPage';
 import { ProjectTypesPage } from '../../features/masters/pages/ProjectTypesPage';
+import { ProjectStatusesPage } from '../../features/masters/pages/ProjectStatusesPage';
 import { FinancialYearsPage } from '../../features/masters/pages/FinancialYearsPage';
 import { UnitsOfMeasurementPage } from '../../features/masters/pages/UnitsOfMeasurementPage';
 import { WorkCategoriesPage } from '../../features/masters/pages/WorkCategoriesPage';
@@ -361,7 +362,7 @@ export const router = createBrowserRouter([
           // ─── Masters — Project ───────────────────────────
           { path: 'project-masters/clients', element: R('client.view', ClientsListPage) },
           { path: 'masters/project-types', element: R('project.view', ProjectTypesPage) },
-          { path: 'masters/project-statuses', element: R('master.view', ProjectTypesPage) },
+          { path: 'masters/project-statuses', element: R('master.view', ProjectStatusesPage) },
           { path: 'masters/financial-years', element: R('financial_year.view', FinancialYearsPage) },
           { path: 'masters/units', element: R('master.view', UnitsOfMeasurementPage) },
           { path: 'masters/work-categories', element: R('master.view', WorkCategoriesPage) },
