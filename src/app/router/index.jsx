@@ -170,7 +170,11 @@ import { WarehousesPage } from '../../features/masters/pages/WarehousesPage';
 import { VendorsPage } from '../../features/masters/pages/VendorsPage';
 import { PaymentTermsPage } from '../../features/masters/pages/PaymentTermsPage';
 import { TaxRatesPage } from '../../features/masters/pages/TaxRatesPage';
-import { ExpenseCategoriesPage } from '../../features/masters/pages/MaterialProcurementMasterPages';
+import { ExpenseCategoriesPage } from '../../features/masters/pages/ExpenseCategoriesPage';
+import { IncomeCategoriesPage } from '../../features/masters/pages/IncomeCategoriesPage';
+import { BanksPage } from '../../features/masters/pages/BanksPage';
+import { AccountsPage } from '../../features/masters/pages/AccountsPage';
+import { CostHeadsPage } from '../../features/masters/pages/CostHeadsPage';
 // Phase 3 — Admin
 import { AuditLogsPage } from '../../features/settings/pages/AuditLogsPage';
 
@@ -397,10 +401,10 @@ export const router = createBrowserRouter([
 
           // ─── Masters — Finance ───────────────────────────
           { path: 'masters/expense-categories', element: R('expenses.view', ExpenseCategoriesPage) },
-          { path: 'masters/income-categories', element: R('master.view', ExpenseCategoriesPage) },
-          { path: 'masters/banks', element: R('master.view', ExpenseCategoriesPage) },
-          { path: 'masters/accounts', element: R('master.view', ExpenseCategoriesPage) },
-          { path: 'masters/cost-heads', element: R('master.view', ExpenseCategoriesPage) },
+          { path: 'masters/income-categories', element: R('master.view', IncomeCategoriesPage) },
+          { path: 'masters/banks', element: R('master.view', BanksPage) },
+          { path: 'masters/accounts', element: R('master.view', AccountsPage) },
+          { path: 'masters/cost-heads', element: R('master.view', CostHeadsPage) },
 
           // ─── Administration ──────────────────────────────
           { path: 'administration/companies', element: R('company.view', CompanyListPage) },
