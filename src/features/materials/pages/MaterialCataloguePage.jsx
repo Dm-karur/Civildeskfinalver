@@ -1,9 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import {
-  Package, CheckCircle2, XCircle, IndianRupee, Layers,
-  Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
-  ShieldCheck, Check, AlertCircle, Sparkles, Tag, Building
-} from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Package, Plus, Edit, Trash2, ShieldCheck, ChevronRight, HelpCircle, Eye, Tag } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -12,8 +8,8 @@ import { SearchField } from '../../../components/composite/SearchField';
 import { KpiCard } from '../../../components/composite/KpiCard';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
-import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
+import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
@@ -22,31 +18,35 @@ import { toast } from '../../../components/composite/Toast';
 import { materialsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-
-
 const EMPTY_FORM = {
+  material_category_id: '',
+  base_uom_id: '',
   material_code: '',
   material_name: '',
-  category_name: 'Cement & Binding Agents',
   specification: '',
   brand_preference: '',
-  uom: 'Bags (50kg)',
   hsn_code: '',
   gst_rate: '18',
   standard_rate: '0',
-  is_active: true,
-  description: '',
+  minimum_stock_qty: '0',
+  reorder_qty: '0',
+  storage_location_hint: '',
+  quality_check_required: '0',
+  batch_tracking_required: '0',
+  is_active: '1',
+  notes: '',
 };
 
 export function MaterialCataloguePage() {
   const { hasPermission } = useAuth();
   const [materials, setMaterials] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [uoms, setUoms] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filters
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const perPage = 10;
 
@@ -54,30 +54,49 @@ export function MaterialCataloguePage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [viewingItem, setViewingItem] = useState(null);
-  const [deleteItem, setDeleteItem] = useState(null);
+  const [deletingItem, setDeletingItem] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load API Data if available
-  useEffect(() => {
+  // Fetch data
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    materialsApi.catalogue.list()
-      .then(res => {
-        const list = res?.data?.materials ?? res?.data?.data ?? [];
-        if (Array.isArray(list) && list.length > 0) {
-          setMaterials(list);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    try {
+      const [resMaterials, resCategories, resMasters] = await Promise.all([
+        materialsApi.catalogue.list(),
+        materialsApi.categories.list(),
+        materialsApi.masters(),
+      ]);
+
+      const matList = resMaterials?.data?.materials ?? resMaterials?.materials ?? (Array.isArray(resMaterials) ? resMaterials : []);
+      setMaterials(Array.isArray(matList) ? matList : []);
+
+      const catList = resCategories?.data?.material_categories ?? resCategories?.material_categories ?? [];
+      setCategories(Array.isArray(catList) ? catList : []);
+
+      const uomList = resMasters?.data?.units ?? resMasters?.units ?? [];
+      setUoms(Array.isArray(uomList) ? uomList : []);
+    } catch (err) {
+      toast.error('Failed to load material catalogue data.');
+      setMaterials([]);
+      setCategories([]);
+      setUoms([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Form Handlers
   const handleOpenAdd = () => {
     setForm({
       ...EMPTY_FORM,
-      material_code: `MAT-GEN-00${materials.length + 1}`,
+      material_category_id: categories[0]?.id ? String(categories[0].id) : '',
+      base_uom_id: uoms[0]?.id ? String(uoms[0].id) : '',
     });
     setErrors({});
     setIsAddOpen(true);
@@ -85,206 +104,172 @@ export function MaterialCataloguePage() {
 
   const handleOpenEdit = (item) => {
     setForm({
+      material_category_id: String(item.material_category_id || ''),
+      base_uom_id: String(item.base_uom_id || ''),
       material_code: item.material_code || '',
       material_name: item.material_name || '',
-      category_name: item.category_name || 'Cement & Binding Agents',
       specification: item.specification || '',
       brand_preference: item.brand_preference || '',
-      uom: item.uom || 'Nos',
       hsn_code: item.hsn_code || '',
-      gst_rate: String(item.gst_rate || '18'),
-      standard_rate: String(item.standard_rate || '0'),
-      is_active: item.is_active !== false,
-      description: item.description || '',
+      gst_rate: String(item.gst_rate ?? '18'),
+      standard_rate: String(item.standard_rate ?? '0'),
+      minimum_stock_qty: String(item.minimum_stock_qty ?? '0'),
+      reorder_qty: String(item.reorder_qty ?? '0'),
+      storage_location_hint: item.storage_location_hint || '',
+      quality_check_required: item.quality_check_required ? '1' : '0',
+      batch_tracking_required: item.batch_tracking_required ? '1' : '0',
+      is_active: item.is_active ? '1' : '0',
+      notes: item.notes || '',
     });
     setErrors({});
     setEditingItem(item);
   };
 
   const handleFormChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: null }));
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: null }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const errs = {};
-    if (!form.material_code.trim()) errs.material_code = 'Item code is required';
-    if (!form.material_name.trim()) errs.material_name = 'Material name is required';
+    const validationErrs = {};
 
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
+    if (!form.material_name.trim()) validationErrs.material_name = 'Material name is required.';
+    if (!form.material_code.trim()) validationErrs.material_code = 'Material code is required.';
+    if (!form.material_category_id) validationErrs.material_category_id = 'Category is required.';
+    if (!form.base_uom_id) validationErrs.base_uom_id = 'Base UOM is required.';
+
+    if (Object.keys(validationErrs).length > 0) {
+      setErrors(validationErrs);
       return;
     }
 
     setSaving(true);
     try {
-      const newMaterial = {
-        id: editingItem?.id || Date.now(),
-        material_code: form.material_code,
-        material_name: form.material_name,
-        category_name: form.category_name,
-        specification: form.specification,
-        brand_preference: form.brand_preference,
-        uom: form.uom,
-        hsn_code: form.hsn_code,
-        gst_rate: Number(form.gst_rate || 18),
+      const payload = {
+        material_category_id: Number(form.material_category_id),
+        base_uom_id: Number(form.base_uom_id),
+        material_code: form.material_code.toUpperCase().trim(),
+        material_name: form.material_name.trim(),
+        specification: form.specification.trim() || null,
+        brand_preference: form.brand_preference.trim() || null,
+        hsn_code: form.hsn_code.trim() || null,
+        gst_rate: Number(form.gst_rate || 0),
         standard_rate: Number(form.standard_rate || 0),
-        is_active: Boolean(form.is_active),
-        description: form.description,
+        minimum_stock_qty: Number(form.minimum_stock_qty || 0),
+        reorder_qty: Number(form.reorder_qty || 0),
+        storage_location_hint: form.storage_location_hint.trim() || null,
+        quality_check_required: Number(form.quality_check_required),
+        batch_tracking_required: Number(form.batch_tracking_required),
+        is_active: Number(form.is_active),
+        notes: form.notes.trim() || null,
       };
 
-      if (editingItem?.id) {
-        setMaterials(prev => prev.map(m => m.id === editingItem.id ? newMaterial : m));
-        toast.success('Material item updated.');
+      const isEditing = Boolean(editingItem?.id);
+      if (isEditing) {
+        await materialsApi.catalogue.update(editingItem.id, payload);
+        toast.success('Material catalogue item updated successfully.');
       } else {
-        setMaterials(prev => [newMaterial, ...prev]);
-        toast.success('Material item added to catalogue.');
+        await materialsApi.catalogue.create(payload);
+        toast.success('Material catalogue item created successfully.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save material item.');
+      fetchData();
+    } catch (err) {
+      setErrors(err?.errors ?? {});
+      toast.error(err?.message || 'Unable to save material catalogue item.');
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setMaterials(prev => prev.filter(m => m.id !== deleteItem.id));
-    toast.success('Material item removed.');
-    setDeleteItem(null);
+  const confirmDelete = async () => {
+    if (!deletingItem?.id) return;
+    try {
+      await materialsApi.catalogue.remove(deletingItem.id);
+      toast.success('Material item removed from catalogue.');
+      setDeletingItem(null);
+      fetchData();
+    } catch (err) {
+      toast.error(err?.message || 'Unable to delete material item.');
+    }
   };
 
-  // Filtered List
-  const categoriesList = useMemo(() => {
-    const set = new Set();
-    materials.forEach(m => { if (m.category_name) set.add(m.category_name); });
-    return Array.from(set);
-  }, [materials]);
-
+  // Filters & Search
   const filtered = useMemo(() => {
-    return materials.filter(m => {
-      if (categoryFilter !== 'all' && m.category_name !== categoryFilter) return false;
-      if (statusFilter !== 'all') {
-        const isAct = m.is_active !== false;
-        if (statusFilter === 'Active' && !isAct) return false;
-        if (statusFilter === 'Inactive' && isAct) return false;
-      }
-      if (search) {
-        const q = search.toLowerCase();
-        const code = (m.material_code || '').toLowerCase();
-        const name = (m.material_name || '').toLowerCase();
-        const cat = (m.category_name || '').toLowerCase();
-        const spec = (m.specification || '').toLowerCase();
-        const brand = (m.brand_preference || '').toLowerCase();
-        const hsn = (m.hsn_code || '').toLowerCase();
-        if (!code.includes(q) && !name.includes(q) && !cat.includes(q) && !spec.includes(q) && !brand.includes(q) && !hsn.includes(q)) return false;
-      }
-      return true;
+    return materials.filter((item) => {
+      if (categoryFilter !== 'all' && String(item.material_category_id) !== categoryFilter) return false;
+
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        String(item.material_name || '').toLowerCase().includes(q) ||
+        String(item.material_code || '').toLowerCase().includes(q) ||
+        String(item.specification || '').toLowerCase().includes(q) ||
+        String(item.brand_preference || '').toLowerCase().includes(q)
+      );
     });
-  }, [materials, categoryFilter, statusFilter, search]);
+  }, [materials, searchQuery, categoryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const totalItems = materials.length;
-  const activeItems = useMemo(() => materials.filter(m => m.is_active !== false).length, [materials]);
-  const avgStdRate = useMemo(() => {
-    if (materials.length === 0) return 0;
-    return Math.round(materials.reduce((acc, m) => acc + Number(m.standard_rate || 0), 0) / materials.length);
-  }, [materials]);
+  const totalCount = materials.length;
+  const activeCount = materials.filter(m => m.is_active).length;
+  const minStockAlerts = materials.filter(m => Number(m.stock_qty || 0) < Number(m.minimum_stock_qty || 0)).length;
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Materials & Inventory', href: '/materials/catalogue' },
-    { label: 'Material Catalogue' }
+    { label: 'Masters' },
+    { label: 'Material Catalogue' },
   ];
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Material Master Item Catalogue"
-        breadcrumbs={breadcrumbs}
-      />
+      <PageHeader title="Material Catalogue" breadcrumbs={breadcrumbs} />
 
-      <div className="flex flex-col gap-3 sm:gap-4 w-full">
-        {/* KPI Summary Ribbon */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-          <KpiCard
-            label="Total Catalogue Items"
-            value={totalItems}
-            status="primary"
-            icon={<Package className="w-4 h-4" />}
-          />
-          <KpiCard
-            label="Active Master SKUs"
-            value={activeItems}
-            status="success"
-            icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-          />
-          <KpiCard
-            label="Material Categories"
-            value={categoriesList.length}
-            status="neutral"
-            icon={<Layers className="w-4 h-4 text-primary" />}
-          />
-          <KpiCard
-            label="Average Std Unit Rate"
-            value={`₹${avgStdRate.toLocaleString('en-IN')}`}
-            status="neutral"
-            icon={<IndianRupee className="w-4 h-4 text-sky-500" />}
-          />
-        </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
+        <KpiCard label="Catalogue Items" value={totalCount} icon={<Package />} status="primary" />
+        <KpiCard label="Active Items" value={activeCount} icon={<ShieldCheck />} status="success" />
+        <KpiCard label="Low Stock Items" value={minStockAlerts} icon={<HelpCircle />} status="warning" />
+      </div>
 
-        {/* Filter and Search Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
+      <div className="flex flex-col gap-4">
+        {/* Actions Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
           <div className="flex flex-wrap items-center gap-2 flex-1">
+            <div className="w-full sm:w-[260px]">
+              <SearchField
+                placeholder="Search material code, name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
             <div className="w-full sm:w-48">
               <Select
-                options={[
-                  { value: 'all', label: 'All Categories' },
-                  ...categoriesList.map(c => ({ value: c, label: c }))
-                ]}
                 value={categoryFilter}
-                onChange={setCategoryFilter}
-                className="text-xs h-8"
-              />
-            </div>
-
-            <div className="w-full sm:w-36">
-              <Select
-                options={[
-                  { value: 'all', label: 'All Status' },
-                  { value: 'Active', label: 'Active' },
-                  { value: 'Inactive', label: 'Inactive' },
-                ]}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                className="text-xs h-8"
-              />
-            </div>
-
-            <div className="w-full sm:w-56">
-              <SearchField
-                placeholder="Search code, material, brand, HSN..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <option value="all">All Categories</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.category_name}
+                  </option>
+                ))}
+              </Select>
             </div>
           </div>
-
           <div className="flex items-center gap-2 justify-end">
-            {hasPermission('materials.create') && (
+            {hasPermission('materials.manage_master') && (
               <Button
                 variant="primary"
-                size="sm"
+                className="h-9 px-3 text-[13px]"
                 leftIcon={<Plus className="w-3.5 h-3.5" />}
                 onClick={handleOpenAdd}
-                className="text-xs h-8 shadow-xs"
               >
                 Add Material
               </Button>
@@ -292,371 +277,385 @@ export function MaterialCataloguePage() {
           </div>
         </div>
 
-        {/* Desktop & Tablet Table (No horizontal scroll, 100% fluid) */}
-        <div className="hidden sm:block">
-          <DataTableContainer
-            pagination={
-              <Pagination
-                currentPage={page}
-                totalPages={totalPages}
-                totalItems={filtered.length}
-                itemsPerPage={perPage}
-                onPageChange={setPage}
-                onItemsPerPageChange={() => {}}
-              />
-            }
-          >
-            <table className="w-full text-left text-[12px] table-auto">
-              <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+        {/* Data Table */}
+        <DataTableContainer
+          pagination={
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalResults={filtered.length}
+              pageSize={perPage}
+              onPageChange={setPage}
+            />
+          }
+        >
+          <table className="w-full text-left text-[12px] whitespace-nowrap table-fixed">
+            <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+              <tr>
+                <th className="px-3 py-2 w-12 text-center">#</th>
+                <th className="px-3 py-2 w-28">Code</th>
+                <th className="px-3 py-2 w-48">Material Name</th>
+                <th className="px-3 py-2 w-32">UOM</th>
+                <th className="px-3 py-2 w-32 text-right">Standard Rate</th>
+                <th className="px-3 py-2 w-28 text-center">GST %</th>
+                <th className="px-3 py-2 hidden md:table-cell">Brand Preference</th>
+                <th className="px-3 py-2 w-24 text-center">Status</th>
+                <th className="px-3 py-2 w-24 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {loading ? (
                 <tr>
-                  <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2 w-28">Item Code</th>
-                  <th className="px-3 py-2">Material Name & Category</th>
-                  <th className="px-3 py-2 w-36 hidden md:table-cell">Brand & Spec</th>
-                  <th className="px-3 py-2 text-center w-24 hidden lg:table-cell">HSN / GST</th>
-                  <th className="px-3 py-2 text-right w-28">Std Rate / UOM</th>
-                  <th className="px-3 py-2 text-center w-24">Status</th>
-                  <th className="px-3 py-2 text-center w-24">Actions</th>
+                  <td colSpan={9} className="text-center py-8 text-text-muted text-[12px]">
+                    Retrieving material items...
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {loading ? (
-                  <tr>
-                    <td colSpan="8" className="text-center py-8 text-text-muted text-[12px]">
-                      Loading material catalogue...
+              ) : paged.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-8 text-text-muted text-[12px]">
+                    No materials found.
+                  </td>
+                </tr>
+              ) : (
+                paged.map((item, index) => (
+                  <tr key={item.id || index} className="hover:bg-surface-muted/30 transition-colors">
+                    <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                      {(page - 1) * perPage + index + 1}
                     </td>
-                  </tr>
-                ) : paged.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="text-center py-8 text-text-muted text-[12px]">
-                      No catalogue materials found matching criteria.
+                    <td className="px-3 py-2 font-mono font-semibold text-text-primary text-[11px]">
+                      {item.material_code || '—'}
                     </td>
-                  </tr>
-                ) : (
-                  paged.map((m, idx) => (
-                    <tr key={m.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
-                      <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
-                        {(page - 1) * perPage + idx + 1}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                          {m.material_code}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={m.material_name}>
-                            {m.material_name}
-                          </span>
-                          <span className="text-[10px] text-text-muted truncate">
-                            {m.category_name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 hidden md:table-cell">
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-[11px] text-text-primary font-medium truncate" title={m.brand_preference}>
-                            {m.brand_preference || 'Standard Grade'}
-                          </span>
-                          <span className="text-[10px] text-text-muted truncate" title={m.specification}>
-                            {m.specification}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-center hidden lg:table-cell font-mono text-[10px]">
-                        <span className="text-text-primary">{m.hsn_code || '—'}</span>
-                        <span className="text-text-muted block">{m.gst_rate}% GST</span>
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px]">
-                        <span className="font-bold text-primary">₹{Number(m.standard_rate).toLocaleString('en-IN')}</span>
-                        <span className="text-text-muted block text-[10px]">/ {m.uom}</span>
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <Badge
-                          variant={m.is_active !== false ? 'success' : 'neutral'}
-                          className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
+                    <td className="px-3 py-2 font-medium text-text-primary text-[11px] truncate">
+                      {item.material_name || '—'}
+                    </td>
+                    <td className="px-3 py-2 text-text-primary text-[11px]">
+                      {item.unit_symbol || item.uom || '—'}
+                    </td>
+                    <td className="px-3 py-2 text-right text-text-primary text-[11px] font-semibold">
+                      ₹{Number(item.standard_rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-3 py-2 text-center text-text-primary text-[11px]">
+                      {item.gst_rate !== null && item.gst_rate !== undefined ? `${item.gst_rate}%` : '—'}
+                    </td>
+                    <td className="px-3 py-2 hidden md:table-cell text-text-secondary text-[11px] truncate">
+                      {item.brand_preference || '—'}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <span
+                        className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                          item.is_active ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
+                        }`}
+                      >
+                        {item.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          title="View Details"
+                          onClick={() => setViewingItem(item)}
                         >
-                          {m.is_active !== false ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center justify-center gap-1">
+                          <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                        </Button>
+                        {hasPermission('materials.manage_master') && (
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
-                            title="View Material 360"
-                            onClick={() => setViewingItem(m)}
+                            title="Edit"
+                            onClick={() => handleOpenEdit(item)}
                           >
-                            <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
-                          {hasPermission('materials.update') && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              title="Edit Material"
-                              onClick={() => handleOpenEdit(m)}
-                            >
-                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                            </Button>
-                          )}
-                          {hasPermission('materials.delete') && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              title="Delete"
-                              onClick={() => setDeleteItem(m)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </DataTableContainer>
-        </div>
-
-        {/* Mobile View - Cards List for Phones (< sm) */}
-        <div className="block sm:hidden space-y-3">
-          {paged.map((m, idx) => (
-            <div key={m.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="font-mono text-[10px] font-bold text-primary block">{m.material_code}</span>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{m.material_name}</h4>
-                  <span className="text-[11px] text-text-muted">{m.category_name}</span>
-                </div>
-                <Badge
-                  variant={m.is_active !== false ? 'success' : 'neutral'}
-                  className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
-                >
-                  {m.is_active !== false ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Brand / Spec</span>
-                  <span className="text-text-primary text-[11px] truncate block">{m.brand_preference || 'Standard'}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Std Rate</span>
-                  <span className="font-mono font-bold text-primary text-[12px]">₹{Number(m.standard_rate).toLocaleString('en-IN')} / {m.uom}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
-                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(m)}>
-                  <Eye className="w-3 h-3 mr-1" /> View
-                </Button>
-                {hasPermission('materials.update') && (
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleOpenEdit(m)}>
-                    <Edit className="w-3.5 h-3.5 text-text-secondary" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {/* Mobile Pagination */}
-          <div className="pt-2">
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              totalItems={filtered.length}
-              itemsPerPage={perPage}
-              onPageChange={setPage}
-              onItemsPerPageChange={() => {}}
-            />
-          </div>
-        </div>
+                        )}
+                        {hasPermission('materials.manage_master') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            title="Delete"
+                            onClick={() => setDeletingItem(item)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </DataTableContainer>
       </div>
 
-      {/* View Material 360 Modal */}
-      {viewingItem && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <Package className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.material_name}</h3>
-                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.material_code} • {viewingItem.category_name}</span>
-                </div>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
-            </div>
-
-            <div className="p-5 space-y-4 overflow-y-auto text-xs">
-              <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Standard Unit Rate</span> <span className="font-bold text-primary font-mono text-sm">₹{Number(viewingItem.standard_rate).toLocaleString('en-IN')} / {viewingItem.uom}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">GST & HSN Code</span> <span className="font-mono text-text-primary">{viewingItem.hsn_code || '—'} ({viewingItem.gst_rate}% GST)</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Approved Brands</span> <span className="font-medium text-text-primary">{viewingItem.brand_preference || 'Open Standard'}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Catalogue Status</span> <span className="font-semibold text-emerald-600">{viewingItem.is_active !== false ? 'Active Master Item' : 'Inactive'}</span></div>
-              </div>
-
-              <div className="border border-border rounded-lg p-3 space-y-1">
-                <span className="font-bold text-text-primary block text-[11px]">Technical Specification & Grade:</span>
-                <p className="text-text-secondary bg-surface-muted/30 p-2 rounded border border-border/50">{viewingItem.specification || 'Standard Construction Grade Specification'}</p>
-              </div>
-
-              {viewingItem.description && (
-                <div className="border border-border rounded-lg p-3 space-y-1">
-                  <span className="font-bold text-text-primary block text-[11px]">Application Scope & Notes:</span>
-                  <p className="text-text-secondary">{viewingItem.description}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add / Edit Material Modal */}
+      {/* Add / Edit Modal */}
       <EntityEditModal
-        isOpen={Boolean(isAddOpen || editingItem)}
-        onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
+        isOpen={isAddOpen || Boolean(editingItem)}
+        onClose={() => {
+          setIsAddOpen(false);
+          setEditingItem(null);
+        }}
       >
         <EntityEditModal.Header
           icon={Package}
-          title={editingItem ? 'Edit Material Item' : 'Add Material to Catalogue'}
-          subtitle="Define master item specs, unit rates, HSN tax codes, and brand preferences."
-          onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
+          title={editingItem ? 'Edit Material catalogue Item' : 'Add Material catalogue Item'}
+          subtitle="Configure stock limits, standard purchase prices, categories, and conversion settings."
+          onClose={() => {
+            setIsAddOpen(false);
+            setEditingItem(null);
+          }}
         />
-        <form id="mat-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form id="material-item-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="Material Master Details">
+            <EntityEditModal.Section title="General Information">
               <EntityEditModal.Grid>
                 <FormField label="Material Code" required error={errors.material_code}>
                   <Input
+                    placeholder="e.g. MAT-CEMENT-001"
                     value={form.material_code}
                     onChange={(e) => handleFormChange('material_code', e.target.value)}
-                    placeholder="MAT-CEM-001"
+                    disabled={Boolean(editingItem)}
                   />
                 </FormField>
 
                 <FormField label="Material Name" required error={errors.material_name}>
                   <Input
+                    placeholder="e.g. Portland Pozzolana Cement"
                     value={form.material_name}
                     onChange={(e) => handleFormChange('material_name', e.target.value)}
-                    placeholder="e.g. OPC 53 Grade Cement"
                   />
                 </FormField>
 
-                <FormField label="Category" required>
+                <FormField label="Category" required error={errors.material_category_id}>
                   <Select
-                    options={[
-                      { value: 'Cement & Binding Agents', label: 'Cement & Binding Agents' },
-                      { value: 'Steel & Reinforcement', label: 'Steel & Reinforcement' },
-                      { value: 'Sand & Aggregates', label: 'Sand & Aggregates' },
-                      { value: 'Bricks & Masonry', label: 'Bricks & Masonry' },
-                      { value: 'Paints & Finishes', label: 'Paints & Finishes' },
-                      { value: 'Plumbing & Electrical', label: 'Plumbing & Electrical' },
-                    ]}
-                    value={form.category_name}
-                    onChange={(v) => handleFormChange('category_name', v)}
-                  />
+                    value={form.material_category_id}
+                    onChange={(e) => handleFormChange('material_category_id', e.target.value)}
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.category_name}
+                      </option>
+                    ))}
+                  </Select>
                 </FormField>
 
-                <FormField label="Unit of Measurement (UOM)" required>
-                  <Input
-                    value={form.uom}
-                    onChange={(e) => handleFormChange('uom', e.target.value)}
-                    placeholder="Bags / MT / cum / Nos"
-                  />
+                <FormField label="Base Unit of Measurement" required error={errors.base_uom_id}>
+                  <Select
+                    value={form.base_uom_id}
+                    onChange={(e) => handleFormChange('base_uom_id', e.target.value)}
+                  >
+                    <option value="">Select a unit</option>
+                    {uoms.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.unit_name} ({u.unit_code})
+                      </option>
+                    ))}
+                  </Select>
                 </FormField>
-              </EntityEditModal.Grid>
-            </EntityEditModal.Section>
 
-            <EntityEditModal.Section title="Pricing, Tax & Specification">
-              <EntityEditModal.Grid>
-                <FormField label="Standard Rate (₹)">
+                <FormField label="Standard Purchase Rate (₹)" error={errors.standard_rate}>
                   <Input
                     type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
                     value={form.standard_rate}
                     onChange={(e) => handleFormChange('standard_rate', e.target.value)}
                   />
                 </FormField>
 
-                <FormField label="GST Rate (%)">
+                <FormField label="GST Rate (%)" error={errors.gst_rate}>
                   <Select
-                    options={[
-                      { value: '0', label: '0% (Exempt)' },
-                      { value: '5', label: '5%' },
-                      { value: '12', label: '12%' },
-                      { value: '18', label: '18%' },
-                      { value: '28', label: '28%' },
-                    ]}
                     value={form.gst_rate}
-                    onChange={(v) => handleFormChange('gst_rate', v)}
-                  />
+                    onChange={(e) => handleFormChange('gst_rate', e.target.value)}
+                  >
+                    <option value="0">0%</option>
+                    <option value="5">5%</option>
+                    <option value="12">12%</option>
+                    <option value="18">18%</option>
+                    <option value="28">28%</option>
+                  </Select>
                 </FormField>
 
-                <FormField label="HSN Code">
+                <FormField label="HSN Code" error={errors.hsn_code}>
                   <Input
+                    placeholder="e.g. 2523"
                     value={form.hsn_code}
                     onChange={(e) => handleFormChange('hsn_code', e.target.value)}
-                    placeholder="e.g. 252329"
                   />
                 </FormField>
 
-                <FormField label="Brand Preference">
+                <FormField label="Brand Preferences" error={errors.brand_preference}>
                   <Input
+                    placeholder="e.g. Ultratech, ACC"
                     value={form.brand_preference}
                     onChange={(e) => handleFormChange('brand_preference', e.target.value)}
-                    placeholder="e.g. UltraTech / Tata Tiscon"
                   />
                 </FormField>
 
-                <FormField label="Specification / Grade" className="md:col-span-2">
+                <FormField label="Min Stock Alert Qty" error={errors.minimum_stock_qty}>
                   <Input
-                    value={form.specification}
-                    onChange={(e) => handleFormChange('specification', e.target.value)}
-                    placeholder="e.g. IS 12269 High Strength Grade"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={form.minimum_stock_qty}
+                    onChange={(e) => handleFormChange('minimum_stock_qty', e.target.value)}
                   />
                 </FormField>
 
-                <FormField label="Notes & Description" className="md:col-span-2">
+                <FormField label="Reorder Qty" error={errors.reorder_qty}>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={form.reorder_qty}
+                    onChange={(e) => handleFormChange('reorder_qty', e.target.value)}
+                  />
+                </FormField>
+
+                <FormField label="Quality Check Intake" error={errors.quality_check_required}>
+                  <Select
+                    value={form.quality_check_required}
+                    onChange={(e) => handleFormChange('quality_check_required', e.target.value)}
+                  >
+                    <option value="0">Not Required</option>
+                    <option value="1">Inspection Required</option>
+                  </Select>
+                </FormField>
+
+                <FormField label="Batch Tracking" error={errors.batch_tracking_required}>
+                  <Select
+                    value={form.batch_tracking_required}
+                    onChange={(e) => handleFormChange('batch_tracking_required', e.target.value)}
+                  >
+                    <option value="0">Disabled</option>
+                    <option value="1">Enabled</option>
+                  </Select>
+                </FormField>
+
+                <FormField label="Storage Hint (Location)" error={errors.storage_location_hint}>
+                  <Input
+                    placeholder="e.g. Rack A-12"
+                    value={form.storage_location_hint}
+                    onChange={(e) => handleFormChange('storage_location_hint', e.target.value)}
+                  />
+                </FormField>
+
+                <FormField label="Active Status" error={errors.is_active}>
+                  <Select
+                    value={form.is_active}
+                    onChange={(e) => handleFormChange('is_active', e.target.value)}
+                  >
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                  </Select>
+                </FormField>
+
+                <FormField label="Specifications / Notes" className="md:col-span-2" error={errors.notes}>
                   <Textarea
-                    rows={2}
-                    value={form.description}
-                    onChange={(e) => handleFormChange('description', e.target.value)}
-                    placeholder="Application details, storage instructions..."
+                    placeholder="Material specs, weight info, packaging details..."
+                    value={form.notes}
+                    onChange={(e) => handleFormChange('notes', e.target.value)}
+                    rows={3}
                   />
                 </FormField>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>
           </EntityEditModal.Body>
-
           <EntityEditModal.Footer
-            formId="mat-form"
-            submitLabel={editingItem ? 'Update Material' : 'Add to Catalogue'}
-            onCancel={() => { setIsAddOpen(false); setEditingItem(null); }}
+            formId="material-item-form"
+            submitLabel={editingItem ? 'Update Material' : 'Create Material'}
+            onCancel={() => {
+              setIsAddOpen(false);
+              setEditingItem(null);
+            }}
             isSubmitting={saving}
           />
         </form>
       </EntityEditModal>
 
+      {/* View Details Modal */}
+      <EntityEditModal
+        isOpen={Boolean(viewingItem)}
+        onClose={() => setViewingItem(null)}
+      >
+        <EntityEditModal.Header
+          icon={Package}
+          title="Material Specifications"
+          subtitle="Detailed stock properties, GST rates, and storage parameters."
+          onClose={() => setViewingItem(null)}
+        />
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <EntityEditModal.Body>
+            <EntityEditModal.Section title="Material SKU Profile">
+              <EntityEditModal.Grid>
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Material Name</div>
+                  <div className="text-[13px] font-medium text-text-primary mt-1">{viewingItem?.material_name || '—'}</div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Material Code</div>
+                  <div className="text-[13px] font-mono font-semibold text-text-primary mt-1">{viewingItem?.material_code || '—'}</div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Standard Unit Price</div>
+                  <div className="text-[13px] font-semibold text-text-primary mt-1">
+                    ₹{Number(viewingItem?.standard_rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">GST Rate & HSN</div>
+                  <div className="text-[13px] text-text-primary mt-1">
+                    {viewingItem?.gst_rate}% (HSN: {viewingItem?.hsn_code || '—'})
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Stock Alert Limits</div>
+                  <div className="text-[12px] text-text-secondary mt-1">
+                    Min Stock: {viewingItem?.minimum_stock_qty || '0'} | Reorder: {viewingItem?.reorder_qty || '0'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Storage Hint</div>
+                  <div className="text-[13px] text-text-primary mt-1">{viewingItem?.storage_location_hint || '—'}</div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <div className="text-[10px] uppercase font-bold text-text-secondary tracking-wider">Specification Notes</div>
+                  <div className="text-[12px] text-text-secondary mt-1 whitespace-pre-wrap leading-relaxed">
+                    {viewingItem?.notes || 'No specifications notes provided.'}
+                  </div>
+                </div>
+              </EntityEditModal.Grid>
+            </EntityEditModal.Section>
+          </EntityEditModal.Body>
+          <div className="flex items-center justify-end border-t border-border px-4 py-3 bg-surface-subtle">
+            <Button variant="ghost" className="h-9 px-4 text-[13px]" onClick={() => setViewingItem(null)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </EntityEditModal>
+
       {/* Delete Confirmation */}
       <ConfirmDialog
-        isOpen={Boolean(deleteItem)}
-        title="Delete Material Item"
-        message={`Are you sure you want to delete "${deleteItem?.material_name}"?`}
+        isOpen={Boolean(deletingItem)}
+        title="Delete Material SKU"
+        message="Are you sure you want to delete this material catalogue item? It cannot be undone if it has already been used in purchase orders or receipt documents."
         variant="danger"
         confirmLabel="Delete"
         onConfirm={confirmDelete}
-        onCancel={() => setDeleteItem(null)}
+        onCancel={() => setDeletingItem(null)}
       />
     </PageContainer>
   );
