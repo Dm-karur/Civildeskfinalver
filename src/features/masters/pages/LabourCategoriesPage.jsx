@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { FolderCog, Plus, Edit, Trash2, ShieldCheck, ChevronRight, HelpCircle } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, ShieldCheck, ChevronRight, HelpCircle } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -15,23 +15,26 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectTypesApi, mastersApi } from '../../../api/apiservice';
+import { labourApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 const EMPTY_FORM = {
-  project_type_code: '',
-  project_type_name: '',
-  billing_method_id: '',
-  default_duration_days: '',
+  category_code: '',
+  category_name: '',
+  skill_level_id: '',
+  wage_basis_id: '',
+  default_wage_rate: '',
+  overtime_multiplier: '1.5',
   description: '',
   display_order: '0',
   is_active: '1',
 };
 
-export function ProjectTypesPage() {
+export function LabourCategoriesPage() {
   const { hasPermission } = useAuth();
-  const [projectTypes, setProjectTypes] = useState([]);
-  const [billingMethods, setBillingMethods] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [skillLevels, setSkillLevels] = useState([]);
+  const [wageBases, setWageBases] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Search & Pagination
@@ -47,26 +50,28 @@ export function ProjectTypesPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Fetch all project types & masters
+  // Fetch data
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [resTypes, resMasters] = await Promise.all([
-        projectTypesApi.list(),
-        mastersApi.all(),
+      const [resCategories, resMasters] = await Promise.all([
+        labourApi.categories.list(),
+        labourApi.masters(),
       ]);
 
-      // Handle Types List
-      const typesList = resTypes?.data?.project_types ?? resTypes?.project_types ?? (Array.isArray(resTypes) ? resTypes : []);
-      setProjectTypes(Array.isArray(typesList) ? typesList : []);
+      const catList = resCategories?.data?.labour_categories ?? resCategories?.labour_categories ?? (Array.isArray(resCategories) ? resCategories : []);
+      setCategories(Array.isArray(catList) ? catList : []);
 
-      // Handle Billing Methods Master
-      const billingList = resMasters?.data?.billing_methods ?? resMasters?.billing_methods ?? [];
-      setBillingMethods(Array.isArray(billingList) ? billingList : []);
+      const skillList = resMasters?.data?.['category-skill-levels'] ?? resMasters?.['category-skill-levels'] ?? [];
+      setSkillLevels(Array.isArray(skillList) ? skillList : []);
+
+      const wageList = resMasters?.data?.['category-wage-bases'] ?? resMasters?.['category-wage-bases'] ?? [];
+      setWageBases(Array.isArray(wageList) ? wageList : []);
     } catch (err) {
-      toast.error('Failed to load project type master data.');
-      setProjectTypes([]);
-      setBillingMethods([]);
+      toast.error('Failed to load labour category data.');
+      setCategories([]);
+      setSkillLevels([]);
+      setWageBases([]);
     } finally {
       setLoading(false);
     }
@@ -80,7 +85,8 @@ export function ProjectTypesPage() {
   const handleOpenAdd = () => {
     setForm({
       ...EMPTY_FORM,
-      billing_method_id: billingMethods[0]?.id ? String(billingMethods[0].id) : '',
+      skill_level_id: skillLevels[0]?.id ? String(skillLevels[0].id) : '',
+      wage_basis_id: wageBases[0]?.id ? String(wageBases[0].id) : '',
     });
     setErrors({});
     setIsAddOpen(true);
@@ -88,10 +94,12 @@ export function ProjectTypesPage() {
 
   const handleOpenEdit = (item) => {
     setForm({
-      project_type_code: item.project_type_code || '',
-      project_type_name: item.project_type_name || '',
-      billing_method_id: String(item.billing_method_id || ''),
-      default_duration_days: item.default_duration_days !== null && item.default_duration_days !== undefined ? String(item.default_duration_days) : '',
+      category_code: item.category_code || '',
+      category_name: item.category_name || '',
+      skill_level_id: String(item.skill_level_id || ''),
+      wage_basis_id: String(item.wage_basis_id || ''),
+      default_wage_rate: item.default_wage_rate !== null && item.default_wage_rate !== undefined ? String(item.default_wage_rate) : '',
+      overtime_multiplier: item.overtime_multiplier !== null && item.overtime_multiplier !== undefined ? String(item.overtime_multiplier) : '1.5',
       description: item.description || '',
       display_order: String(item.display_order ?? '0'),
       is_active: item.is_active ? '1' : '0',
@@ -109,9 +117,10 @@ export function ProjectTypesPage() {
     e.preventDefault();
     const validationErrs = {};
 
-    if (!form.project_type_name.trim()) validationErrs.project_type_name = 'Type name is required.';
-    if (!form.project_type_code.trim()) validationErrs.project_type_code = 'Type code is required.';
-    if (!form.billing_method_id) validationErrs.billing_method_id = 'Billing method is required.';
+    if (!form.category_name.trim()) validationErrs.category_name = 'Category name is required.';
+    if (!form.category_code.trim()) validationErrs.category_code = 'Category code is required.';
+    if (!form.skill_level_id) validationErrs.skill_level_id = 'Skill level is required.';
+    if (!form.wage_basis_id) validationErrs.wage_basis_id = 'Wage basis is required.';
 
     if (Object.keys(validationErrs).length > 0) {
       setErrors(validationErrs);
@@ -121,10 +130,12 @@ export function ProjectTypesPage() {
     setSaving(true);
     try {
       const payload = {
-        project_type_code: form.project_type_code.toUpperCase().trim(),
-        project_type_name: form.project_type_name.trim(),
-        billing_method_id: Number(form.billing_method_id),
-        default_duration_days: form.default_duration_days === '' ? null : Number(form.default_duration_days),
+        category_code: form.category_code.toUpperCase().trim(),
+        category_name: form.category_name.trim(),
+        skill_level_id: Number(form.skill_level_id),
+        wage_basis_id: Number(form.wage_basis_id),
+        default_wage_rate: form.default_wage_rate === '' ? null : Number(form.default_wage_rate),
+        overtime_multiplier: Number(form.overtime_multiplier || 1.5),
         description: form.description.trim() || null,
         display_order: Number(form.display_order || 0),
         is_active: Number(form.is_active),
@@ -132,11 +143,11 @@ export function ProjectTypesPage() {
 
       const isEditing = Boolean(editingItem?.id);
       if (isEditing) {
-        await projectTypesApi.update(editingItem.id, payload);
-        toast.success('Project type updated successfully.');
+        await labourApi.categories.update(editingItem.id, payload);
+        toast.success('Labour category updated successfully.');
       } else {
-        await projectTypesApi.create(payload);
-        toast.success('Project type created successfully.');
+        await labourApi.categories.create(payload);
+        toast.success('Labour category created successfully.');
       }
 
       setIsAddOpen(false);
@@ -144,7 +155,7 @@ export function ProjectTypesPage() {
       fetchData();
     } catch (err) {
       setErrors(err?.errors ?? {});
-      toast.error(err?.message || 'Unable to save project type.');
+      toast.error(err?.message || 'Unable to save labour category.');
     } finally {
       setSaving(false);
     }
@@ -153,54 +164,52 @@ export function ProjectTypesPage() {
   const confirmDelete = async () => {
     if (!deletingItem?.id) return;
     try {
-      await projectTypesApi.remove(deletingItem.id);
-      toast.success('Project type deleted.');
+      await labourApi.categories.remove(deletingItem.id);
+      toast.success('Labour category deleted.');
       setDeletingItem(null);
       fetchData();
     } catch (err) {
-      toast.error(err?.message || 'Unable to delete project type.');
+      toast.error(err?.message || 'Unable to delete labour category.');
     }
   };
 
   // Filters & Search
   const filtered = useMemo(() => {
-    return projectTypes.filter((item) => {
+    return categories.filter((item) => {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
       return (
-        String(item.project_type_name || '').toLowerCase().includes(q) ||
-        String(item.project_type_code || '').toLowerCase().includes(q) ||
-        String(item.description || '').toLowerCase().includes(q) ||
-        String(item.billing_method_name || '').toLowerCase().includes(q)
+        String(item.category_name || '').toLowerCase().includes(q) ||
+        String(item.category_code || '').toLowerCase().includes(q) ||
+        String(item.description || '').toLowerCase().includes(q)
       );
     });
-  }, [projectTypes, searchQuery]);
+  }, [categories, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
-  // Metrics KPI calculations
-  const totalCount = projectTypes.length;
-  const activeCount = projectTypes.filter(t => t.is_active).length;
+  // Metrics
+  const totalCount = categories.length;
+  const activeCount = categories.filter(c => c.is_active).length;
   const inactiveCount = totalCount - activeCount;
-  const billingMethodsCount = billingMethods.length;
-
-  const breadcrumbs = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Masters' },
-    { label: 'Project Types' },
-  ];
 
   return (
     <PageContainer>
-      <PageHeader title="Project Type Registry" breadcrumbs={breadcrumbs} />
+      <PageHeader
+        title="Labour Categories"
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Masters' },
+          { label: 'Labour Categories' },
+        ]}
+      />
 
-      {/* KPI Ribbons */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        <KpiCard label="Total Project Types" value={totalCount} icon={<FolderCog />} status="info" />
-        <KpiCard label="Active Types" value={activeCount} icon={<ShieldCheck />} status="success" />
-        <KpiCard label="Inactive Types" value={inactiveCount} icon={<HelpCircle />} status="warning" />
-        <KpiCard label="Available Billing Methods" value={billingMethodsCount} icon={<ChevronRight />} status="primary" />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
+        <KpiCard label="Total Categories" value={totalCount} icon={<Users />} status="primary" />
+        <KpiCard label="Active Classes" value={activeCount} icon={<ShieldCheck />} status="success" />
+        <KpiCard label="Inactive Classes" value={inactiveCount} icon={<HelpCircle />} status="warning" />
       </div>
 
       <div className="flex flex-col gap-4">
@@ -208,20 +217,20 @@ export function ProjectTypesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
           <div className="w-full sm:w-[260px]">
             <SearchField
-              placeholder="Search by code, name, description..."
+              placeholder="Search by code, category name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-2 justify-end">
-            {hasPermission('project.create') && (
+            {hasPermission('labour.create') && (
               <Button
                 variant="primary"
                 className="h-9 px-3 text-[13px]"
                 leftIcon={<Plus className="w-3.5 h-3.5" />}
                 onClick={handleOpenAdd}
               >
-                Add Project Type
+                Add Category
               </Button>
             )}
           </div>
@@ -233,10 +242,9 @@ export function ProjectTypesPage() {
             <Pagination
               currentPage={page}
               totalPages={totalPages}
-              totalItems={filtered.length}
-              itemsPerPage={perPage}
+              totalResults={filtered.length}
+              pageSize={perPage}
               onPageChange={setPage}
-              onItemsPerPageChange={() => {}}
             />
           }
         >
@@ -245,9 +253,9 @@ export function ProjectTypesPage() {
               <tr>
                 <th className="px-3 py-2 w-12 text-center">#</th>
                 <th className="px-3 py-2 w-28">Code</th>
-                <th className="px-3 py-2 w-52">Type Name</th>
-                <th className="px-3 py-2 w-40">Billing Method</th>
-                <th className="px-3 py-2 w-32 text-center">Default WBS Days</th>
+                <th className="px-3 py-2 w-48">Category Name</th>
+                <th className="px-3 py-2 w-32 text-right">Default Wage</th>
+                <th className="px-3 py-2 w-24 text-right">OT Multiplier</th>
                 <th className="px-3 py-2 hidden md:table-cell">Description</th>
                 <th className="px-3 py-2 w-24 text-center">Status</th>
                 <th className="px-3 py-2 w-20 text-center">Actions</th>
@@ -257,13 +265,13 @@ export function ProjectTypesPage() {
               {loading ? (
                 <tr>
                   <td colSpan={8} className="text-center py-8 text-text-muted text-[12px]">
-                    Retrieving project types from backend...
+                    Loading categories from backend...
                   </td>
                 </tr>
               ) : paged.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-8 text-text-muted text-[12px]">
-                    No project types found in the database.
+                    No labour categories found in database.
                   </td>
                 </tr>
               ) : (
@@ -273,16 +281,20 @@ export function ProjectTypesPage() {
                       {(page - 1) * perPage + index + 1}
                     </td>
                     <td className="px-3 py-2 font-mono font-semibold text-text-primary text-[11px]">
-                      {item.project_type_code || '—'}
+                      {item.category_code || '—'}
                     </td>
                     <td className="px-3 py-2 font-medium text-text-primary text-[11px] truncate">
-                      {item.project_type_name || '—'}
+                      {item.category_name || '—'}
                     </td>
-                    <td className="px-3 py-2 text-text-primary text-[11px] truncate">
-                      {item.billing_method_name || '—'}
+                    <td className="px-3 py-2 text-right text-text-primary text-[11px] font-semibold">
+                      {item.default_wage_rate !== null && item.default_wage_rate !== undefined
+                        ? `₹${Number(item.default_wage_rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                        : '—'}
                     </td>
-                    <td className="px-3 py-2 text-center text-text-primary text-[11px]">
-                      {item.default_duration_days !== null && item.default_duration_days !== undefined ? item.default_duration_days : '—'}
+                    <td className="px-3 py-2 text-right text-text-primary text-[11px]">
+                      {item.overtime_multiplier !== null && item.overtime_multiplier !== undefined
+                        ? `${Number(item.overtime_multiplier).toFixed(2)}x`
+                        : '1.50x'}
                     </td>
                     <td className="px-3 py-2 hidden md:table-cell text-text-secondary text-[11px] truncate">
                       {item.description || '—'}
@@ -298,7 +310,7 @@ export function ProjectTypesPage() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-center gap-1">
-                        {hasPermission('project.update') && (
+                        {hasPermission('labour.update') && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -309,7 +321,7 @@ export function ProjectTypesPage() {
                             <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
                         )}
-                        {hasPermission('project.delete') && (
+                        {hasPermission('labour.update') && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -330,7 +342,7 @@ export function ProjectTypesPage() {
         </DataTableContainer>
       </div>
 
-      {/* Add / Edit Project Type Modal */}
+      {/* Add / Edit Modal */}
       <EntityEditModal
         isOpen={isAddOpen || Boolean(editingItem)}
         onClose={() => {
@@ -339,60 +351,86 @@ export function ProjectTypesPage() {
         }}
       >
         <EntityEditModal.Header
-          icon={FolderCog}
-          title={editingItem ? 'Edit Project Type' : 'Add Project Type'}
-          subtitle="Manage configurations for project classifications and billing logic."
+          icon={Users}
+          title={editingItem ? 'Edit Labour Category' : 'Add Labour Category'}
+          subtitle="Define wage parameters, base rates, skill classifications, and work scopes."
           onClose={() => {
             setIsAddOpen(false);
             setEditingItem(null);
           }}
         />
-        <form id="project-type-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form id="labour-category-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="General Specifications">
+            <EntityEditModal.Section title="Category Configurations">
               <EntityEditModal.Grid>
-                <FormField label="Type Code" required error={errors.project_type_code}>
+                <FormField label="Category Code" required error={errors.category_code}>
                   <Input
-                    placeholder="e.g. RESIDENTIAL"
-                    value={form.project_type_code}
-                    onChange={(e) => handleFormChange('project_type_code', e.target.value)}
+                    placeholder="e.g. SKILLED-MASON"
+                    value={form.category_code}
+                    onChange={(e) => handleFormChange('category_code', e.target.value)}
                     disabled={Boolean(editingItem)}
                   />
                 </FormField>
 
-                <FormField label="Type Name" required error={errors.project_type_name}>
+                <FormField label="Category Name" required error={errors.category_name}>
                   <Input
-                    placeholder="e.g. Residential Apartments"
-                    value={form.project_type_name}
-                    onChange={(e) => handleFormChange('project_type_name', e.target.value)}
+                    placeholder="e.g. Mason (Grade A)"
+                    value={form.category_name}
+                    onChange={(e) => handleFormChange('category_name', e.target.value)}
                   />
                 </FormField>
 
-                <FormField label="Billing Method" required error={errors.billing_method_id}>
+                <FormField label="Skill Level" required error={errors.skill_level_id}>
                   <Select
-                    value={form.billing_method_id}
-                    onChange={(e) => handleFormChange('billing_method_id', e.target.value)}
+                    value={form.skill_level_id}
+                    onChange={(e) => handleFormChange('skill_level_id', e.target.value)}
                   >
-                    <option value="">Select a billing method</option>
-                    {billingMethods.map((bm) => (
-                      <option key={bm.id} value={bm.id}>
-                        {bm.name}
+                    <option value="">Select skill level</option>
+                    {skillLevels.map((sl) => (
+                      <option key={sl.id} value={sl.id}>
+                        {sl.skill_level_name || sl.name}
                       </option>
                     ))}
                   </Select>
                 </FormField>
 
-                <FormField label="Default Duration (Days)" error={errors.default_duration_days}>
+                <FormField label="Wage Basis" required error={errors.wage_basis_id}>
+                  <Select
+                    value={form.wage_basis_id}
+                    onChange={(e) => handleFormChange('wage_basis_id', e.target.value)}
+                  >
+                    <option value="">Select wage basis</option>
+                    {wageBases.map((wb) => (
+                      <option key={wb.id} value={wb.id}>
+                        {wb.wage_basis_name || wb.name}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+
+                <FormField label="Default Wage Rate (₹)" error={errors.default_wage_rate}>
                   <Input
                     type="number"
-                    min="1"
-                    placeholder="e.g. 365"
-                    value={form.default_duration_days}
-                    onChange={(e) => handleFormChange('default_duration_days', e.target.value)}
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 650.00"
+                    value={form.default_wage_rate}
+                    onChange={(e) => handleFormChange('default_wage_rate', e.target.value)}
                   />
                 </FormField>
 
-                <FormField label="Display Sort Order" error={errors.display_order}>
+                <FormField label="Overtime Multiplier" error={errors.overtime_multiplier}>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="0.05"
+                    placeholder="1.50"
+                    value={form.overtime_multiplier}
+                    onChange={(e) => handleFormChange('overtime_multiplier', e.target.value)}
+                  />
+                </FormField>
+
+                <FormField label="Sort Order" error={errors.display_order}>
                   <Input
                     type="number"
                     min="0"
@@ -402,7 +440,7 @@ export function ProjectTypesPage() {
                   />
                 </FormField>
 
-                <FormField label="Status" error={errors.is_active}>
+                <FormField label="Active Status" error={errors.is_active}>
                   <Select
                     value={form.is_active}
                     onChange={(e) => handleFormChange('is_active', e.target.value)}
@@ -414,7 +452,7 @@ export function ProjectTypesPage() {
 
                 <FormField label="Description" className="md:col-span-2" error={errors.description}>
                   <Textarea
-                    placeholder="Summary of this project classification..."
+                    placeholder="Summary of this labour classification responsibilities..."
                     value={form.description}
                     onChange={(e) => handleFormChange('description', e.target.value)}
                     rows={3}
@@ -424,8 +462,8 @@ export function ProjectTypesPage() {
             </EntityEditModal.Section>
           </EntityEditModal.Body>
           <EntityEditModal.Footer
-            formId="project-type-form"
-            submitLabel={editingItem ? 'Update Project Type' : 'Create Project Type'}
+            formId="labour-category-form"
+            submitLabel={editingItem ? 'Update Category' : 'Create Category'}
             onCancel={() => {
               setIsAddOpen(false);
               setEditingItem(null);
@@ -438,8 +476,8 @@ export function ProjectTypesPage() {
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={Boolean(deletingItem)}
-        title="Delete Project Type"
-        message="Are you sure you want to delete this project type? If it is already associated with projects, the deletion will be blocked by the server."
+        title="Delete Labour Category"
+        message="Are you sure you want to delete this labour category? It cannot be deleted if associated with active workers or project attendance entries."
         variant="danger"
         confirmLabel="Delete"
         onConfirm={confirmDelete}

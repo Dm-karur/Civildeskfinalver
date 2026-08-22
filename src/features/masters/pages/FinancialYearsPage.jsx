@@ -195,9 +195,9 @@ export function FinancialYearsPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
-        <KpiCard label="Registered Financial Years" value={totalCount} icon={Calendar} status="primary" />
-        <KpiCard label="Current Financial Year" value={currentYear} icon={ShieldCheck} status="success" />
-        <KpiCard label="Active Years" value={activeCount} icon={HelpCircle} status="info" />
+        <KpiCard label="Registered Financial Years" value={totalCount} icon={<Calendar />} status="primary" />
+        <KpiCard label="Current Financial Year" value={currentYear} icon={<ShieldCheck />} status="success" />
+        <KpiCard label="Active Years" value={activeCount} icon={<HelpCircle />} status="info" />
       </div>
 
       <div className="flex flex-col gap-4">
