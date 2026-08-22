@@ -86,12 +86,15 @@ export function WorkLocationsPage() {
       if (selectedProjectId !== 'all') params.project_id = selectedProjectId;
       if (selectedZoneId !== 'all') params.zone_id = selectedZoneId;
       const res = await workLocationsApi.list(params);
-      const list = res?.data?.locations ?? res?.data?.data ?? res?.data ?? (Array.isArray(res) ? res : []);
-      if (Array.isArray(list) && list.length > 0) {
+      const list = res?.data?.work_locations ?? res?.data?.locations ?? res?.data?.data ?? res?.data ?? (Array.isArray(res) ? res : []);
+      if (Array.isArray(list)) {
         setLocations(list);
+      } else {
+        setLocations([]);
       }
-    } catch {
-      // Keep default locations
+    } catch (error) {
+      console.error('Failed to fetch work locations:', error);
+      setLocations([]);
     } finally {
       setLoading(false);
     }
