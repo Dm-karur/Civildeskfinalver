@@ -17,65 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_APPROVAL_ADVANCES = [
 
-  {
-    id: 1,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    advance_no: 'ADV-2026-004',
-    contract_no: 'CTR-2026-003',
-    client_name: 'Vibrant Logistics & Industrial Parks LLP',
-    claim_date: '2026-08-18',
-    advance_type: 'Plant & Machinery Advance',
-    advance_amount: 8500000, // ₹85 Lakhs
-    abg_reference_no: 'ABG-AXIS-2026-00918',
-    abg_validity_date: '2027-02-28',
-    status: 'Pending Management Sign-off',
-    submitted_by: 'Er. Rajesh Kumar (Commercial Manager)',
-    designated_approver: 'Er. Suresh Babu (Project Director)',
-    notes: 'Laser screed machinery procurement advance against 100% bank guarantee.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    advance_no: 'ADV-2026-001',
-    contract_no: 'CTR-2026-001',
-    client_name: 'Metro Infrastructure & Realty Corp Ltd',
-    claim_date: '2026-02-05',
-    advance_type: 'Mobilization Advance (10%)',
-    advance_amount: 28500000,
-    abg_reference_no: 'ABG-HDFC-2026-99120',
-    abg_validity_date: '2027-10-31',
-    status: 'Authorized & Dispatched to Client',
-    submitted_by: 'Er. Rajesh Kumar',
-    designated_approver: 'Er. Suresh Babu (Project Director)',
-    notes: 'Signed and dispatched to client accounts department.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    advance_no: 'ADV-2026-002',
-    contract_no: 'CTR-2026-002',
-    client_name: 'National Highways Authority / State PWD',
-    claim_date: '2026-04-10',
-    advance_type: 'Mobilization Advance (10%)',
-    advance_amount: 16500000,
-    abg_reference_no: 'ABG-SBI-2026-44109',
-    abg_validity_date: '2027-06-30',
-    status: 'Authorized & Dispatched to Client',
-    submitted_by: 'K. Balaji (Highway PM)',
-    designated_approver: 'Er. Suresh Babu (Project Director)',
-    notes: 'Client authorized remittance into project escrow.'
-  }
-];
-*/
 
 export function AdvanceApprovalPage() {
   const { hasPermission } = useAuth();

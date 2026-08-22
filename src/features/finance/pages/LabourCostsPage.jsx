@@ -22,71 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_LABOUR_COSTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    trade_name: 'Shuttering & Formwork Carpenters',
-    gang_contractor: 'Balaji Formwork Gang',
-    mandays_deployed: 1420,
-    nmr_wages_paid: 1278000,
-    piecerate_paid: 850000,
-    overtime_allowance: 124000,
-    total_labour_cost: 2252000, // ₹22.52 Lakhs
-    productivity_index: '1.08 (Above Target)',
-    status: 'Optimal'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    trade_name: 'Barbenders & Steel Fixers',
-    gang_contractor: 'Saravanan Rebar Crew',
-    mandays_deployed: 1180,
-    nmr_wages_paid: 1062000,
-    piecerate_paid: 720000,
-    overtime_allowance: 98000,
-    total_labour_cost: 1880000,
-    productivity_index: '1.05',
-    status: 'Optimal'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    trade_name: 'Civil Masons (Brickwork & Plastering)',
-    gang_contractor: 'Murugan Mason Gang',
-    mandays_deployed: 960,
-    nmr_wages_paid: 864000,
-    piecerate_paid: 450000,
-    overtime_allowance: 65000,
-    total_labour_cost: 1379000,
-    productivity_index: '0.98',
-    status: 'Optimal'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    trade_name: 'Heavy Equipment Operators & Drivers',
-    gang_contractor: 'Highway Machinery Crew',
-    mandays_deployed: 840,
-    nmr_wages_paid: 924000,
-    piecerate_paid: 0,
-    overtime_allowance: 185000,
-    total_labour_cost: 1109000,
-    productivity_index: '1.02',
-    status: 'Optimal'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

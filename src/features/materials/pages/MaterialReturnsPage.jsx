@@ -22,51 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_RETURNS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    return_no: 'RTN-2026-021',
-    return_date: '2026-08-20',
-    return_type: 'Site Surplus Return',
-    site_name: 'Tower A Core - Level 2',
-    contractor_name: 'Sri Murugan Labour Services',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement',
-    returned_qty: 30,
-    uom: 'Bags',
-    unit_rate: 385,
-    return_value: 11550,
-    condition: 'Good (Unopened Bags)',
-    status: 'Stock Restocked & Credited',
-    reason: 'Surplus cement bags returned to central godown after slab casting.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    return_no: 'RTN-2026-022',
-    return_date: '2026-08-19',
-    return_type: 'Defective Supplier Return',
-    site_name: 'Main Central Yard',
-    contractor_name: 'UltraTech Cement Distributors Ltd',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement',
-    returned_qty: 15,
-    uom: 'Bags',
-    unit_rate: 385,
-    return_value: 5775,
-    condition: 'Torn / Moisture Damaged',
-    status: 'Supplier Credit Note Raised',
-    reason: 'Transit rain damaged bags rejected during inward QC inspection.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

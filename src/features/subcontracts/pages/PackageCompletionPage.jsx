@@ -22,47 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_COMPLETIONS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    certificate_no: 'TOC-2026-004',
-    package_title: 'Basement Deep Dewatering & Piling Scope',
-    work_order_no: 'WO-2026-008',
-    contractor_name: 'Kavitha Flooring & Civil Solutions',
-    actual_completion_date: '2026-07-31',
-    final_contract_value: 1250000,
-    snag_list_status: '100% Snags Cleared (0 Pending)',
-    dlp_period: '12 Months (Valid till 2027-07-31)',
-    as_built_status: 'Handed Over & Approved',
-    status_name: 'Taking-Over Certified (TOC Issued)',
-    certified_by: 'Er. Suresh Babu (Project Director)',
-    notes: 'Final joint measurement reconciliation completed; demobilization clearance issued.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    certificate_no: 'TOC-2026-005',
-    package_title: 'Sub-structure Shoring & Earth Retention',
-    work_order_no: 'WO-2026-009',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    actual_completion_date: '2026-08-10',
-    final_contract_value: 2180000,
-    snag_list_status: '100% Snags Cleared',
-    dlp_period: '12 Months (Valid till 2027-08-10)',
-    as_built_status: 'Handed Over & Approved',
-    status_name: 'Taking-Over Certified (TOC Issued)',
-    certified_by: 'Er. Suresh Babu (Project Director)',
-    notes: 'Soil anchor load testing certificates submitted.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

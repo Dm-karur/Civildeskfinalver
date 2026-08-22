@@ -22,65 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, subcontractsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_PAYMENTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    payment_no: 'PAY-2026-088',
-    payment_date: '2026-08-20',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    ra_bill_no: 'RA-2026-003',
-    work_order_no: 'WO-2026-012',
-    amount: 766920,
-    payment_mode: 'RTGS / Bank Transfer',
-    reference_no: 'UTR-HDFC-918274610',
-    bank_account: 'HDFC Bank - Current A/C (..4910)',
-    status_name: 'Disbursed (Settled)',
-    disbursed_by: 'Finance & Accounts',
-    notes: 'Payment settled against RA Bill 3 certified net amount.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    payment_no: 'PAY-2026-089',
-    payment_date: '2026-08-21',
-    contractor_name: 'Apex MEP Engineers & Contractors',
-    ra_bill_no: 'RA-2026-004',
-    work_order_no: 'WO-2026-013',
-    amount: 334400,
-    payment_mode: 'NEFT Online Transfer',
-    reference_no: 'UTR-ICIC-882190341',
-    bank_account: 'ICICI Bank - Escrow A/C (..8741)',
-    status_name: 'Disbursed (Settled)',
-    disbursed_by: 'Finance & Accounts',
-    notes: 'Disbursement against RA Bill 1.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    payment_no: 'PAY-2026-090',
-    payment_date: '2026-08-21',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    ra_bill_no: 'RA-2026-005',
-    work_order_no: 'WO-2026-014',
-    amount: 259700,
-    payment_mode: 'RTGS Transfer',
-    reference_no: 'UTR-SBI-009182344',
-    bank_account: 'SBI Project A/C (..7461)',
-    status_name: 'Disbursed (Settled)',
-    disbursed_by: 'Finance & Accounts',
-    notes: 'Mobilization advance disbursement.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

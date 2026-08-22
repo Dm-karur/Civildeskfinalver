@@ -20,59 +20,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_PHOTOS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    title: 'Level 2 Column Reinforcement Cage & Cover Blocks Inspection',
-    tag: 'Pre-Pour QC Inspection',
-    location: 'Tower Core 1 Grid C1-C6',
-    date: '2026-08-21',
-    time: '10:45 AM',
-    gps_coordinates: '10.9602° N, 78.0766° E',
-    photographer: 'Er. Senthil Nathan (QA/QC)',
-    file_name: 'IMG_20260821_CORE1_REBAR.jpg',
-    description: 'Verified 40mm clear cover blocks and stirrup spacing at 100mm c/c.',
-    aspect_color: 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    title: 'Transit Mixer Concrete Discharge into Stationary Pump',
-    tag: 'Concrete Pour Log',
-    location: 'Ground Floor Pour Bay 1',
-    date: '2026-08-21',
-    time: '11:30 AM',
-    gps_coordinates: '10.9604° N, 78.0768° E',
-    photographer: 'Er. Rajesh Kumar (Site Incharge)',
-    file_name: 'IMG_20260821_POUR_BAY1.jpg',
-    description: 'Slump test checked at 120mm on site before pumping.',
-    aspect_color: 'bg-sky-950/20 border-sky-500/30 text-sky-400'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    title: 'Vibratory Soil Compactor Passing Sub-base Granular Layer',
-    tag: 'Highway Earthworks',
-    location: 'Ch. 16+300 RHS Box Culvert',
-    date: '2026-08-21',
-    time: '09:15 AM',
-    gps_coordinates: '10.8245° N, 78.1420° E',
-    photographer: 'K. Balaji (Highway PM)',
-    file_name: 'IMG_20260821_HW_COMPACTION.jpg',
-    description: 'Roller pass 6 of 8 completed with optimum moisture content.',
-    aspect_color: 'bg-amber-950/20 border-amber-500/30 text-amber-400'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

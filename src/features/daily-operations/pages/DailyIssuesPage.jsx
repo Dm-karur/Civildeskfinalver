@@ -22,65 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_ISSUES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    issue_no: 'ISS-2026-021',
-    date: '2026-08-20',
-    category: 'Drawing RFI Clarification',
-    severity: 'High',
-    title: 'Beam-Column Junction Duct Opening Clash at Grid C4',
-    location: 'Level 2 Floor Deck',
-    affected_activity: 'Level 2 Slab Decking & Shuttering',
-    schedule_impact: 'Delay of 1 Shift until structural consultant sketch released',
-    reported_by: 'Er. Rajesh Kumar (Site Incharge)',
-    assigned_to: 'Er. Suresh Babu (Project Director)',
-    status: 'Resolved & Closed',
-    resolution_notes: 'Structural consultant issued revised cutout detail Sketch SK-042.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    issue_no: 'ISS-2026-022',
-    date: '2026-08-21',
-    category: 'Safety Hazard (Near Miss)',
-    severity: 'Medium',
-    title: 'Edge protection handrail missing at North Wing slab perimeter',
-    location: 'Level 2 North Wing Grid N1',
-    affected_activity: 'Reinforcement Fixing Gang',
-    schedule_impact: 'Work paused 30 mins for safety barricade installation',
-    reported_by: 'K. Mohan (Safety Officer)',
-    assigned_to: 'P. Vignesh (Carpentry Foreman)',
-    status: 'Resolved & Closed',
-    resolution_notes: 'Double tier toe-board and handrail installed. Safety clearance given.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    issue_no: 'ISS-2026-023',
-    date: '2026-08-21',
-    category: 'Material Shortage Delay',
-    severity: 'Critical',
-    title: 'Shortage of 20mm aggregate at site batching silo',
-    location: 'Ch. 16+300 Box Culvert Site',
-    affected_activity: 'Box Culvert Base Concrete Pouring',
-    schedule_impact: 'Pour delayed by 2 hours awaiting quarry dispatch',
-    reported_by: 'K. Balaji (Highway PM)',
-    assigned_to: 'Procurement Cell',
-    status: 'Under Resolution (Truck En-Route)',
-    notes: 'Emergency quarry tipper lorry dispatched.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

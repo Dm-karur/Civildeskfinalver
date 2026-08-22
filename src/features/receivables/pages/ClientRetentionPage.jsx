@@ -22,59 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_RETENTIONS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    retention_no: 'RET-CLIENT-001',
-    contract_no: 'CTR-2026-001',
-    client_name: 'Metro Infrastructure & Realty Corp Ltd',
-    total_contract_value: 285000000,
-    cumulative_retention_deducted: 2125000, // 5% of ₹4.25 Cr billed
-    retention_released: 0,
-    balance_held_by_client: 2125000,
-    dlp_expiry_date: '2029-10-31',
-    status: 'Held in Client Escrow (Ongoing Work)',
-    notes: 'Deducted at 5% across RA Progress Bills 1 to 3.'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    retention_no: 'RET-CLIENT-002',
-    contract_no: 'CTR-2026-002',
-    client_name: 'National Highways Authority / State PWD',
-    total_contract_value: 165000000,
-    cumulative_retention_deducted: 1200000,
-    retention_released: 0,
-    balance_held_by_client: 1200000,
-    dlp_expiry_date: '2030-06-30',
-    status: 'Held in Client Escrow (Ongoing Work)',
-    notes: '5% retention withheld by NHAI Project Director.'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    retention_no: 'RET-CLIENT-003',
-    contract_no: 'CTR-2026-003',
-    client_name: 'Vibrant Logistics & Industrial Parks LLP',
-    total_contract_value: 92000000,
-    cumulative_retention_deducted: 690000,
-    retention_released: 345000, // 50% released at TOC
-    balance_held_by_client: 345000,
-    dlp_expiry_date: '2028-01-31',
-    status: '50% Released at Handover (DLP Active)',
-    notes: '50% retention released on Taking-Over Certificate (TOC).'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

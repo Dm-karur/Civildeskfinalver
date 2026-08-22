@@ -18,77 +18,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_APPROVAL_PRS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Steel Stacking Yard',
-    requisition_no: 'PR-2026-042',
-    requisition_date: '2026-08-21',
-    required_by_date: '2026-08-24',
-    priority: 'Critical',
-    material_code: 'MAT-STL-002',
-    material_name: 'Fe 550D TMT Rebar 16mm',
-    quantity: 15.0,
-    uom: 'MT',
-    estimated_rate: 58500,
-    estimated_total: 877500,
-    requested_by: 'Er. Rajesh Kumar (Site Incharge)',
-    department: 'Civil Structural Works',
-    status: 'Pending PM Approval',
-    current_approver: 'Er. Suresh Babu (Project Director)',
-    purpose: 'Urgent column splice rebar requirement for Level 3 framing.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Main Central Godown Bay 1',
-    requisition_no: 'PR-2026-041',
-    requisition_date: '2026-08-20',
-    required_by_date: '2026-08-25',
-    priority: 'Urgent',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement',
-    quantity: 500,
-    uom: 'Bags',
-    estimated_rate: 385,
-    estimated_total: 192500,
-    requested_by: 'Er. Rajesh Kumar (Site Incharge)',
-    department: 'Civil Structural Works',
-    status: 'Approved',
-    current_approver: 'Er. Suresh Babu (Project Director)',
-    purpose: 'Core 1 & 2 column casting pour scheduled on 26th Aug.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    site_name: 'Ch. 16+300 Box Culvert Site',
-    requisition_no: 'PR-2026-043',
-    requisition_date: '2026-08-19',
-    required_by_date: '2026-08-23',
-    priority: 'Normal',
-    material_code: 'MAT-AGG-003',
-    material_name: '20mm Blue Metal Aggregate',
-    quantity: 120,
-    uom: 'Ton',
-    estimated_rate: 1450,
-    estimated_total: 174000,
-    requested_by: 'K. Balaji (Highway PM)',
-    department: 'Highway Earthworks & Pavements',
-    status: 'Approved',
-    current_approver: 'Corporate Procurement Team',
-    purpose: 'Base course concrete batching on site.'
-  },
-];
-*/
 
 export function RequisitionApprovalPage() {
   const { hasPermission } = useAuth();

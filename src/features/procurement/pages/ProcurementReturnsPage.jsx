@@ -22,51 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_RETURNS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    debit_note_no: 'DN-2026-015',
-    return_date: '2026-08-21',
-    po_reference: 'PO-2026-088',
-    grn_reference: 'GRN-2026-081',
-    supplier_name: 'UltraTech Cement Distributors Ltd',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement',
-    return_qty: 25,
-    uom: 'Bags',
-    unit_rate: 340,
-    debit_amount: 8500,
-    reason: 'Damaged & Hardened Cement (Moisture ingress in transit)',
-    status: 'Debit Note Issued (Vendor Credit Acknowledged)',
-    notes: '25 torn/hardened bags rejected during inward unloading.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    debit_note_no: 'DN-2026-016',
-    return_date: '2026-08-20',
-    po_reference: 'PO-2026-089',
-    grn_reference: 'GRN-2026-082',
-    supplier_name: 'JSW Steel Regional Supply Hub',
-    material_code: 'MAT-STL-002',
-    material_name: 'Fe 550D TMT Rebar 16mm',
-    return_qty: 0.5,
-    uom: 'MT',
-    unit_rate: 49000,
-    debit_amount: 24500,
-    reason: 'Surface Rust & Dimensional Rib Variance on bundle #4',
-    status: 'Debit Note Issued (Pending Vendor Credit)',
-    notes: 'Bent bundle returned on the same lorry.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

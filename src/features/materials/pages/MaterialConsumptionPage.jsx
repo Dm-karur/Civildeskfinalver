@@ -22,77 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_CONSUMPTIONS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    consumption_no: 'MCN-2026-061',
-    date: '2026-08-20',
-    site_name: 'Tower A Core - Level 2',
-    work_activity: 'Level 2 Slab M30 Concrete Pour (45 cum)',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement',
-    uom: 'Bags',
-    theoretical_qty: 324,
-    actual_consumed_qty: 330,
-    variance_qty: 6,
-    wastage_pct: 1.85,
-    unit_rate: 385,
-    actual_cost: 127050,
-    status: 'Within Tolerance (<= 2%)',
-    incharge: 'Er. Rajesh Kumar',
-    notes: 'Pump line priming surge accounted for 3 bags.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    consumption_no: 'MCN-2026-062',
-    date: '2026-08-19',
-    site_name: 'Steel Yard',
-    work_activity: 'Core 1 Column Splice Rebar BBS (12.0 MT)',
-    material_code: 'MAT-STL-002',
-    material_name: 'Fe 550D TMT Rebar 16mm',
-    uom: 'MT',
-    theoretical_qty: 12.0,
-    actual_consumed_qty: 12.35,
-    variance_qty: 0.35,
-    wastage_pct: 2.92,
-    unit_rate: 58500,
-    actual_cost: 722475,
-    status: 'Within Tolerance (<= 3%)',
-    incharge: 'Er. Rajesh Kumar',
-    notes: 'Standard end-bit offcuts collected in scrap bin.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    consumption_no: 'MCN-2026-063',
-    date: '2026-08-21',
-    site_name: 'Ch. 16+300 Box Culvert Site',
-    work_activity: 'Culvert Raft Bed Concrete (35 cum)',
-    material_code: 'MAT-AGG-003',
-    material_name: '20mm Blue Metal Aggregate',
-    uom: 'Ton',
-    theoretical_qty: 42,
-    actual_consumed_qty: 45,
-    variance_qty: 3,
-    wastage_pct: 7.14,
-    unit_rate: 1450,
-    actual_cost: 65250,
-    status: 'Wastage Overrun (> 5%)',
-    incharge: 'K. Balaji (PM)',
-    notes: 'Site stockpile base ground contamination loss.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

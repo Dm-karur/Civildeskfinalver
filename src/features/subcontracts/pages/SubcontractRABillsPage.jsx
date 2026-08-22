@@ -22,71 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, subcontractsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_RA_BILLS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    ra_bill_no: 'RA-2026-003',
-    bill_date: '2026-08-20',
-    contractor_bill_no: 'SMI-INV-042',
-    work_order_no: 'WO-2026-012',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    gross_work_value: 924000,
-    retention_amount: 46200,
-    advance_recovery: 92400,
-    tds_amount: 18480,
-    gst_amount: 166320, // 18%
-    net_certified_amount: 766920,
-    status_name: 'Certified & Passed for Payment',
-    certified_by: 'Er. Suresh Babu (Project Director)',
-    notes: 'RA Bill 3 covering Level 2 column casting and beam staging.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    ra_bill_no: 'RA-2026-004',
-    bill_date: '2026-08-21',
-    contractor_bill_no: 'APX-BILL-018',
-    work_order_no: 'WO-2026-013',
-    contractor_name: 'Apex MEP Engineers & Contractors',
-    gross_work_value: 380000,
-    retention_amount: 19000,
-    advance_recovery: 19000,
-    tds_amount: 7600,
-    gst_amount: 68400,
-    net_certified_amount: 334400,
-    status_name: 'Certified & Passed for Payment',
-    certified_by: 'Er. Suresh Babu (Project Director)',
-    notes: 'RA Bill 1 covering electrical conduit inserts.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    ra_bill_no: 'RA-2026-005',
-    bill_date: '2026-08-21',
-    contractor_bill_no: 'SMI-HW-001',
-    work_order_no: 'WO-2026-014',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    gross_work_value: 265000,
-    retention_amount: 0,
-    advance_recovery: 0,
-    tds_amount: 5300,
-    gst_amount: 47700,
-    net_certified_amount: 259700,
-    status_name: 'Submitted for QS Verification',
-    certified_by: 'Pending Review',
-    notes: 'Mobilization advance claim bill against bank guarantee.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

@@ -9,19 +9,7 @@ import { WorkflowFormModal } from '../components/WorkflowFormModal';
 import { toast } from '../../../components/composite/Toast';
 import { approvalsApi } from '../../../api/apiservice';
 
-/* 
-const DEFAULT_WORKFLOWS = [
 
-  { id: '1', name: 'BOQ Approval Workflow', code: 'WF-BOQ', module: 'BOQ & Budget', transaction: 'BOQ Register', status: 'Active', scope: 'Company-Wide', levels: 2, approvers: 'Project Manager, Director', updated_at: '2026-08-20' },
-  { id: '2', name: 'Budget Approval & Revision', code: 'WF-BDG', module: 'BOQ & Budget', transaction: 'Project Budgets', status: 'Active', scope: 'Company-Wide', levels: 3, approvers: 'QS, Finance Head, MD', updated_at: '2026-08-20' },
-  { id: '3', name: 'Purchase Order Approval', code: 'WF-PO', module: 'Procurement', transaction: 'Purchase Orders', status: 'Active', scope: 'Project-Specific', levels: 2, approvers: 'Purchase Head, Director', updated_at: '2026-08-20' },
-  { id: '4', name: 'Material Requisition Flow', code: 'WF-MR', module: 'Materials', transaction: 'Material Requests', status: 'Active', scope: 'Site-Specific', levels: 1, approvers: 'Site Incharge', updated_at: '2026-08-20' },
-  { id: '5', name: 'Daily Work Report Certification', code: 'WF-DWR', module: 'Daily Operations', transaction: 'Daily Work Reports', status: 'Active', scope: 'Site-Specific', levels: 1, approvers: 'Project Engineer', updated_at: '2026-08-20' },
-  { id: '6', name: 'Subcontract RA Bill Verification', code: 'WF-RA', module: 'Subcontracts', transaction: 'RA Bills', status: 'Active', scope: 'Project-Specific', levels: 2, approvers: 'Billing Engineer, PM', updated_at: '2026-08-20' },
-  { id: '7', name: 'Labour Wage Period Finalization', code: 'WF-WG', module: 'Labour & Attendance', transaction: 'Daily Wages', status: 'Active', scope: 'Company-Wide', levels: 2, approvers: 'HR Manager, Finance Head', updated_at: '2026-08-20' },
-  { id: '8', name: 'Expense Voucher Approval', code: 'WF-EXP', module: 'Finance', transaction: 'Expense Bills', status: 'Active', scope: 'Company-Wide', levels: 2, approvers: 'Accountant, CFO', updated_at: '2026-08-20' },
-];
-*/
 
 export function ApprovalWorkflowsPage() {
   const [workflows, setWorkflows] = useState([]);

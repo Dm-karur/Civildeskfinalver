@@ -22,65 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_MANPOWER_LOGS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    date: '2026-08-21',
-    contractor_name: 'Sri Murugan Labour Services',
-    trade_category: 'Masons & Concrete Gang',
-    shift_general_count: 14,
-    shift_night_count: 4,
-    total_workers: 18,
-    ot_hours: 12.0,
-    assigned_work: 'Level 2 Column Concrete Pouring and Curing',
-    location: 'Tower Core 1 Grid C1-C6',
-    foreman_incharge: 'M. Selvam',
-    status: 'Verified by Timekeeper',
-    notes: '4 masons engaged in night curing shift.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    date: '2026-08-21',
-    contractor_name: 'Sri Murugan Labour Services',
-    trade_category: 'Bar Benders & Cutters',
-    shift_general_count: 16,
-    shift_night_count: 0,
-    total_workers: 16,
-    ot_hours: 8.0,
-    assigned_work: 'Level 2 Beam Cage Tying & Column Splice Lapping',
-    location: 'North Wing Grid N1-N4',
-    foreman_incharge: 'K. Raman',
-    status: 'Verified by Timekeeper',
-    notes: 'Completed 3 beam cages.'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    date: '2026-08-21',
-    contractor_name: 'Apex Shuttering Specialists',
-    trade_category: 'Carpenters & Staging Crew',
-    shift_general_count: 14,
-    shift_night_count: 0,
-    total_workers: 14,
-    ot_hours: 4.0,
-    assigned_work: 'Cup-lock scaffolding & slab decking shuttering',
-    location: 'Level 2 Floor Deck',
-    foreman_incharge: 'P. Vignesh',
-    status: 'Verified by Timekeeper',
-    notes: 'All props checked for verticality.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

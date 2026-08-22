@@ -22,51 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_TRANSFERS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    transfer_no: 'STN-2026-042',
-    transfer_date: '2026-08-20',
-    from_site_name: 'Central Godown Bay 1',
-    to_site_name: 'Tower A Core - Level 2 Yard',
-    vehicle_no: 'TN-45-AZ-9901',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement',
-    transfer_qty: 150,
-    uom: 'Bags',
-    unit_rate: 385,
-    transfer_value: 57750,
-    status: 'In-Transit',
-    dispatched_by: 'M. Shanmugam (Store Incharge)',
-    purpose: 'Urgent transfer for Level 2 column pour.'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    transfer_no: 'STN-2026-043',
-    transfer_date: '2026-08-19',
-    from_site_name: 'Main Fabrication Yard',
-    to_site_name: 'Ch. 16+300 Box Culvert Site',
-    vehicle_no: 'TN-47-D-4412',
-    material_code: 'MAT-STL-002',
-    material_name: 'Fe 550D TMT Rebar 16mm',
-    transfer_qty: 6.0,
-    uom: 'MT',
-    unit_rate: 58500,
-    transfer_value: 351000,
-    status: 'Received & Accepted',
-    dispatched_by: 'K. Balaji (PM)',
-    purpose: 'Pre-cut culvert haunch rebar bundles.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

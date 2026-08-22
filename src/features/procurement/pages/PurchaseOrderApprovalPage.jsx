@@ -18,68 +18,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_APPROVAL_POS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Steel Stacking Yard',
-    po_no: 'PO-2026-089',
-    po_date: '2026-08-20',
-    expected_delivery_date: '2026-08-24',
-    supplier_name: 'JSW Steel Regional Supply Hub',
-    material_code: 'MAT-STL-002',
-    material_name: 'Fe 550D TMT Rebar 16mm (15.0 MT)',
-    taxable_amount: 735000,
-    grand_total: 885300,
-    status: 'Pending Director Approval',
-    threshold_tier: 'Tier 2 (> ₹5 Lakhs)',
-    approver: 'Er. Suresh Babu (Project Director)',
-    notes: 'Major steel reinforcement procurement for Level 3 structure.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    site_name: 'Main Central Godown Bay 1',
-    po_no: 'PO-2026-088',
-    po_date: '2026-08-21',
-    expected_delivery_date: '2026-08-25',
-    supplier_name: 'UltraTech Cement Distributors Ltd',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement (500 Bags)',
-    taxable_amount: 170000,
-    grand_total: 225100,
-    status: 'Approved & Dispatched',
-    threshold_tier: 'Tier 1 (< ₹5 Lakhs)',
-    approver: 'Er. Rajesh Kumar (Project Manager)',
-    notes: 'Standard cement supply under approved CS-2026-012.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    site_name: 'Ch. 16+300 Box Culvert Site',
-    po_no: 'PO-2026-090',
-    po_date: '2026-08-19',
-    expected_delivery_date: '2026-08-22',
-    supplier_name: 'Sri Amman Blue Metal Quarries',
-    material_code: 'MAT-AGG-003',
-    material_name: '20mm Blue Metal Aggregate (120 Tons)',
-    taxable_amount: 165600,
-    grand_total: 185880,
-    status: 'Approved & Dispatched',
-    threshold_tier: 'Tier 1 (< ₹5 Lakhs)',
-    approver: 'K. Balaji (Highway PM)',
-    notes: 'Approved for direct batching delivery.'
-  },
-];
-*/
 
 export function PurchaseOrderApprovalPage() {
   const { hasPermission } = useAuth();

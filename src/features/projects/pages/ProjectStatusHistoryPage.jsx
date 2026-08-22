@@ -19,55 +19,7 @@ import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, mastersApi } from '../../../api/apiservice';
 
-/* 
-const DEFAULT_STATUS_LOGS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    from_status_name: 'Planning & Estimate',
-    to_status_name: 'In Progress (Active)',
-    change_reason: 'Statutory town planning sanction received and client work order signed. Site mobilization commenced.',
-    changed_by_name: 'Admin Civilpro',
-    changed_at: '2026-06-01 10:30:00'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    from_status_name: 'Draft (Tender)',
-    to_status_name: 'Planning & Estimate',
-    change_reason: 'Contract awarded. Initiated baseline BOQ and construction work programme formulation.',
-    changed_by_name: 'Karthik Raja (Planning Manager)',
-    changed_at: '2026-05-12 14:15:00'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    from_status_name: 'Planning & Estimate',
-    to_status_name: 'On Hold (Pending Clearance)',
-    change_reason: 'Awaiting Stage-II Ministry of Environment and Forest (MoEF) right-of-way clearance certificate.',
-    changed_by_name: 'Suresh Kumar (Project Director)',
-    changed_at: '2026-06-18 16:45:00'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    from_status_name: 'On Hold (Pending Clearance)',
-    to_status_name: 'In Progress (Active)',
-    change_reason: 'Provisional clearance letter endorsed by State Highways Authority. Resumed sub-base earthworks.',
-    changed_by_name: 'Admin Civilpro',
-    changed_at: '2026-07-05 09:00:00'
-  },
-];
-*/
 
 export function ProjectStatusHistoryPage() {
   const [projects, setProjects] = useState([]);

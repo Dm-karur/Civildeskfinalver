@@ -17,62 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_DAILY_SITE_REPORTS = [
 
-  {
-    id: 1,
-    report_date: '2026-08-21',
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    work_zone: 'Tower A Level 3 Floor Slab',
-    major_activity: 'Concreting of Level 3 RCC Slab & Beams (Design Mix M30 65 Cu.m)',
-    labour_count: 42,
-    equipment_hours: 'Tower Crane (8.5h), Concrete Pump (5.0h)',
-    materials_received: 'TMT 16mm Rebars (14.5 MT), OPC 53 Cement (350 Bags)',
-    weather: 'Clear Sunny (32°C)',
-    delays_hours: 0,
-    safety_incidents: '0 (Zero Incident)',
-    site_incharge: 'Er. Rajesh Kumar (Project Manager)',
-    status: 'Approved DPR'
-  },
-  {
-    id: 2,
-    report_date: '2026-08-21',
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    work_zone: 'Ch. 14+200 to 15+800 LHS',
-    major_activity: 'Wet Mix Macadam (WMM) laying and vibratory compaction',
-    labour_count: 24,
-    equipment_hours: 'Motor Grader (7.0h), Soil Compactor (8.0h), Water Tanker (6.0h)',
-    materials_received: 'GSB Aggregates (180 Cu.m), HSD Diesel (1,200 L)',
-    weather: 'Partly Cloudy',
-    delays_hours: 0,
-    safety_incidents: '0 (Zero Incident)',
-    site_incharge: 'Er. K. Natarajan (Highway Lead)',
-    status: 'Approved DPR'
-  },
-  {
-    id: 3,
-    report_date: '2026-08-20',
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    work_zone: 'Tower A Level 3 Floor Slab',
-    major_activity: 'Fe 550D TMT reinforcement tying & electrical conduit laying',
-    labour_count: 38,
-    equipment_hours: 'Tower Crane (6.0h), Bar Bending Machine (8.0h)',
-    materials_received: 'PVC Electrical Conduits (600 Rmt)',
-    weather: 'Clear',
-    delays_hours: 0,
-    safety_incidents: '0 (Zero Incident)',
-    site_incharge: 'Er. Rajesh Kumar',
-    status: 'Approved DPR'
-  }
-];
-*/
 
 export function DailySiteReportPage() {
   const { hasPermission } = useAuth();

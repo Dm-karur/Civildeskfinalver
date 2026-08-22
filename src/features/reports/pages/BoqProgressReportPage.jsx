@@ -17,75 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_BOQ_PROGRESS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    item_code: 'BOQ-01.01',
-    description: 'Earthwork excavation in hard soil/soft rock for raft foundation',
-    unit: 'Cu.m',
-    tender_qty: 12500,
-    executed_qty: 12500,
-    completion_pct: 100.0,
-    tender_rate: 340,
-    executed_value: 4250000,
-    balance_qty: 0,
-    status: '100% Completed'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    item_code: 'BOQ-02.04',
-    description: 'Design mix RMC M30 concrete in columns, shear walls and beams',
-    unit: 'Cu.m',
-    tender_qty: 6800,
-    executed_qty: 2450,
-    completion_pct: 36.0,
-    tender_rate: 7200,
-    executed_value: 17640000,
-    balance_qty: 4350,
-    status: 'In Progress (Active Casting)'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    item_code: 'BOQ-02.08',
-    description: 'High-yield Fe 550D TMT reinforcement cutting, bending and tying',
-    unit: 'MT',
-    tender_qty: 1450,
-    executed_qty: 520,
-    completion_pct: 35.9,
-    tender_rate: 68500,
-    executed_value: 35620000,
-    balance_qty: 930,
-    status: 'In Progress'
-  },
-  {
-    id: 4,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    item_code: 'BOQ-03.12',
-    description: 'AAC block masonry work 200mm thick in cement mortar 1:4',
-    unit: 'Sq.m',
-    tender_qty: 9200,
-    executed_qty: 850,
-    completion_pct: 9.2,
-    tender_rate: 1150,
-    executed_value: 977500,
-    balance_qty: 8350,
-    status: 'In Progress'
-  }
-];
-*/
 
 export function BoqProgressReportPage() {
   const { hasPermission } = useAuth();

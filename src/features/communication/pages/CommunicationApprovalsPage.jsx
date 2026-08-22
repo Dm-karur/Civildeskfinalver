@@ -17,53 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_APPROVALS = [
 
-  {
-    id: 1,
-    request_no: 'APR-COM-2026-008',
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    item_title: 'Client Formal Extra-Item Claim Notice: Hard Rock Hydraulic Breaker Excavation',
-    document_type: 'Client Commercial Notice',
-    submitted_by: 'Er. Rajesh Kumar (PM)',
-    approver_role: 'Project Director',
-    submitted_date: '2026-08-21',
-    urgency: 'Urgent Action Required',
-    status: 'Pending Your Approval'
-  },
-  {
-    id: 2,
-    request_no: 'APR-COM-2026-007',
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    item_title: 'GFC Structural Drawing Release Rev R2 for Tower A Level 3 RCC Pour',
-    document_type: 'GFC Drawing Transmittal',
-    submitted_by: 'Vanguard Structural Consultants',
-    approver_role: 'Chief Technical Officer',
-    submitted_date: '2026-08-20',
-    urgency: 'Normal',
-    status: 'Approved & Dispatched'
-  },
-  {
-    id: 3,
-    request_no: 'APR-COM-2026-006',
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    item_title: 'Monthly Progress Dossier & Weather Stoppage Time-Extension Circular',
-    document_type: 'Client Progress Circular',
-    submitted_by: 'Er. K. Natarajan',
-    approver_role: 'Project Director',
-    submitted_date: '2026-08-18',
-    urgency: 'Normal',
-    status: 'Approved & Dispatched'
-  }
-];
-*/
 
 export function CommunicationApprovalsPage() {
   const { hasPermission } = useAuth();

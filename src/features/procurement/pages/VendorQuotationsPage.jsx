@@ -22,77 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_QUOTES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    quotation_no: 'QT-UT-2026-881',
-    quotation_date: '2026-08-21',
-    rfq_reference: 'RFQ-2026-031',
-    supplier_name: 'UltraTech Cement Distributors Ltd',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement (500 Bags)',
-    base_rate: 340,
-    gst_rate: 28,
-    freight_rate: 15,
-    landed_rate: 382.2,
-    total_bid_value: 191100,
-    validity_date: '2026-09-15',
-    credit_terms: '30 Days Credit',
-    rank: 'L1 (Lowest)',
-    status: 'Evaluated & Shortlisted',
-    notes: 'Price includes doorstep delivery at project site.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    quotation_no: 'QT-DL-2026-442',
-    quotation_date: '2026-08-21',
-    rfq_reference: 'RFQ-2026-031',
-    supplier_name: 'Dalmia Bharat Cements Regional Agency',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement (500 Bags)',
-    base_rate: 348,
-    gst_rate: 28,
-    freight_rate: 12,
-    landed_rate: 390.4,
-    total_bid_value: 195200,
-    validity_date: '2026-09-10',
-    credit_terms: '15 Days Credit',
-    rank: 'L2',
-    status: 'Evaluated',
-    notes: 'Unloading charges extra at actuals.'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    quotation_no: 'QT-RC-2026-109',
-    quotation_date: '2026-08-22',
-    rfq_reference: 'RFQ-2026-031',
-    supplier_name: 'The Ramco Cements Direct Agency',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement (500 Bags)',
-    base_rate: 355,
-    gst_rate: 28,
-    freight_rate: 10,
-    landed_rate: 397.4,
-    total_bid_value: 198700,
-    validity_date: '2026-09-05',
-    credit_terms: 'Advance against Delivery',
-    rank: 'L3',
-    status: 'Evaluated',
-    notes: 'Payment required prior to dispatch.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

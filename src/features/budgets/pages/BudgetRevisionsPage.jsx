@@ -21,68 +21,7 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { budgetsApi, projectsApi } from '../../../api/apiservice';
 
-/* 
-const DEFAULT_REVISIONS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    budget_id: 1,
-    budget_code: 'BUD-001',
-    budget_name: 'Greenfield Residency Initial Cost Budget',
-    revision_no: 1,
-    revision_date: '2026-07-15',
-    previous_total: 21625000,
-    revised_total: 23450000,
-    variance_amount: 1825000,
-    status_name: 'Approved',
-    requested_by_name: 'Arun Prakash (Project Manager)',
-    decided_by_name: 'Finance Committee',
-    reason: 'Scope escalation due to foundation raft deepening from 2.5m to 3.8m based on revised geotechnical soil bearing capacity test.',
-    decision_note: 'Approved after verification of structural consultant drawings and soil test report.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    budget_id: 1,
-    budget_code: 'BUD-001',
-    budget_name: 'Greenfield Residency Initial Cost Budget',
-    revision_no: 2,
-    revision_date: '2026-08-10',
-    previous_total: 23450000,
-    revised_total: 24650000,
-    variance_amount: 1200000,
-    status_name: 'Pending Approval',
-    requested_by_name: 'K. Senthil (QS Lead)',
-    decided_by_name: '—',
-    reason: 'Steel index escalation: Market price increase in Fe550D primary TMT rebar from ₹58/kg to ₹64.5/kg for 180 MT order.',
-    decision_note: 'Awaiting commercial audit review.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    budget_id: 2,
-    budget_code: 'BUD-HWY-002',
-    budget_name: 'Highway Package 3 Baseline Budget',
-    revision_no: 1,
-    revision_date: '2026-08-01',
-    previous_total: 45000000,
-    revised_total: 47200000,
-    variance_amount: 2200000,
-    status_name: 'Approved',
-    requested_by_name: 'R. Vignesh (Highway Engineer)',
-    decided_by_name: 'Director Operations',
-    reason: 'Addition of 2 extra vehicular underpass box culverts at Ch. 16+300 requested by State Highway Authority.',
-    decision_note: 'Approved per variation order VO-04 signed by client.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

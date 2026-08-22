@@ -22,71 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_MATERIAL_COSTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    material_category: 'TMT Reinforcement Steel',
-    item_description: 'Fe 550D TMT Rebars (8mm - 32mm)',
-    budget_allocation: 95000000, // ₹9.5 Cr
-    po_committed_value: 84500000,
-    grn_received_value: 48200000,
-    site_consumed_value: 45600000,
-    wastage_cost: 680000, // 1.49% wastage
-    unit_rate_variance: '+1.2% Steel Price Index',
-    status: 'Optimal (Within 2% Wastage Limit)'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    material_category: 'Ready-Mix Concrete (RMC)',
-    item_description: 'Design Mix RMC M30 & M40 Pumpable',
-    budget_allocation: 62000000, // ₹6.2 Cr
-    po_committed_value: 54000000,
-    grn_received_value: 29500000,
-    site_consumed_value: 29500000,
-    wastage_cost: 210000,
-    unit_rate_variance: '0% Contract Locked Rate',
-    status: 'Optimal (100% Pour Reconciled)'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    material_category: 'Cement Bags (OPC 53 Grade)',
-    item_description: 'Ultratech / Ramco OPC 53 Grade (50kg)',
-    budget_allocation: 18000000,
-    po_committed_value: 14500000,
-    grn_received_value: 8200000,
-    site_consumed_value: 7800000,
-    wastage_cost: 95000,
-    unit_rate_variance: '+2.5% Fuel Surcharge',
-    status: 'Optimal'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    material_category: 'Granular Sub-Base (GSB)',
-    item_description: 'Graded Crushed Stone Aggregate 40mm/20mm',
-    budget_allocation: 28000000,
-    po_committed_value: 24000000,
-    grn_received_value: 11200000,
-    site_consumed_value: 11200000,
-    wastage_cost: 140000,
-    unit_rate_variance: '0% Quarry Fixed Rate',
-    status: 'Optimal'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

@@ -22,62 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_INCOMES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    income_no: 'INC-2026-034',
-    income_date: '2026-08-10',
-    revenue_stream: 'Client RA Progress Bill (Level 2 & 3)',
-    client_name: 'Metro Infrastructure & Realty Corp Ltd',
-    gross_billed: 16756000,
-    tds_deducted: 335120, // 2% TDS
-    retention_deducted: 837800, // 5% Retention
-    net_realized_inflow: 15583080, // ₹1.55 Cr
-    bank_account: 'HDFC Escrow Current A/C #9981',
-    utr_no: 'HDFCR520260810901',
-    status: 'Realized in Bank'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    income_no: 'INC-2026-035',
-    income_date: '2026-08-12',
-    revenue_stream: 'Client Mobilization Advance Claim',
-    client_name: 'National Highways Authority / State PWD',
-    gross_billed: 16500000,
-    tds_deducted: 330000,
-    retention_deducted: 0,
-    net_realized_inflow: 16170000,
-    bank_account: 'SBI Project Escrow A/C #4421',
-    utr_no: 'SBIN0028491823',
-    status: 'Realized in Bank'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    income_no: 'INC-2026-036',
-    income_date: '2026-08-15',
-    revenue_stream: 'Scrap TMT Cut-pieces & Metal Sale',
-    client_name: 'Venkateswara Steel Traders',
-    gross_billed: 385000,
-    tds_deducted: 3850, // 1% TCS
-    retention_deducted: 0,
-    net_realized_inflow: 381150,
-    bank_account: 'HDFC Escrow Current A/C #9981',
-    utr_no: 'HDFCR520260815442',
-    status: 'Realized in Bank'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

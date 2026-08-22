@@ -22,62 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, expensesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_PAYMENTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    payment_no: 'PAY-2026-088',
-    payment_date: '2026-08-16',
-    bill_no: 'BILL-2026-104',
-    beneficiary_name: 'Tata Steel Ltd / Authorized Distributor',
-    category: 'Material Supplier (Steel)',
-    amount_paid: 5310000,
-    tds_deducted: 5310, // 0.1% TDS u/s 194Q
-    payment_mode: 'HDFC Corporate RTGS',
-    bank_account: 'HDFC Main Operations A/C #0012',
-    utr_no: 'HDFCR520260816881',
-    status: 'Settled'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    payment_no: 'PAY-2026-089',
-    payment_date: '2026-08-18',
-    bill_no: 'BILL-2026-105',
-    beneficiary_name: 'Apex Heavy Crane Rentals',
-    category: 'Equipment Rental',
-    amount_paid: 500000,
-    tds_deducted: 10000, // 2% TDS u/s 194C
-    payment_mode: 'HDFC Corporate NEFT',
-    bank_account: 'HDFC Main Operations A/C #0012',
-    utr_no: 'HDFCR520260818942',
-    status: 'Settled'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    payment_no: 'PAY-2026-090',
-    payment_date: '2026-08-20',
-    bill_no: 'WO-RA-2026-012',
-    beneficiary_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    category: 'Subcontractor RA Bill',
-    amount_paid: 1250000,
-    tds_deducted: 12500, // 1% TDS u/s 194C (Individual)
-    payment_mode: 'HDFC Corporate RTGS',
-    bank_account: 'HDFC Main Operations A/C #0012',
-    utr_no: 'HDFCR520260820129',
-    status: 'Settled'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

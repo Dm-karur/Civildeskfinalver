@@ -22,74 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_MATERIAL_POURS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    pour_no: 'POUR-2026-042',
-    date: '2026-08-21',
-    material_name: 'M30 Grade Ready Mix Concrete',
-    pour_element: 'Level 2 Columns C1-C12 & Shear Core 1',
-    location: 'Tower Core 1',
-    theoretical_qty: 41.2,
-    actual_consumed_qty: 42.0,
-    uom: 'm³',
-    wastage_pct: 1.9,
-    slump_test_mm: '120 mm',
-    cubes_taken: '6 Cubes (Set A & B)',
-    pour_time: '10:00 AM - 03:30 PM',
-    status: 'Within Permissible Tolerance (<3%)',
-    qa_engineer: 'Er. Senthil Nathan (QA/QC)',
-    notes: 'Transit mixer batching tickets verified; temperature 31°C.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    date: '2026-08-21',
-    pour_no: 'POUR-2026-043',
-    material_name: 'Fe 550D TMT Reinforcement Steel',
-    pour_element: 'Level 2 Beam Cages N1-N4',
-    location: 'North Wing Framing',
-    theoretical_qty: 2.75,
-    actual_consumed_qty: 2.80,
-    uom: 'MT',
-    wastage_pct: 1.8,
-    slump_test_mm: '—',
-    cubes_taken: 'Rebar BBS Checked',
-    pour_time: 'Full Shift 08:30 AM - 05:30 PM',
-    status: 'Within Permissible Tolerance (<3%)',
-    qa_engineer: 'Er. Rajesh Kumar',
-    notes: 'Bar bending schedule cutting optimization utilized.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    pour_no: 'POUR-2026-044',
-    date: '2026-08-20',
-    material_name: 'Granular Sub-Base (GSB) Aggregates',
-    pour_element: 'Pavement Sub-base Layer',
-    location: 'Ch. 16+200 to 16+500',
-    theoretical_qty: 315.0,
-    actual_consumed_qty: 320.0,
-    uom: 'm³',
-    wastage_pct: 1.6,
-    slump_test_mm: 'Optimum Moisture 6.2%',
-    cubes_taken: 'Density Sand Cone Tests',
-    pour_time: '07:30 AM - 04:00 PM',
-    status: 'Within Permissible Tolerance (<3%)',
-    qa_engineer: 'PMC Highway QA',
-    notes: 'Field dry density achieved 98.4% of MDD.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

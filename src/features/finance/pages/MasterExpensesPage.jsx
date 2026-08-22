@@ -22,65 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, expensesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_BILLS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    bill_no: 'BILL-2026-104',
-    internal_voucher_no: 'VCH-EXP-0881',
-    bill_date: '2026-08-14',
-    due_date: '2026-09-04',
-    payee_name: 'Tata Steel Ltd / Authorized Distributor',
-    cost_head: 'Material Procurement (TMT Rebars)',
-    taxable_amount: 4500000,
-    gst_amount: 810000, // 18%
-    grand_total: 5310000,
-    paid_amount: 5310000,
-    balance_due: 0,
-    payment_status: 'Fully Settled'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    bill_no: 'BILL-2026-105',
-    internal_voucher_no: 'VCH-EXP-0882',
-    bill_date: '2026-08-18',
-    due_date: '2026-09-08',
-    payee_name: 'Apex Heavy Crane Rentals',
-    cost_head: 'Equipment Rental & Fuel',
-    taxable_amount: 950000,
-    gst_amount: 171000,
-    grand_total: 1121000,
-    paid_amount: 500000,
-    balance_due: 621000,
-    payment_status: 'Partially Settled'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    bill_no: 'BILL-2026-106',
-    internal_voucher_no: 'VCH-EXP-0883',
-    bill_date: '2026-08-20',
-    due_date: '2026-09-10',
-    payee_name: 'UltraTech Cement Bulk Depot',
-    cost_head: 'Material Procurement (Cement)',
-    taxable_amount: 1850000,
-    gst_amount: 518000, // 28% GST on cement
-    grand_total: 2368000,
-    paid_amount: 0,
-    balance_due: 2368000,
-    payment_status: 'Pending Payment'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

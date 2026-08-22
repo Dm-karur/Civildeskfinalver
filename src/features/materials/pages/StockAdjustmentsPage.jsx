@@ -22,53 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_ADJUSTMENTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    adjustment_no: 'SAN-2026-015',
-    adjustment_date: '2026-08-20',
-    site_name: 'Main Central Godown Bay 1',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement',
-    uom: 'Bags',
-    book_qty: 455,
-    physical_qty: 450,
-    variance_qty: -5,
-    unit_rate: 385,
-    variance_value: -1925,
-    adjustment_type: 'Transit / Handling Burst Loss',
-    auditor_name: 'Er. Suresh Babu (Audit Lead)',
-    status: 'Approved & Reconciled',
-    reason: 'Burst bag powder residue during unstacking.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    adjustment_no: 'SAN-2026-016',
-    adjustment_date: '2026-08-18',
-    site_name: 'Main Steel Stacking Yard',
-    material_code: 'MAT-STL-002',
-    material_name: 'Fe 550D TMT Rebar 16mm',
-    uom: 'MT',
-    book_qty: 4.0,
-    physical_qty: 4.2,
-    variance_qty: 0.2,
-    unit_rate: 58500,
-    variance_value: 11700,
-    adjustment_type: 'Physical Excess Reconciliation',
-    auditor_name: 'Er. Suresh Babu (Audit Lead)',
-    status: 'Approved & Reconciled',
-    reason: 'Standard rolling tolerance length excess identified during physical caliper tally.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

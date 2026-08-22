@@ -22,74 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_CONTRACTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    contract_no: 'CTR-2026-001',
-    contract_date: '2026-01-15',
-    client_name: 'Metro Infrastructure & Realty Corp Ltd',
-    contract_title: 'Civil Construction & Finishing Works of Commercial Tower Block A (G+12)',
-    contract_value: 285000000, // ₹28.5 Cr
-    commencement_date: '2026-02-01',
-    completion_deadline: '2027-10-31',
-    retention_pct: 5.0,
-    advance_pct: 10.0,
-    dlp_months: 24,
-    liquidated_damages: '0.5% per week of delay (Max 10%)',
-    status: 'Active (In Progress)',
-    billed_to_date: 42500000,
-    collected_to_date: 38200000,
-    notes: 'Signed contract agreement with performance bank guarantee (PBG) submitted.'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    contract_no: 'CTR-2026-002',
-    contract_date: '2026-03-10',
-    client_name: 'National Highways Authority / State PWD',
-    contract_title: 'Widening to 4-Lane with Paved Shoulders from Km 14+000 to 28+500',
-    contract_value: 165000000, // ₹16.5 Cr
-    commencement_date: '2026-04-01',
-    completion_deadline: '2027-06-30',
-    retention_pct: 5.0,
-    advance_pct: 10.0,
-    dlp_months: 36,
-    liquidated_damages: '0.1% per day (Max 5%)',
-    status: 'Active (In Progress)',
-    billed_to_date: 24000000,
-    collected_to_date: 21500000,
-    notes: 'EPC contract agreement with milestone linked progress billing.'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    contract_no: 'CTR-2026-003',
-    contract_date: '2026-06-20',
-    client_name: 'Vibrant Logistics & Industrial Parks LLP',
-    contract_title: 'Pre-Engineered Building (PEB) Structural Shed & Heavy Flooring',
-    contract_value: 92000000, // ₹9.2 Cr
-    commencement_date: '2026-07-01',
-    completion_deadline: '2027-01-31',
-    retention_pct: 5.0,
-    advance_pct: 15.0,
-    dlp_months: 12,
-    liquidated_damages: '0.5% per week (Max 5%)',
-    status: 'Active (In Progress)',
-    billed_to_date: 13800000,
-    collected_to_date: 13800000,
-    notes: 'Turnkey warehouse contract including FM2 flooring specifications.'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

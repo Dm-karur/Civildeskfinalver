@@ -22,62 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_RECEIPTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    receipt_no: 'RCT-2026-042',
-    receipt_date: '2026-08-10',
-    client_name: 'Metro Infrastructure & Realty Corp Ltd',
-    invoice_no: 'INV-2026-042',
-    amount_received: 15762000, // ₹1.576 Cr
-    payment_mode: 'RTGS / Online Transfer',
-    bank_reference: 'UTR-HDFC-991823719',
-    credited_account: 'HDFC Bank - Commercial Project Escrow (..4910)',
-    tds_deducted_by_client: 284000,
-    status: 'Credited & Reconciled',
-    notes: 'Payment received against RA Progress Bill 3 in full settlement.'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    receipt_no: 'RCT-2026-043',
-    receipt_date: '2026-08-18',
-    client_name: 'National Highways Authority / State PWD',
-    invoice_no: 'INV-2026-043',
-    amount_received: 10000000, // ₹1.00 Cr
-    payment_mode: 'Treasury RBI Transfer',
-    bank_reference: 'UTR-RBI-881923014',
-    credited_account: 'SBI Project Escrow Account (..7461)',
-    tds_deducted_by_client: 430000,
-    status: 'Credited & Reconciled',
-    notes: 'Part payment received against Milestone 2 claim.'
-  },
-  {
-    id: 3,
-    project_id: 3,
-    project_code: 'PRJ-2026-003',
-    project_name: 'Greenfield Industrial Warehouse Facility',
-    receipt_no: 'RCT-2026-044',
-    receipt_date: '2026-07-08',
-    client_name: 'Vibrant Logistics & Industrial Parks LLP',
-    invoice_no: 'ADV-2026-003',
-    amount_received: 13800000, // ₹1.38 Cr
-    payment_mode: 'NEFT Online Transfer',
-    bank_reference: 'UTR-ICIC-228910443',
-    credited_account: 'ICICI Bank Current A/C (..8741)',
-    tds_deducted_by_client: 0,
-    status: 'Credited & Reconciled',
-    notes: 'Mobilization & Material advance remittance.'
-  }
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

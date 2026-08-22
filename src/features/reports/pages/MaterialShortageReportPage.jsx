@@ -17,79 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_SHORTAGES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    material_name: 'Fe 550D TMT Steel 25mm Rebars',
-    category_name: 'Reinforcement Steel',
-    unit: 'MT',
-    current_stock: 4.2,
-    minimum_buffer_stock: 25.0,
-    daily_consumption_rate: 6.5,
-    stock_runway_days: 0.6, // Less than 1 day
-    lead_time_days: 3,
-    urgency_status: 'Critical Stockout (Pour Hold Risk)',
-    suggested_reorder_qty: 45.0,
-    store_location: 'Central Steel Yard Bay 2'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    material_name: 'OPC 53 Grade Cement Bags (50kg)',
-    category_name: 'Cement',
-    unit: 'Bags',
-    current_stock: 140,
-    minimum_buffer_stock: 600,
-    daily_consumption_rate: 110,
-    stock_runway_days: 1.3,
-    lead_time_days: 2,
-    urgency_status: 'Urgent Reorder Required',
-    suggested_reorder_qty: 800,
-    store_location: 'Main Cement Godown Silo 1'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    material_name: 'High-Speed Diesel (HSD) for Plant',
-    category_name: 'Fuel',
-    unit: 'Litres',
-    current_stock: 650,
-    minimum_buffer_stock: 2500,
-    daily_consumption_rate: 800,
-    stock_runway_days: 0.8,
-    lead_time_days: 1,
-    urgency_status: 'Critical Stockout',
-    suggested_reorder_qty: 5000,
-    store_location: 'Site Diesel Tanker 01'
-  },
-  {
-    id: 4,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    material_name: 'AAC Masonry Blocks (600x200x200mm)',
-    category_name: 'Blocks',
-    unit: 'Nos',
-    current_stock: 850,
-    minimum_buffer_stock: 2000,
-    daily_consumption_rate: 350,
-    stock_runway_days: 2.4,
-    lead_time_days: 4,
-    urgency_status: 'Urgent Reorder Required',
-    suggested_reorder_qty: 3000,
-    store_location: 'Block Yard South'
-  }
-];
-*/
 
 export function MaterialShortageReportPage() {
   const { hasPermission } = useAuth();

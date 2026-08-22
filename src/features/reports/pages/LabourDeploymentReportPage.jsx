@@ -17,71 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, reportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_DEPLOYMENTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    trade_name: 'Shuttering & Formwork Carpenters',
-    gang_contractor: 'Balaji Formwork Gang',
-    planned_headcount: 45,
-    actual_headcount: 42,
-    total_mandays: 1420,
-    attendance_efficiency_pct: 93.3,
-    overtime_hours: 124,
-    safety_compliance: '100% Induction Passed',
-    status: 'Optimal Deployment'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    trade_name: 'Barbenders & Steel Fixers',
-    gang_contractor: 'Saravanan Rebar Crew',
-    planned_headcount: 35,
-    actual_headcount: 36,
-    total_mandays: 1180,
-    attendance_efficiency_pct: 102.8,
-    overtime_hours: 98,
-    safety_compliance: '100% Induction Passed',
-    status: 'Full Strength'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    trade_name: 'Civil Masons (Brickwork & Plastering)',
-    gang_contractor: 'Murugan Mason Gang',
-    planned_headcount: 30,
-    actual_headcount: 26,
-    total_mandays: 960,
-    attendance_efficiency_pct: 86.7,
-    overtime_hours: 45,
-    safety_compliance: '100% Induction Passed',
-    status: 'Moderate Shortage'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    trade_name: 'Heavy Plant Operators & Drivers',
-    gang_contractor: 'Highway Machinery Crew',
-    planned_headcount: 25,
-    actual_headcount: 24,
-    total_mandays: 840,
-    attendance_efficiency_pct: 96.0,
-    overtime_hours: 185,
-    safety_compliance: '100% Induction Passed',
-    status: 'Optimal Deployment'
-  }
-];
-*/
 
 export function LabourDeploymentReportPage() {
   const { hasPermission } = useAuth();

@@ -22,67 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_PAYABLES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    vendor_name: 'Tata Steel Ltd / Authorized Distributor',
-    category: 'Material Supplier (Steel)',
-    total_billed: 54000000, // ₹5.4 Cr
-    total_paid: 46500000,
-    outstanding_due: 7500000, // ₹75 Lakhs
-    aging_bucket: 'Current (0-30 Days)',
-    priority: 'Critical (Material Hold Risk)',
-    last_payment_date: '2026-08-05'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    vendor_name: 'Apex Heavy Crane Rentals',
-    category: 'Equipment Rental',
-    total_billed: 1121000,
-    total_paid: 500000,
-    outstanding_due: 621000,
-    aging_bucket: '31 - 60 Days',
-    priority: 'High',
-    last_payment_date: '2026-07-25'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    vendor_name: 'UltraTech Cement Bulk Depot',
-    category: 'Material Supplier (Cement)',
-    total_billed: 2368000,
-    total_paid: 0,
-    outstanding_due: 2368000,
-    aging_bucket: 'Current (0-30 Days)',
-    priority: 'High',
-    last_payment_date: '—'
-  },
-  {
-    id: 4,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    vendor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    category: 'Subcontractor (RCC)',
-    total_billed: 1420000,
-    total_paid: 1250000,
-    outstanding_due: 170000,
-    aging_bucket: 'Current (0-30 Days)',
-    priority: 'Normal',
-    last_payment_date: '2026-08-12'
-  }
-];
-*/
 
 export function VendorPayablesPage() {
   const { hasPermission } = useAuth();

@@ -22,56 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_RETENTIONS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    work_order_no: 'WO-2026-012',
-    package_title: 'RCC Structure & Masonry Package',
-    total_retention_deducted: 242500, // 5% of ₹48.5L
-    retention_released: 0,
-    balance_retention_held: 242500,
-    dlp_expiry_date: '2028-02-28',
-    status_name: 'Held in Escrow (Ongoing Work)',
-    notes: 'Retention deducted at 5% across RA Bills 1 to 3.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    contractor_name: 'Apex MEP Engineers & Contractors',
-    work_order_no: 'WO-2026-013',
-    package_title: 'Electrical Conduit & Plumbing Rough-ins',
-    total_retention_deducted: 91000,
-    retention_released: 0,
-    balance_retention_held: 91000,
-    dlp_expiry_date: '2027-12-31',
-    status_name: 'Held in Escrow (Ongoing Work)',
-    notes: 'Retention deducted at 5% from RA Bill 1.'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    contractor_name: 'Kavitha Flooring & Civil Solutions',
-    work_order_no: 'WO-2026-008',
-    package_title: 'Basement Deep Dewatering & Piling Scope',
-    total_retention_deducted: 62500,
-    retention_released: 31250, // 50% released at TOC
-    balance_retention_held: 31250,
-    dlp_expiry_date: '2027-07-31',
-    status_name: '50% Released at Handover (DLP Active)',
-    notes: '50% released on Taking-Over Certificate; remaining 50% due at DLP expiry.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

@@ -17,75 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, reportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_CONSUMPTIONS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    material_name: 'Fe 550D TMT Rebars (16mm & 20mm)',
-    category_name: 'Reinforcement Steel',
-    unit: 'MT',
-    theoretical_qty: 512.4, // based on BBS & BOQ
-    actual_consumed_qty: 520.0,
-    variance_qty: 7.6,
-    wastage_pct: 1.48, // 1.48% (Under 2% norm)
-    unit_cost: 68500,
-    wastage_cost: 520600,
-    status: 'Within Standard 2% Norm'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    material_name: 'Design Mix RMC Concrete M30',
-    category_name: 'Ready-Mix Concrete',
-    unit: 'Cu.m',
-    theoretical_qty: 2420.0,
-    actual_consumed_qty: 2450.0,
-    variance_qty: 30.0,
-    wastage_pct: 1.24,
-    unit_cost: 7200,
-    wastage_cost: 216000,
-    status: 'Within Standard Norm'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    material_name: 'OPC 53 Grade Cement Bags (50kg)',
-    category_name: 'Cement',
-    unit: 'Bags',
-    theoretical_qty: 18200,
-    actual_consumed_qty: 18450,
-    variance_qty: 250,
-    wastage_pct: 1.37,
-    unit_cost: 380,
-    wastage_cost: 95000,
-    status: 'Within Standard Norm'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    material_name: 'Granular Sub-Base Aggregate (GSB)',
-    category_name: 'Aggregates',
-    unit: 'Cu.m',
-    theoretical_qty: 14200,
-    actual_consumed_qty: 14450,
-    variance_qty: 250,
-    wastage_pct: 1.76,
-    unit_cost: 850,
-    wastage_cost: 212500,
-    status: 'Within Standard Norm'
-  }
-];
-*/
 
 export function MaterialConsumptionReportPage() {
   const { hasPermission } = useAuth();

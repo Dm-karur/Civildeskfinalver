@@ -22,71 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { subcontractsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_SUBCONTRACTORS = [
 
-  {
-    id: 1,
-    contractor_code: 'SUB-2026-001',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    trade_specialization: 'RCC Structure & Masonry',
-    contact_person: 'Er. S. Murugesan (Managing Partner)',
-    phone: '+91 98421 78901',
-    email: 'smurugan.infra@gmail.com',
-    gstin: '33AABCS1429B1Z2',
-    pan: 'AABCS1429B',
-    city: 'Chennai',
-    state: 'Tamil Nadu',
-    active_work_orders: 2,
-    rating: 'Grade A (94%)',
-    status: 'Active (Approved)',
-    bank_name: 'HDFC Bank - T. Nagar',
-    account_no: '50200018491029',
-    ifsc: 'HDFC0000024',
-    notes: 'Specialized in multi-storey formwork and tower crane staging.'
-  },
-  {
-    id: 2,
-    contractor_code: 'SUB-2026-002',
-    contractor_name: 'Apex MEP Engineers & Contractors',
-    trade_specialization: 'Electrical, Plumbing & Fire Fighting',
-    contact_person: 'V. Sundaram (Chief Engineer)',
-    phone: '+91 94432 56789',
-    email: 'apex.mep.projects@gmail.com',
-    gstin: '33AAICA9012F1Z8',
-    pan: 'AAICA9012F',
-    city: 'Coimbatore',
-    state: 'Tamil Nadu',
-    active_work_orders: 1,
-    rating: 'Grade A (91%)',
-    status: 'Active (Approved)',
-    bank_name: 'ICICI Bank - RS Puram',
-    account_no: '001905008741',
-    ifsc: 'ICIC0000019',
-    notes: 'Licensed Class-A electrical contracting firm.'
-  },
-  {
-    id: 3,
-    contractor_code: 'SUB-2026-003',
-    contractor_name: 'Kavitha Flooring & Painting Solutions',
-    trade_specialization: 'Flooring, Granite, Tile & Painting',
-    contact_person: 'K. Kavitha (Proprietor)',
-    phone: '+91 98940 12345',
-    email: 'kavitha.finishings@gmail.com',
-    gstin: '33BKLPK8912P1ZA',
-    pan: 'BKLPK8912P',
-    city: 'Karur',
-    state: 'Tamil Nadu',
-    active_work_orders: 1,
-    rating: 'Grade B+ (88%)',
-    status: 'Active (Approved)',
-    bank_name: 'State Bank of India',
-    account_no: '30918274619',
-    ifsc: 'SBIN0000858',
-    notes: 'Specialized in Italian marble laying and epoxy flooring.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   contractor_code: '',

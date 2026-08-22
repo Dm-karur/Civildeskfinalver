@@ -22,68 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_ACTIVITIES = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    date: '2026-08-21',
-    activity_code: 'ACT-STR-014',
-    activity_name: 'Level 2 Column Shuttering & Casting',
-    location: 'Core 1 Grid C1-C6',
-    uom: 'm³',
-    planned_qty_today: 15.0,
-    achieved_qty_today: 14.5,
-    cumulative_achieved: 142.5,
-    total_scope_qty: 200.0,
-    completion_pct: 71.3,
-    status: 'Completed for Today',
-    foreman: 'M. Selvam (Concrete Foreman)',
-    notes: '0.5 m³ deficit due to minor pump hose blockage for 20 mins.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    date: '2026-08-21',
-    activity_code: 'ACT-STL-008',
-    activity_name: 'Level 2 Beam Rebar Tying & Lapping',
-    location: 'North Wing Grid N1-N4',
-    uom: 'MT',
-    planned_qty_today: 2.5,
-    achieved_qty_today: 2.8,
-    cumulative_achieved: 18.2,
-    total_scope_qty: 24.0,
-    completion_pct: 75.8,
-    status: 'Exceeded Target (+12%)',
-    foreman: 'K. Raman (Barbending Foreman)',
-    notes: 'Additional gang deployed; completed 3 beams ahead of schedule.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    date: '2026-08-21',
-    activity_code: 'ACT-HW-022',
-    activity_name: 'Sub-grade Granular Layer Compaction',
-    location: 'Ch. 16+200 to 16+500',
-    uom: 'm²',
-    planned_qty_today: 600,
-    achieved_qty_today: 620,
-    cumulative_achieved: 4800,
-    total_scope_qty: 8500,
-    completion_pct: 56.5,
-    status: 'Exceeded Target',
-    foreman: 'A. Murugan (Highway Foreman)',
-    notes: 'Roller compaction passes verified with sand replacement test.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

@@ -17,59 +17,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_WHATSAPP_LOGS = [
 
-  {
-    id: 1,
-    msg_id: 'WA-MSG-2026-084',
-    event_trigger: 'Purchase Order Dispatch',
-    recipient_name: 'Tata Steel Distribution (N. Sharma)',
-    recipient_mobile: '+91 98401 23456',
-    recipient_role: 'Vendor Supplier',
-    template_name: 'po_dispatch_v2',
-    message_text: 'Dear Tata Steel, Purchase Order PO-2026-1042 for 45 MT TMT Steel has been officially released by CivilDesk. Please find details attached.',
-    timestamp: '2026-08-21 14:35',
-    status: 'Delivered & Read'
-  },
-  {
-    id: 2,
-    msg_id: 'WA-MSG-2026-083',
-    event_trigger: 'Payment UTR Disbursement Advice',
-    recipient_name: 'Sri Murugan Civil Infra',
-    recipient_mobile: '+91 94432 78901',
-    recipient_role: 'Subcontractor',
-    template_name: 'payment_advice_v1',
-    message_text: 'Dear Sri Murugan Civil, Bank settlement of ₹12,50,000/- for RA Bill #02 has been credited via HDFC Bank UTR #HDFCN262339841.',
-    timestamp: '2026-08-21 11:20',
-    status: 'Delivered & Read'
-  },
-  {
-    id: 3,
-    msg_id: 'WA-MSG-2026-082',
-    event_trigger: 'Critical Material Shortage Alert',
-    recipient_name: 'Er. Rajesh Kumar',
-    recipient_mobile: '+91 98840 55112',
-    recipient_role: 'Project Manager',
-    template_name: 'shortage_alert_v1',
-    message_text: 'ALERT: Fe 550D 25mm rebar stock at Metro Tower Block A has dipped below safety threshold (4.2 MT remaining). Reorder indent initiated.',
-    timestamp: '2026-08-21 08:45',
-    status: 'Delivered'
-  },
-  {
-    id: 4,
-    msg_id: 'WA-MSG-2026-081',
-    event_trigger: 'Daily Attendance Report Summary',
-    recipient_name: 'General Manager (Operations)',
-    recipient_mobile: '+91 97900 11223',
-    recipient_role: 'Corporate Management',
-    template_name: 'daily_attendance_summary',
-    message_text: 'Daily Labour Strength (2026-08-20): 104 Workers deployed across Metro Tower & Highway projects. 0 safety incidents.',
-    timestamp: '2026-08-20 19:00',
-    status: 'Delivered & Read'
-  }
-];
-*/
 
 export function WhatsAppLogsPage() {
   const { hasPermission } = useAuth();

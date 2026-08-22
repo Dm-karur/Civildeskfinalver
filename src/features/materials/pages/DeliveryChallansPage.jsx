@@ -22,51 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_CHALLANS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    challan_no: 'DC-2026-092',
-    challan_date: '2026-08-20',
-    consignee_name: 'Tower A Core - Level 2 Yard',
-    transporter_name: 'City Fast Freight Lines',
-    vehicle_no: 'TN-45-AZ-9901',
-    driver_name: 'K. Muthu (9842109822)',
-    material_code: 'MAT-CEM-001',
-    material_name: 'OPC 53 Grade Cement',
-    dispatched_qty: 150,
-    uom: 'Bags',
-    gate_pass_no: 'GP-OUT-8812',
-    status: 'Gate Outward Stamped',
-    prepared_by: 'M. Shanmugam (Dispatch Head)',
-    notes: 'Inter-site delivery for morning pour shift.'
-  },
-  {
-    id: 2,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    challan_no: 'DC-2026-093',
-    challan_date: '2026-08-19',
-    consignee_name: 'Ch. 16+300 Box Culvert Site',
-    transporter_name: 'Highway Fleet Transport',
-    vehicle_no: 'TN-47-D-4412',
-    driver_name: 'R. Velu (9443108871)',
-    material_code: 'MAT-STL-002',
-    material_name: 'Fe 550D TMT Rebar 16mm',
-    dispatched_qty: 6.0,
-    uom: 'MT',
-    gate_pass_no: 'GP-OUT-8813',
-    status: 'Delivered & Acknowledged',
-    prepared_by: 'K. Balaji (PM)',
-    notes: 'Bundled rebar with steel security seals.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',

@@ -22,74 +22,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-/* 
-const DEFAULT_MEASUREMENTS = [
 
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    sheet_no: 'JMR-2026-084',
-    date: '2026-08-21',
-    boq_item_ref: 'BOQ-CONC-003',
-    item_description: 'RCC M30 Grade Column Casting',
-    location: 'Level 2 Columns C1-C12',
-    nos: 12,
-    length: 0.60,
-    breadth: 0.60,
-    depth: 3.50,
-    computed_qty: 15.12,
-    uom: 'm³',
-    measured_by: 'Er. Rajesh Kumar (Site Incharge)',
-    verified_by: 'Er. Senthil Nathan (QA/QC Engineer)',
-    status: 'Verified by PMC',
-    notes: 'Joint measurement verified with digital laser tape with client representative.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    sheet_no: 'JMR-2026-085',
-    date: '2026-08-21',
-    boq_item_ref: 'BOQ-SHT-008',
-    item_description: 'Film Faced Plywood Formwork Shuttering',
-    location: 'Level 2 Beam Sides Grid N1-N4',
-    nos: 6,
-    length: 8.50,
-    breadth: 0.75,
-    depth: 1.0,
-    computed_qty: 38.25,
-    uom: 'm²',
-    measured_by: 'Er. Rajesh Kumar (Site Incharge)',
-    verified_by: 'Pending Client Signature',
-    status: 'Draft Measurement',
-    notes: 'Side shuttering contact area recorded before rebar cage dropping.'
-  },
-  {
-    id: 3,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    sheet_no: 'JMR-2026-086',
-    date: '2026-08-20',
-    boq_item_ref: 'BOQ-HW-012',
-    item_description: 'Granular Sub-Base (GSB) Layer Laying & Rolling',
-    location: 'Ch. 16+200 to 16+500 RHS',
-    nos: 1,
-    length: 300.0,
-    breadth: 7.0,
-    depth: 0.15,
-    computed_qty: 315.0,
-    uom: 'm³',
-    measured_by: 'K. Balaji (Highway PM)',
-    verified_by: 'PMC Highway Engineer',
-    status: 'Certified for Billing',
-    notes: 'Cross-section levels recorded at 10m intervals with Auto Level.'
-  },
-];
-*/
 
 const EMPTY_FORM = {
   project_id: '',
