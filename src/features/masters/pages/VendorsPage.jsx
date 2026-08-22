@@ -245,9 +245,9 @@ export function VendorsPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
-        <KpiCard label="Registered Vendors" value={totalCount} icon={Truck} status="primary" />
-        <KpiCard label="Active Vendors" value={activeCount} icon={ShieldCheck} status="success" />
-        <KpiCard label="Average Quality Rating" value={`${ratingAvg} / 5.0`} icon={HelpCircle} status="info" />
+        <KpiCard label="Registered Vendors" value={totalCount} icon={<Truck />} status="primary" />
+        <KpiCard label="Active Vendors" value={activeCount} icon={<ShieldCheck />} status="success" />
+        <KpiCard label="Average Quality Rating" value={`${ratingAvg} / 5.0`} icon={<HelpCircle />} status="info" />
       </div>
 
       <div className="flex flex-col gap-4">
