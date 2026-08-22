@@ -9,16 +9,17 @@ export function AuditLogsPage() {
       icon={Shield}
       breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Administration' }, { label: 'Audit Logs' }]}
       fetchData={systemAdminApi.auditLogs}
+      extractList={(res) => res?.data?.audit_logs ?? res?.audit_logs ?? []}
       columns={[
-        { key: 'created_at', label: 'Timestamp', className: 'w-36', format: 'date' },
-        { key: 'user_name', label: 'User', className: 'w-28', cellClass: 'font-medium text-text-primary' },
-        { key: 'action', label: 'Action', className: 'w-20' },
+        { key: 'occurred_at', label: 'Timestamp', className: 'w-36', format: 'date' },
+        { key: 'user_name', label: 'User', className: 'w-36', cellClass: 'font-medium text-text-primary', render: (row) => row.first_name ? `${row.first_name} ${row.last_name || ''}` : row.user_email || '—' },
+        { key: 'action_code', label: 'Action', className: 'w-24' },
         { key: 'entity_type', label: 'Entity', className: 'w-28' },
         { key: 'entity_id', label: 'ID', className: 'w-16' },
         { key: 'description', label: 'Description', className: 'w-64' },
         { key: 'ip_address', label: 'IP', className: 'w-28' },
       ]}
-      searchKeys={['user_name', 'action', 'entity_type', 'description']}
+      searchKeys={['user_email', 'first_name', 'last_name', 'action_code', 'entity_type', 'description']}
     />
   );
 }
