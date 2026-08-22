@@ -252,7 +252,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
         isMobileOpen ? 'translate-x-0' : '-translate-x-full',
       )}>
         <div className="flex h-16 items-center border-b border-white/10 px-5 text-[18px] font-bold tracking-tight text-white">CIVIL DESK</div>
-        <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Primary navigation">
+        <nav className="flex-1 overflow-y-auto scrollbar-hide px-2 py-3" aria-label="Primary navigation">
           {error && <div className="m-2 rounded-sm bg-red-500/10 p-2 text-xs text-red-200">{error}</div>}
           {navigation.map((item) => (
             <NavigationItem
