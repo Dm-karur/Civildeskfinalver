@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { FolderCog, Plus, Edit, Trash2, ShieldCheck, ChevronRight, HelpCircle } from 'lucide-react';
+import { Package, Plus, Edit, ShieldCheck, ChevronRight, HelpCircle } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -13,25 +13,26 @@ import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
-import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectTypesApi, mastersApi } from '../../../api/apiservice';
+import { expensesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 const EMPTY_FORM = {
-  project_type_code: '',
-  project_type_name: '',
-  billing_method_id: '',
-  default_duration_days: '',
+  parent_id: '',
+  category_code: '',
+  category_name: '',
+  expense_scope_id: '',
+  default_taxable: '0',
+  requires_document: '0',
   description: '',
   display_order: '0',
   is_active: '1',
 };
 
-export function ProjectTypesPage() {
+export function ExpenseCategoriesPage() {
   const { hasPermission } = useAuth();
-  const [projectTypes, setProjectTypes] = useState([]);
-  const [billingMethods, setBillingMethods] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [scopes, setScopes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Search & Pagination
@@ -42,31 +43,28 @@ export function ProjectTypesPage() {
   // Modals
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [deletingItem, setDeletingItem] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Fetch all project types & masters
+  // Fetch data
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [resTypes, resMasters] = await Promise.all([
-        projectTypesApi.list(),
-        mastersApi.all(),
+      const [resCategories, resMasters] = await Promise.all([
+        expensesApi.categories.list(),
+        expensesApi.masters(),
       ]);
 
-      // Handle Types List
-      const typesList = resTypes?.data?.project_types ?? resTypes?.project_types ?? (Array.isArray(resTypes) ? resTypes : []);
-      setProjectTypes(Array.isArray(typesList) ? typesList : []);
+      const catList = resCategories?.data?.expense_categories ?? resCategories?.expense_categories ?? (Array.isArray(resCategories) ? resCategories : []);
+      setCategories(Array.isArray(catList) ? catList : []);
 
-      // Handle Billing Methods Master
-      const billingList = resMasters?.data?.billing_methods ?? resMasters?.billing_methods ?? [];
-      setBillingMethods(Array.isArray(billingList) ? billingList : []);
+      const scopeList = resMasters?.data?.expense_scopes ?? resMasters?.expense_scopes ?? [];
+      setScopes(Array.isArray(scopeList) ? scopeList : []);
     } catch (err) {
-      toast.error('Failed to load project type master data.');
-      setProjectTypes([]);
-      setBillingMethods([]);
+      toast.error('Failed to load expense category data.');
+      setCategories([]);
+      setScopes([]);
     } finally {
       setLoading(false);
     }
@@ -80,7 +78,7 @@ export function ProjectTypesPage() {
   const handleOpenAdd = () => {
     setForm({
       ...EMPTY_FORM,
-      billing_method_id: billingMethods[0]?.id ? String(billingMethods[0].id) : '',
+      expense_scope_id: scopes[0]?.id ? String(scopes[0].id) : '',
     });
     setErrors({});
     setIsAddOpen(true);
@@ -88,10 +86,12 @@ export function ProjectTypesPage() {
 
   const handleOpenEdit = (item) => {
     setForm({
-      project_type_code: item.project_type_code || '',
-      project_type_name: item.project_type_name || '',
-      billing_method_id: String(item.billing_method_id || ''),
-      default_duration_days: item.default_duration_days !== null && item.default_duration_days !== undefined ? String(item.default_duration_days) : '',
+      parent_id: item.parent_id !== null && item.parent_id !== undefined ? String(item.parent_id) : '',
+      category_code: item.category_code || '',
+      category_name: item.category_name || '',
+      expense_scope_id: String(item.expense_scope_id || ''),
+      default_taxable: item.default_taxable ? '1' : '0',
+      requires_document: item.requires_document ? '1' : '0',
       description: item.description || '',
       display_order: String(item.display_order ?? '0'),
       is_active: item.is_active ? '1' : '0',
@@ -109,9 +109,9 @@ export function ProjectTypesPage() {
     e.preventDefault();
     const validationErrs = {};
 
-    if (!form.project_type_name.trim()) validationErrs.project_type_name = 'Type name is required.';
-    if (!form.project_type_code.trim()) validationErrs.project_type_code = 'Type code is required.';
-    if (!form.billing_method_id) validationErrs.billing_method_id = 'Billing method is required.';
+    if (!form.category_name.trim()) validationErrs.category_name = 'Category name is required.';
+    if (!form.category_code.trim()) validationErrs.category_code = 'Category code is required.';
+    if (!form.expense_scope_id) validationErrs.expense_scope_id = 'Expense scope is required.';
 
     if (Object.keys(validationErrs).length > 0) {
       setErrors(validationErrs);
@@ -121,10 +121,12 @@ export function ProjectTypesPage() {
     setSaving(true);
     try {
       const payload = {
-        project_type_code: form.project_type_code.toUpperCase().trim(),
-        project_type_name: form.project_type_name.trim(),
-        billing_method_id: Number(form.billing_method_id),
-        default_duration_days: form.default_duration_days === '' ? null : Number(form.default_duration_days),
+        parent_id: form.parent_id === '' ? null : Number(form.parent_id),
+        category_code: form.category_code.toUpperCase().trim(),
+        category_name: form.category_name.trim(),
+        expense_scope_id: Number(form.expense_scope_id),
+        default_taxable: Number(form.default_taxable),
+        requires_document: Number(form.requires_document),
         description: form.description.trim() || null,
         display_order: Number(form.display_order || 0),
         is_active: Number(form.is_active),
@@ -132,11 +134,11 @@ export function ProjectTypesPage() {
 
       const isEditing = Boolean(editingItem?.id);
       if (isEditing) {
-        await projectTypesApi.update(editingItem.id, payload);
-        toast.success('Project type updated successfully.');
+        await expensesApi.categories.update(editingItem.id, payload);
+        toast.success('Expense category updated successfully.');
       } else {
-        await projectTypesApi.create(payload);
-        toast.success('Project type created successfully.');
+        await expensesApi.categories.create(payload);
+        toast.success('Expense category created successfully.');
       }
 
       setIsAddOpen(false);
@@ -144,63 +146,51 @@ export function ProjectTypesPage() {
       fetchData();
     } catch (err) {
       setErrors(err?.errors ?? {});
-      toast.error(err?.message || 'Unable to save project type.');
+      toast.error(err?.message || 'Unable to save expense category.');
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = async () => {
-    if (!deletingItem?.id) return;
-    try {
-      await projectTypesApi.remove(deletingItem.id);
-      toast.success('Project type deleted.');
-      setDeletingItem(null);
-      fetchData();
-    } catch (err) {
-      toast.error(err?.message || 'Unable to delete project type.');
-    }
-  };
-
   // Filters & Search
   const filtered = useMemo(() => {
-    return projectTypes.filter((item) => {
+    return categories.filter((item) => {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
       return (
-        String(item.project_type_name || '').toLowerCase().includes(q) ||
-        String(item.project_type_code || '').toLowerCase().includes(q) ||
-        String(item.description || '').toLowerCase().includes(q) ||
-        String(item.billing_method_name || '').toLowerCase().includes(q)
+        String(item.category_name || '').toLowerCase().includes(q) ||
+        String(item.category_code || '').toLowerCase().includes(q) ||
+        String(item.description || '').toLowerCase().includes(q)
       );
     });
-  }, [projectTypes, searchQuery]);
+  }, [categories, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
-  // Metrics KPI calculations
-  const totalCount = projectTypes.length;
-  const activeCount = projectTypes.filter(t => t.is_active).length;
-  const inactiveCount = totalCount - activeCount;
-  const billingMethodsCount = billingMethods.length;
-
-  const breadcrumbs = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Masters' },
-    { label: 'Project Types' },
-  ];
+  // Metrics
+  const totalCount = categories.length;
+  const rootCount = categories.filter(c => !c.parent_id).length;
+  const subCount = totalCount - rootCount;
+  const activeCount = categories.filter(c => c.is_active).length;
 
   return (
     <PageContainer>
-      <PageHeader title="Project Type Registry" breadcrumbs={breadcrumbs} />
+      <PageHeader
+        title="Expense Categories"
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Masters' },
+          { label: 'Expense Categories' },
+        ]}
+      />
 
-      {/* KPI Ribbons */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        <KpiCard label="Total Project Types" value={totalCount} icon={<FolderCog />} status="info" />
-        <KpiCard label="Active Types" value={activeCount} icon={<ShieldCheck />} status="success" />
-        <KpiCard label="Inactive Types" value={inactiveCount} icon={<HelpCircle />} status="warning" />
-        <KpiCard label="Available Billing Methods" value={billingMethodsCount} icon={<ChevronRight />} status="primary" />
+        <KpiCard label="Total Categories" value={totalCount} icon={<Package />} status="primary" />
+        <KpiCard label="Parent Scopes" value={rootCount} icon={<ChevronRight />} status="info" />
+        <KpiCard label="Sub-Categories" value={subCount} icon={<Plus />} status="neutral" />
+        <KpiCard label="Active Status" value={activeCount} icon={<ShieldCheck />} status="success" />
       </div>
 
       <div className="flex flex-col gap-4">
@@ -208,20 +198,20 @@ export function ProjectTypesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
           <div className="w-full sm:w-[260px]">
             <SearchField
-              placeholder="Search by code, name, description..."
+              placeholder="Search category code, name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-2 justify-end">
-            {hasPermission('project.create') && (
+            {hasPermission('expenses.request') && (
               <Button
                 variant="primary"
                 className="h-9 px-3 text-[13px]"
                 leftIcon={<Plus className="w-3.5 h-3.5" />}
                 onClick={handleOpenAdd}
               >
-                Add Project Type
+                Add Category
               </Button>
             )}
           </div>
@@ -233,10 +223,9 @@ export function ProjectTypesPage() {
             <Pagination
               currentPage={page}
               totalPages={totalPages}
-              totalItems={filtered.length}
-              itemsPerPage={perPage}
+              totalResults={filtered.length}
+              pageSize={perPage}
               onPageChange={setPage}
-              onItemsPerPageChange={() => {}}
             />
           }
         >
@@ -245,10 +234,10 @@ export function ProjectTypesPage() {
               <tr>
                 <th className="px-3 py-2 w-12 text-center">#</th>
                 <th className="px-3 py-2 w-28">Code</th>
-                <th className="px-3 py-2 w-52">Type Name</th>
-                <th className="px-3 py-2 w-40">Billing Method</th>
-                <th className="px-3 py-2 w-32 text-center">Default WBS Days</th>
-                <th className="px-3 py-2 hidden md:table-cell">Description</th>
+                <th className="px-3 py-2 w-48">Category Name</th>
+                <th className="px-3 py-2 w-40">Expense Scope</th>
+                <th className="px-3 py-2 w-28 text-center">Taxable</th>
+                <th className="px-3 py-2 hidden md:table-cell">Parent Category</th>
                 <th className="px-3 py-2 w-24 text-center">Status</th>
                 <th className="px-3 py-2 w-20 text-center">Actions</th>
               </tr>
@@ -257,13 +246,13 @@ export function ProjectTypesPage() {
               {loading ? (
                 <tr>
                   <td colSpan={8} className="text-center py-8 text-text-muted text-[12px]">
-                    Retrieving project types from backend...
+                    Loading expense categories...
                   </td>
                 </tr>
               ) : paged.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-8 text-text-muted text-[12px]">
-                    No project types found in the database.
+                    No expense categories found in database.
                   </td>
                 </tr>
               ) : (
@@ -273,19 +262,25 @@ export function ProjectTypesPage() {
                       {(page - 1) * perPage + index + 1}
                     </td>
                     <td className="px-3 py-2 font-mono font-semibold text-text-primary text-[11px]">
-                      {item.project_type_code || '—'}
+                      {item.category_code || '—'}
                     </td>
                     <td className="px-3 py-2 font-medium text-text-primary text-[11px] truncate">
-                      {item.project_type_name || '—'}
+                      {item.category_name || '—'}
                     </td>
                     <td className="px-3 py-2 text-text-primary text-[11px] truncate">
-                      {item.billing_method_name || '—'}
+                      {item.expense_scope_name || '—'}
                     </td>
-                    <td className="px-3 py-2 text-center text-text-primary text-[11px]">
-                      {item.default_duration_days !== null && item.default_duration_days !== undefined ? item.default_duration_days : '—'}
+                    <td className="px-3 py-2 text-center">
+                      <span
+                        className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                          item.default_taxable ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
+                        }`}
+                      >
+                        {item.default_taxable ? 'Taxable' : 'No'}
+                      </span>
                     </td>
                     <td className="px-3 py-2 hidden md:table-cell text-text-secondary text-[11px] truncate">
-                      {item.description || '—'}
+                      {item.parent_name ? `${item.parent_code} - ${item.parent_name}` : 'Root / None'}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <span
@@ -297,8 +292,8 @@ export function ProjectTypesPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex items-center justify-center gap-1">
-                        {hasPermission('project.update') && (
+                      <div className="flex items-center justify-center">
+                        {hasPermission('expenses.request') && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -307,17 +302,6 @@ export function ProjectTypesPage() {
                             onClick={() => handleOpenEdit(item)}
                           >
                             <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
-                        )}
-                        {hasPermission('project.delete') && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Delete"
-                            onClick={() => setDeletingItem(item)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
                           </Button>
                         )}
                       </div>
@@ -330,7 +314,7 @@ export function ProjectTypesPage() {
         </DataTableContainer>
       </div>
 
-      {/* Add / Edit Project Type Modal */}
+      {/* Add / Edit Modal */}
       <EntityEditModal
         isOpen={isAddOpen || Boolean(editingItem)}
         onClose={() => {
@@ -339,60 +323,86 @@ export function ProjectTypesPage() {
         }}
       >
         <EntityEditModal.Header
-          icon={FolderCog}
-          title={editingItem ? 'Edit Project Type' : 'Add Project Type'}
-          subtitle="Manage configurations for project classifications and billing logic."
+          icon={Package}
+          title={editingItem ? 'Edit Expense Category' : 'Add Expense Category'}
+          subtitle="Configure category code, standard taxability, and scope references."
           onClose={() => {
             setIsAddOpen(false);
             setEditingItem(null);
           }}
         />
-        <form id="project-type-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form id="exp-category-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="General Specifications">
+            <EntityEditModal.Section title="Category Configurations">
               <EntityEditModal.Grid>
-                <FormField label="Type Code" required error={errors.project_type_code}>
+                <FormField label="Category Code" required error={errors.category_code}>
                   <Input
-                    placeholder="e.g. RESIDENTIAL"
-                    value={form.project_type_code}
-                    onChange={(e) => handleFormChange('project_type_code', e.target.value)}
+                    placeholder="e.g. TRAVEL-EXP"
+                    value={form.category_code}
+                    onChange={(e) => handleFormChange('category_code', e.target.value)}
                     disabled={Boolean(editingItem)}
                   />
                 </FormField>
 
-                <FormField label="Type Name" required error={errors.project_type_name}>
+                <FormField label="Category Name" required error={errors.category_name}>
                   <Input
-                    placeholder="e.g. Residential Apartments"
-                    value={form.project_type_name}
-                    onChange={(e) => handleFormChange('project_type_name', e.target.value)}
+                    placeholder="e.g. Travel & Transport Expenses"
+                    value={form.category_name}
+                    onChange={(e) => handleFormChange('category_name', e.target.value)}
                   />
                 </FormField>
 
-                <FormField label="Billing Method" required error={errors.billing_method_id}>
+                <FormField label="Parent Category" error={errors.parent_id}>
                   <Select
-                    value={form.billing_method_id}
-                    onChange={(e) => handleFormChange('billing_method_id', e.target.value)}
+                    value={form.parent_id}
+                    onChange={(e) => handleFormChange('parent_id', e.target.value)}
                   >
-                    <option value="">Select a billing method</option>
-                    {billingMethods.map((bm) => (
-                      <option key={bm.id} value={bm.id}>
-                        {bm.name}
+                    <option value="">None (Set as Root)</option>
+                    {categories
+                      .filter((c) => !editingItem || c.id !== editingItem.id) // Avoid self-parent nesting
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.category_code} - {c.category_name}
+                        </option>
+                      ))}
+                  </Select>
+                </FormField>
+
+                <FormField label="Expense Scope" required error={errors.expense_scope_id}>
+                  <Select
+                    value={form.expense_scope_id}
+                    onChange={(e) => handleFormChange('expense_scope_id', e.target.value)}
+                  >
+                    <option value="">Select scope</option>
+                    {scopes.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.expense_scope_name || s.name}
                       </option>
                     ))}
                   </Select>
                 </FormField>
 
-                <FormField label="Default Duration (Days)" error={errors.default_duration_days}>
-                  <Input
-                    type="number"
-                    min="1"
-                    placeholder="e.g. 365"
-                    value={form.default_duration_days}
-                    onChange={(e) => handleFormChange('default_duration_days', e.target.value)}
-                  />
+                <FormField label="Taxable Status" error={errors.default_taxable}>
+                  <Select
+                    value={form.default_taxable}
+                    onChange={(e) => handleFormChange('default_taxable', e.target.value)}
+                  >
+                    <option value="0">Non-Taxable</option>
+                    <option value="1">Taxable by Default</option>
+                  </Select>
                 </FormField>
 
-                <FormField label="Display Sort Order" error={errors.display_order}>
+                <FormField label="Requires Document" error={errors.requires_document}>
+                  <Select
+                    value={form.requires_document}
+                    onChange={(e) => handleFormChange('requires_document', e.target.value)}
+                  >
+                    <option value="0">Optional Document</option>
+                    <option value="1">Mandatory Bill Attachment</option>
+                  </Select>
+                </FormField>
+
+                <FormField label="Display Order" error={errors.display_order}>
                   <Input
                     type="number"
                     min="0"
@@ -402,7 +412,7 @@ export function ProjectTypesPage() {
                   />
                 </FormField>
 
-                <FormField label="Status" error={errors.is_active}>
+                <FormField label="Active Status" error={errors.is_active}>
                   <Select
                     value={form.is_active}
                     onChange={(e) => handleFormChange('is_active', e.target.value)}
@@ -414,7 +424,7 @@ export function ProjectTypesPage() {
 
                 <FormField label="Description" className="md:col-span-2" error={errors.description}>
                   <Textarea
-                    placeholder="Summary of this project classification..."
+                    placeholder="WBS allocation and cost accounting criteria..."
                     value={form.description}
                     onChange={(e) => handleFormChange('description', e.target.value)}
                     rows={3}
@@ -424,8 +434,8 @@ export function ProjectTypesPage() {
             </EntityEditModal.Section>
           </EntityEditModal.Body>
           <EntityEditModal.Footer
-            formId="project-type-form"
-            submitLabel={editingItem ? 'Update Project Type' : 'Create Project Type'}
+            formId="exp-category-form"
+            submitLabel={editingItem ? 'Update Category' : 'Create Category'}
             onCancel={() => {
               setIsAddOpen(false);
               setEditingItem(null);
@@ -434,17 +444,6 @@ export function ProjectTypesPage() {
           />
         </form>
       </EntityEditModal>
-
-      {/* Delete Confirmation */}
-      <ConfirmDialog
-        isOpen={Boolean(deletingItem)}
-        title="Delete Project Type"
-        message="Are you sure you want to delete this project type? If it is already associated with projects, the deletion will be blocked by the server."
-        variant="danger"
-        confirmLabel="Delete"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeletingItem(null)}
-      />
     </PageContainer>
   );
 }

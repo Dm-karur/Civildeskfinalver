@@ -27,6 +27,7 @@ import { SiteTeamPage } from '../../features/sites/pages/SiteTeamPage';
 import { SiteInstructionsPage } from '../../features/sites/pages/SiteInstructionsPage';
 import { SiteDocumentsPage } from '../../features/sites/pages/SiteDocumentsPage';
 import { ProjectTypesPage } from '../../features/masters/pages/ProjectTypesPage';
+import { ProjectStatusesPage } from '../../features/masters/pages/ProjectStatusesPage';
 import { FinancialYearsPage } from '../../features/masters/pages/FinancialYearsPage';
 import { UnitsOfMeasurementPage } from '../../features/masters/pages/UnitsOfMeasurementPage';
 import { WorkCategoriesPage } from '../../features/masters/pages/WorkCategoriesPage';
@@ -157,8 +158,28 @@ import { CommunicationApprovalsPage } from '../../features/communication/pages/C
 import { WhatsAppLogsPage } from '../../features/communication/pages/WhatsAppLogsPage';
 import { EmailLogsPage } from '../../features/communication/pages/EmailLogsPage';
 // Phase 2/3 — Additional Masters
-import { LabourCategoriesPage, LabourContractorsPage } from '../../features/masters/pages/LabourMasterPages';
-import { MaterialCategoriesPage, SuppliersPage, ExpenseCategoriesPage } from '../../features/masters/pages/MaterialProcurementMasterPages';
+import { LabourCategoriesPage } from '../../features/masters/pages/LabourCategoriesPage';
+import { LabourTypesPage } from '../../features/masters/pages/LabourTypesPage';
+import { TradesPage } from '../../features/masters/pages/TradesPage';
+import { WageRatesPage } from '../../features/masters/pages/WageRatesPage';
+import { CrewsPage } from '../../features/masters/pages/CrewsPage';
+import { LabourContractorsPage } from '../../features/masters/pages/LabourMasterPages';
+import { MaterialCategoriesPage } from '../../features/masters/pages/MaterialCategoriesPage';
+import { BrandsPage } from '../../features/masters/pages/BrandsPage';
+import { WarehousesPage } from '../../features/masters/pages/WarehousesPage';
+import { VendorsPage } from '../../features/masters/pages/VendorsPage';
+import { PaymentTermsPage } from '../../features/masters/pages/PaymentTermsPage';
+import { TaxRatesPage } from '../../features/masters/pages/TaxRatesPage';
+import { ExpenseCategoriesPage } from '../../features/masters/pages/ExpenseCategoriesPage';
+import { IncomeCategoriesPage } from '../../features/masters/pages/IncomeCategoriesPage';
+import { BanksPage } from '../../features/masters/pages/BanksPage';
+import { AccountsPage } from '../../features/masters/pages/AccountsPage';
+import { CostHeadsPage } from '../../features/masters/pages/CostHeadsPage';
+import { NumberingPage } from '../../features/masters/pages/NumberingPage';
+import { NotificationLogsPage } from '../../features/masters/pages/NotificationLogsPage';
+import { EmailPage } from '../../features/masters/pages/EmailPage';
+import { WhatsAppPage } from '../../features/masters/pages/WhatsAppPage';
+import { SystemSettingsPage } from '../../features/masters/pages/SystemSettingsPage';
 // Phase 3 — Admin
 import { AuditLogsPage } from '../../features/settings/pages/AuditLogsPage';
 
@@ -361,47 +382,47 @@ export const router = createBrowserRouter([
           // ─── Masters — Project ───────────────────────────
           { path: 'project-masters/clients', element: R('client.view', ClientsListPage) },
           { path: 'masters/project-types', element: R('project.view', ProjectTypesPage) },
-          { path: 'masters/project-statuses', element: R('master.view', ProjectTypesPage) },
+          { path: 'masters/project-statuses', element: R('master.view', ProjectStatusesPage) },
           { path: 'masters/financial-years', element: R('financial_year.view', FinancialYearsPage) },
           { path: 'masters/units', element: R('master.view', UnitsOfMeasurementPage) },
           { path: 'masters/work-categories', element: R('master.view', WorkCategoriesPage) },
 
           // ─── Masters — Labour ────────────────────────────
-          { path: 'masters/labour-types', element: R('labour.view', LabourCategoriesPage) },
+          { path: 'masters/labour-types', element: R('labour.view', LabourTypesPage) },
           { path: 'masters/labour-categories', element: R('labour.view', LabourCategoriesPage) },
-          { path: 'masters/trades', element: R('labour.view', LabourCategoriesPage) },
-          { path: 'masters/wage-rates', element: R('wages.view', LabourCategoriesPage) },
-          { path: 'masters/crews', element: R('labour.view', LabourContractorsPage) },
+          { path: 'masters/trades', element: R('labour.view', TradesPage) },
+          { path: 'masters/wage-rates', element: R('wages.view', WageRatesPage) },
+          { path: 'masters/crews', element: R('labour.view', CrewsPage) },
 
           // ─── Masters — Materials & Procurement ───────────
           { path: 'masters/material-categories', element: R('materials.view', MaterialCategoriesPage) },
           { path: 'masters/materials', element: R('materials.view', MaterialCataloguePage) },
-          { path: 'masters/brands', element: R('materials.view', MaterialCategoriesPage) },
+          { path: 'masters/brands', element: R('materials.view', BrandsPage) },
           { path: 'masters/material-units', element: R('materials.view', UnitsOfMeasurementPage) },
-          { path: 'masters/warehouses', element: R('material_stock.view', MaterialCategoriesPage) },
-          { path: 'masters/vendors', element: R('purchase_orders.view', SuppliersPage) },
-          { path: 'masters/payment-terms', element: R('master.view', WorkCategoriesPage) },
-          { path: 'masters/tax-rates', element: R('master.view', WorkCategoriesPage) },
+          { path: 'masters/warehouses', element: R('material_stock.view', WarehousesPage) },
+          { path: 'masters/vendors', element: R('purchase_orders.view', VendorsPage) },
+          { path: 'masters/payment-terms', element: R('master.view', PaymentTermsPage) },
+          { path: 'masters/tax-rates', element: R('master.view', TaxRatesPage) },
 
           // ─── Masters — Finance ───────────────────────────
           { path: 'masters/expense-categories', element: R('expenses.view', ExpenseCategoriesPage) },
-          { path: 'masters/income-categories', element: R('master.view', ExpenseCategoriesPage) },
-          { path: 'masters/banks', element: R('master.view', ExpenseCategoriesPage) },
-          { path: 'masters/accounts', element: R('master.view', ExpenseCategoriesPage) },
-          { path: 'masters/cost-heads', element: R('master.view', ExpenseCategoriesPage) },
+          { path: 'masters/income-categories', element: R('master.view', IncomeCategoriesPage) },
+          { path: 'masters/banks', element: R('master.view', BanksPage) },
+          { path: 'masters/accounts', element: R('master.view', AccountsPage) },
+          { path: 'masters/cost-heads', element: R('master.view', CostHeadsPage) },
 
           // ─── Administration ──────────────────────────────
           { path: 'administration/companies', element: R('company.view', CompanyListPage) },
           { path: 'administration/branches', element: R('branch.view', BranchListPage) },
           { path: 'administration/users', element: R('user.view', UsersListPage) },
           { path: 'administration/roles-permissions', element: R('role.view', PermissionsPage) },
-          { path: 'administration/approval-workflows', element: <ApprovalWorkflowsPage /> },
-          { path: 'administration/numbering', element: R('settings.view', AuditLogsPage) },
-          { path: 'administration/notifications', element: R('settings.view', AuditLogsPage) },
-          { path: 'administration/email', element: R('settings.view', AuditLogsPage) },
-          { path: 'administration/whatsapp', element: R('settings.view', AuditLogsPage) },
+          { path: 'administration/approval-workflows', element: R('approvals.view', ApprovalWorkflowsPage) },
+          { path: 'administration/numbering', element: R('settings.view', NumberingPage) },
+          { path: 'administration/notifications', element: R('system_admin.view', NotificationLogsPage) },
+          { path: 'administration/email', element: R('settings.view', EmailPage) },
+          { path: 'administration/whatsapp', element: R('settings.view', WhatsAppPage) },
           { path: 'administration/audit-logs', element: R('activity_log.view', AuditLogsPage) },
-          { path: 'administration/system-settings', element: R('settings.view', AuditLogsPage) },
+          { path: 'administration/system-settings', element: R('settings.view', SystemSettingsPage) },
 
           // ─── Utility ─────────────────────────────────────
           { path: 'forbidden', element: <div className="p-8 text-center text-text-secondary">You do not have permission to access this page.</div> },

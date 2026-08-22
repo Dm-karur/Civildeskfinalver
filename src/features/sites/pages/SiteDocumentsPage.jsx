@@ -45,6 +45,7 @@ const EMPTY_FORM = {
   file_extension: 'pdf',
   status_name: 'Verified',
   remarks: '',
+  file: null,
 };
 
 export function SiteDocumentsPage() {
@@ -82,6 +83,32 @@ export function SiteDocumentsPage() {
       setSites(Array.isArray(sList) ? sList : []);
     });
   }, []);
+
+  // Fetch Documents from API
+  const fetchDocuments = async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (selectedSiteId !== 'all') params.site_id = selectedSiteId;
+      if (selectedProjectId !== 'all') params.project_id = selectedProjectId;
+      const res = await projectDocumentsApi.list(params);
+      const list = res?.data?.project_documents ?? res?.data?.documents ?? res?.data?.data ?? res?.data ?? (Array.isArray(res) ? res : []);
+      if (Array.isArray(list)) {
+        setDocuments(list);
+      } else {
+        setDocuments([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch site documents:', error);
+      setDocuments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocuments();
+  }, [selectedProjectId, selectedSiteId]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -664,17 +691,19 @@ export function SiteDocumentsPage() {
                   />
                 </FormField>
 
-                <FormField label="File Format">
-                  <Select
-                    options={[
-                      { value: 'pdf', label: 'PDF Document (.pdf)' },
-                      { value: 'jpg', label: 'JPEG Photo (.jpg)' },
-                      { value: 'png', label: 'PNG Image (.png)' },
-                      { value: 'xlsx', label: 'Excel Spreadsheet (.xlsx)' },
-                    ]}
-                    value={form.file_extension}
-                    onChange={(v) => handleFormChange('file_extension', v)}
+                <FormField label="Upload Document" required={!editingDoc} error={errors.file}>
+                  <Input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        handleFormChange('file', file);
+                        handleFormChange('original_file_name', file.name);
+                        handleFormChange('file_extension', file.name.split('.').pop());
+                      }
+                    }}
                   />
+                  {editingDoc && <div className="text-xs text-text-muted mt-1">Leave empty to keep existing file.</div>}
                 </FormField>
 
                 <FormField label="Field Remarks & Findings" className="md:col-span-2">

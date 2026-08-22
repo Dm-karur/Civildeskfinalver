@@ -166,23 +166,22 @@ export function BoqSectionsPage() {
       try {
         if (editingSection?.id) {
           await boqApi.sections.update(payload.boq_id, editingSection.id, payload);
+          toast.success('BOQ section updated successfully.');
         } else {
           await boqApi.sections.create(payload.boq_id, payload);
+          toast.success('BOQ section added successfully.');
         }
-      } catch {
-        // Local fallback
+        
+        if (String(payload.boq_id) === String(selectedBoqId)) {
+          fetchSections();
+        }
+        
+        setIsAddOpen(false);
+        setEditingSection(null);
+      } catch (error) {
+        console.error('API Error:', error);
+        toast.error(error?.message || 'Failed to save BOQ section.');
       }
-
-      if (editingSection?.id) {
-        setSections(prev => prev.map(s => s.id === editingSection.id ? newSecItem : s));
-        toast.success('BOQ section updated successfully.');
-      } else {
-        setSections(prev => [newSecItem, ...prev]);
-        toast.success('BOQ section added successfully.');
-      }
-
-      setIsAddOpen(false);
-      setEditingSection(null);
     } catch {
       toast.error('Failed to save BOQ section.');
     } finally {
@@ -194,12 +193,12 @@ export function BoqSectionsPage() {
     if (!deleteSection?.id) return;
     try {
       await boqApi.sections.remove(deleteSection.boq_id, deleteSection.id);
-    } catch {
-      // Local fallback
+      setSections(prev => prev.filter(s => s.id !== deleteSection.id));
+      toast.success('BOQ section deleted.');
+      setDeleteSection(null);
+    } catch (error) {
+      toast.error('Failed to delete BOQ section.');
     }
-    setSections(prev => prev.filter(s => s.id !== deleteSection.id));
-    toast.success('BOQ section deleted.');
-    setDeleteSection(null);
   };
 
   // Filtered List

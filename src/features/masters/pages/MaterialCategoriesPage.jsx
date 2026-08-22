@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Calendar, Plus, Edit, Trash2, ShieldCheck, ChevronRight, HelpCircle } from 'lucide-react';
+import { Layers, Plus, Edit, Trash2, ShieldCheck, ChevronRight, HelpCircle } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -10,27 +10,29 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
+import { Textarea } from '../../../components/ui/Textarea';
 import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { financialYearsApi, mastersApi } from '../../../api/apiservice';
+import { materialsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 const EMPTY_FORM = {
-  year_name: '',
-  year_code: '',
-  start_date: '',
-  end_date: '',
-  status_id: '',
-  is_current: '0',
+  parent_id: '',
+  category_code: '',
+  category_name: '',
+  storage_type_id: '',
+  quality_check_required: '0',
+  description: '',
+  display_order: '0',
   is_active: '1',
 };
 
-export function FinancialYearsPage() {
+export function MaterialCategoriesPage() {
   const { hasPermission } = useAuth();
-  const [financialYears, setFinancialYears] = useState([]);
-  const [statuses, setStatuses] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [storageTypes, setStorageTypes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Search & Pagination
@@ -46,24 +48,24 @@ export function FinancialYearsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Fetch financial years & statuses
+  // Fetch data
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [resYears, resMasters] = await Promise.all([
-        financialYearsApi.list(),
-        mastersApi.all(),
+      const [resCategories, resMasters] = await Promise.all([
+        materialsApi.categories.list(),
+        materialsApi.masters(),
       ]);
 
-      const yearsList = resYears?.data?.financial_years ?? resYears?.financial_years ?? (Array.isArray(resYears) ? resYears : []);
-      setFinancialYears(Array.isArray(yearsList) ? yearsList : []);
+      const catList = resCategories?.data?.material_categories ?? resCategories?.material_categories ?? (Array.isArray(resCategories) ? resCategories : []);
+      setCategories(Array.isArray(catList) ? catList : []);
 
-      const statusList = resMasters?.data?.financial_year_statuses ?? resMasters?.financial_year_statuses ?? [];
-      setStatuses(Array.isArray(statusList) ? statusList : []);
+      const storageList = resMasters?.data?.storage_types ?? resMasters?.storage_types ?? [];
+      setStorageTypes(Array.isArray(storageList) ? storageList : []);
     } catch (err) {
-      toast.error('Failed to load financial year master data.');
-      setFinancialYears([]);
-      setStatuses([]);
+      toast.error('Failed to load material category data.');
+      setCategories([]);
+      setStorageTypes([]);
     } finally {
       setLoading(false);
     }
@@ -75,10 +77,9 @@ export function FinancialYearsPage() {
 
   // Form Handlers
   const handleOpenAdd = () => {
-    const draftStatus = statuses.find(s => s.code === 'DRAFT') || statuses[0];
     setForm({
       ...EMPTY_FORM,
-      status_id: draftStatus?.id ? String(draftStatus.id) : '',
+      storage_type_id: storageTypes[0]?.id ? String(storageTypes[0].id) : '',
     });
     setErrors({});
     setIsAddOpen(true);
@@ -86,12 +87,13 @@ export function FinancialYearsPage() {
 
   const handleOpenEdit = (item) => {
     setForm({
-      year_name: item.year_name || '',
-      year_code: item.year_code || '',
-      start_date: item.start_date ? item.start_date.split(' ')[0] : '',
-      end_date: item.end_date ? item.end_date.split(' ')[0] : '',
-      status_id: String(item.status_id || ''),
-      is_current: item.is_current ? '1' : '0',
+      parent_id: item.parent_id !== null && item.parent_id !== undefined ? String(item.parent_id) : '',
+      category_code: item.category_code || '',
+      category_name: item.category_name || '',
+      storage_type_id: String(item.storage_type_id || ''),
+      quality_check_required: item.quality_check_required ? '1' : '0',
+      description: item.description || '',
+      display_order: String(item.display_order ?? '0'),
       is_active: item.is_active ? '1' : '0',
     });
     setErrors({});
@@ -107,11 +109,9 @@ export function FinancialYearsPage() {
     e.preventDefault();
     const validationErrs = {};
 
-    if (!form.year_name.trim()) validationErrs.year_name = 'Year name is required.';
-    if (!form.year_code.trim()) validationErrs.year_code = 'Year code is required.';
-    if (!form.start_date) validationErrs.start_date = 'Start date is required.';
-    if (!form.end_date) validationErrs.end_date = 'End date is required.';
-    if (!form.status_id) validationErrs.status_id = 'Status is required.';
+    if (!form.category_name.trim()) validationErrs.category_name = 'Category name is required.';
+    if (!form.category_code.trim()) validationErrs.category_code = 'Category code is required.';
+    if (!form.storage_type_id) validationErrs.storage_type_id = 'Storage type is required.';
 
     if (Object.keys(validationErrs).length > 0) {
       setErrors(validationErrs);
@@ -121,22 +121,23 @@ export function FinancialYearsPage() {
     setSaving(true);
     try {
       const payload = {
-        year_name: form.year_name.trim(),
-        year_code: form.year_code.trim(),
-        start_date: form.start_date,
-        end_date: form.end_date,
-        status_id: Number(form.status_id),
-        is_current: Number(form.is_current),
+        parent_id: form.parent_id === '' ? null : Number(form.parent_id),
+        category_code: form.category_code.toUpperCase().trim(),
+        category_name: form.category_name.trim(),
+        storage_type_id: Number(form.storage_type_id),
+        quality_check_required: Number(form.quality_check_required),
+        description: form.description.trim() || null,
+        display_order: Number(form.display_order || 0),
         is_active: Number(form.is_active),
       };
 
       const isEditing = Boolean(editingItem?.id);
       if (isEditing) {
-        await financialYearsApi.update(editingItem.id, payload);
-        toast.success('Financial year updated successfully.');
+        await materialsApi.categories.update(editingItem.id, payload);
+        toast.success('Material category updated successfully.');
       } else {
-        await financialYearsApi.create(payload);
-        toast.success('Financial year created successfully.');
+        await materialsApi.categories.create(payload);
+        toast.success('Material category created successfully.');
       }
 
       setIsAddOpen(false);
@@ -144,7 +145,7 @@ export function FinancialYearsPage() {
       fetchData();
     } catch (err) {
       setErrors(err?.errors ?? {});
-      toast.error(err?.message || 'Unable to save financial year.');
+      toast.error(err?.message || 'Unable to save material category.');
     } finally {
       setSaving(false);
     }
@@ -153,51 +154,53 @@ export function FinancialYearsPage() {
   const confirmDelete = async () => {
     if (!deletingItem?.id) return;
     try {
-      await financialYearsApi.remove(deletingItem.id);
-      toast.success('Financial year deleted.');
+      await materialsApi.categories.remove(deletingItem.id);
+      toast.success('Material category deleted.');
       setDeletingItem(null);
       fetchData();
     } catch (err) {
-      toast.error(err?.message || 'Unable to delete financial year.');
+      toast.error(err?.message || 'Unable to delete material category.');
     }
   };
 
   // Filters & Search
   const filtered = useMemo(() => {
-    return financialYears.filter((item) => {
+    return categories.filter((item) => {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
       return (
-        String(item.year_name || '').toLowerCase().includes(q) ||
-        String(item.year_code || '').toLowerCase().includes(q) ||
-        String(item.status_name || '').toLowerCase().includes(q)
+        String(item.category_name || '').toLowerCase().includes(q) ||
+        String(item.category_code || '').toLowerCase().includes(q) ||
+        String(item.description || '').toLowerCase().includes(q)
       );
     });
-  }, [financialYears, searchQuery]);
+  }, [categories, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
-  // metrics
-  const totalCount = financialYears.length;
-  const currentYear = financialYears.find(y => y.is_current)?.year_name || 'None Set';
-  const activeCount = financialYears.filter(y => y.is_active).length;
+  // Metrics
+  const totalCount = categories.length;
+  const rootCount = categories.filter(c => !c.parent_id).length;
+  const subCount = totalCount - rootCount;
+  const activeCount = categories.filter(c => c.is_active).length;
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Masters' },
-    { label: 'Financial Years' },
+    { label: 'Material Categories' },
   ];
 
   return (
     <PageContainer>
-      <PageHeader title="Financial Year Registry" breadcrumbs={breadcrumbs} />
+      <PageHeader title="Material Categories" breadcrumbs={breadcrumbs} />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
-        <KpiCard label="Registered Financial Years" value={totalCount} icon={<Calendar />} status="primary" />
-        <KpiCard label="Current Financial Year" value={currentYear} icon={<ShieldCheck />} status="success" />
-        <KpiCard label="Active Years" value={activeCount} icon={<HelpCircle />} status="info" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+        <KpiCard label="Total Categories" value={totalCount} icon={<Layers />} status="primary" />
+        <KpiCard label="Root Categories" value={rootCount} icon={<ChevronRight />} status="info" />
+        <KpiCard label="Sub-Categories" value={subCount} icon={<Plus />} status="neutral" />
+        <KpiCard label="Active Categories" value={activeCount} icon={<ShieldCheck />} status="success" />
       </div>
 
       <div className="flex flex-col gap-4">
@@ -205,20 +208,20 @@ export function FinancialYearsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
           <div className="w-full sm:w-[260px]">
             <SearchField
-              placeholder="Search by code, label..."
+              placeholder="Search code, category name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-2 justify-end">
-            {hasPermission('financial_year.create') && (
+            {hasPermission('materials.manage_master') && (
               <Button
                 variant="primary"
                 className="h-9 px-3 text-[13px]"
                 leftIcon={<Plus className="w-3.5 h-3.5" />}
                 onClick={handleOpenAdd}
               >
-                Add Financial Year
+                Add Category
               </Button>
             )}
           </div>
@@ -230,10 +233,9 @@ export function FinancialYearsPage() {
             <Pagination
               currentPage={page}
               totalPages={totalPages}
-              totalItems={filtered.length}
-              itemsPerPage={perPage}
+              totalResults={filtered.length}
+              pageSize={perPage}
               onPageChange={setPage}
-              onItemsPerPageChange={() => {}}
             />
           }
         >
@@ -241,26 +243,26 @@ export function FinancialYearsPage() {
             <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
               <tr>
                 <th className="px-3 py-2 w-12 text-center">#</th>
-                <th className="px-3 py-2 w-32">Year Code</th>
-                <th className="px-3 py-2 w-48">Year Label</th>
-                <th className="px-3 py-2 w-32 text-center">Start Date</th>
-                <th className="px-3 py-2 w-32 text-center">End Date</th>
-                <th className="px-3 py-2 w-28 text-center">Current</th>
-                <th className="px-3 py-2 w-28 text-center">Status</th>
-                <th className="px-3 py-2 w-24 text-center">Actions</th>
+                <th className="px-3 py-2 w-28">Code</th>
+                <th className="px-3 py-2 w-48">Category Name</th>
+                <th className="px-3 py-2 w-40">Storage Type</th>
+                <th className="px-3 py-2 w-28 text-center">QC Check</th>
+                <th className="px-3 py-2 hidden md:table-cell">Parent Category</th>
+                <th className="px-3 py-2 w-24 text-center">Status</th>
+                <th className="px-3 py-2 w-20 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
                   <td colSpan={8} className="text-center py-8 text-text-muted text-[12px]">
-                    Loading financial years...
+                    Retrieving material categories...
                   </td>
                 </tr>
               ) : paged.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-8 text-text-muted text-[12px]">
-                    No financial years found.
+                    No material categories found.
                   </td>
                 </tr>
               ) : (
@@ -270,25 +272,25 @@ export function FinancialYearsPage() {
                       {(page - 1) * perPage + index + 1}
                     </td>
                     <td className="px-3 py-2 font-mono font-semibold text-text-primary text-[11px]">
-                      {item.year_code || '—'}
+                      {item.category_code || '—'}
                     </td>
                     <td className="px-3 py-2 font-medium text-text-primary text-[11px] truncate">
-                      {item.year_name || '—'}
+                      {item.category_name || '—'}
                     </td>
-                    <td className="px-3 py-2 text-center text-text-primary text-[11px]">
-                      {item.start_date ? item.start_date.split(' ')[0] : '—'}
-                    </td>
-                    <td className="px-3 py-2 text-center text-text-primary text-[11px]">
-                      {item.end_date ? item.end_date.split(' ')[0] : '—'}
+                    <td className="px-3 py-2 text-text-primary text-[11px] truncate">
+                      {item.storage_type_name || '—'}
                     </td>
                     <td className="px-3 py-2 text-center">
-                      {item.is_current ? (
-                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                          Current
-                        </span>
-                      ) : (
-                        <span className="text-[9px] text-text-secondary">No</span>
-                      )}
+                      <span
+                        className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                          item.quality_check_required ? 'bg-warning/10 text-warning' : 'bg-surface-muted text-text-secondary'
+                        }`}
+                      >
+                        {item.quality_check_required ? 'QC Req' : 'No'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 hidden md:table-cell text-text-secondary text-[11px] truncate">
+                      {item.parent_name ? `${item.parent_code} - ${item.parent_name}` : 'Root / None'}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <span
@@ -296,12 +298,12 @@ export function FinancialYearsPage() {
                           item.is_active ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
                         }`}
                       >
-                        {item.status_name || 'Inactive'}
+                        {item.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-center gap-1">
-                        {hasPermission('financial_year.update') && (
+                        {hasPermission('materials.manage_master') && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -312,7 +314,7 @@ export function FinancialYearsPage() {
                             <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
                         )}
-                        {hasPermission('financial_year.delete') && (
+                        {hasPermission('materials.manage_master') && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -333,7 +335,7 @@ export function FinancialYearsPage() {
         </DataTableContainer>
       </div>
 
-      {/* Add / Edit Financial Year Modal */}
+      {/* Add / Edit Modal */}
       <EntityEditModal
         isOpen={isAddOpen || Boolean(editingItem)}
         onClose={() => {
@@ -342,73 +344,83 @@ export function FinancialYearsPage() {
         }}
       >
         <EntityEditModal.Header
-          icon={Calendar}
-          title={editingItem ? 'Edit Financial Year' : 'Add Financial Year'}
-          subtitle="Configure start dates, end dates, and active workflow states."
+          icon={Layers}
+          title={editingItem ? 'Edit Material Category' : 'Add Material Category'}
+          subtitle="Configure category code, storage type requirements, and QA checks."
           onClose={() => {
             setIsAddOpen(false);
             setEditingItem(null);
           }}
         />
-        <form id="financial-year-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form id="mat-category-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="Year Configurations">
+            <EntityEditModal.Section title="Category Configurations">
               <EntityEditModal.Grid>
-                <FormField label="Year Code" required error={errors.year_code}>
+                <FormField label="Category Code" required error={errors.category_code}>
                   <Input
-                    placeholder="e.g. 2026-27"
-                    value={form.year_code}
-                    onChange={(e) => handleFormChange('year_code', e.target.value)}
+                    placeholder="e.g. CEMENT"
+                    value={form.category_code}
+                    onChange={(e) => handleFormChange('category_code', e.target.value)}
                     disabled={Boolean(editingItem)}
                   />
                 </FormField>
 
-                <FormField label="Year Name / Label" required error={errors.year_name}>
+                <FormField label="Category Name" required error={errors.category_name}>
                   <Input
-                    placeholder="e.g. FY 2026-27"
-                    value={form.year_name}
-                    onChange={(e) => handleFormChange('year_name', e.target.value)}
+                    placeholder="e.g. Cement & Binding Agents"
+                    value={form.category_name}
+                    onChange={(e) => handleFormChange('category_name', e.target.value)}
                   />
                 </FormField>
 
-                <FormField label="Start Date" required error={errors.start_date}>
-                  <Input
-                    type="date"
-                    value={form.start_date}
-                    onChange={(e) => handleFormChange('start_date', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="End Date" required error={errors.end_date}>
-                  <Input
-                    type="date"
-                    value={form.end_date}
-                    onChange={(e) => handleFormChange('end_date', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Workflow Status" required error={errors.status_id}>
+                <FormField label="Parent Category" error={errors.parent_id}>
                   <Select
-                    value={form.status_id}
-                    onChange={(e) => handleFormChange('status_id', e.target.value)}
+                    value={form.parent_id}
+                    onChange={(e) => handleFormChange('parent_id', e.target.value)}
                   >
-                    <option value="">Select a status</option>
-                    {statuses.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
+                    <option value="">None (Set as Root)</option>
+                    {categories
+                      .filter((c) => !editingItem || c.id !== editingItem.id) // Avoid self-parent nesting
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.category_code} - {c.category_name}
+                        </option>
+                      ))}
+                  </Select>
+                </FormField>
+
+                <FormField label="Storage Type" required error={errors.storage_type_id}>
+                  <Select
+                    value={form.storage_type_id}
+                    onChange={(e) => handleFormChange('storage_type_id', e.target.value)}
+                  >
+                    <option value="">Select storage type</option>
+                    {storageTypes.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.storage_type_name || t.name}
                       </option>
                     ))}
                   </Select>
                 </FormField>
 
-                <FormField label="Is Current Year" error={errors.is_current}>
+                <FormField label="Quality Check Required" error={errors.quality_check_required}>
                   <Select
-                    value={form.is_current}
-                    onChange={(e) => handleFormChange('is_current', e.target.value)}
+                    value={form.quality_check_required}
+                    onChange={(e) => handleFormChange('quality_check_required', e.target.value)}
                   >
-                    <option value="0">No</option>
-                    <option value="1">Yes (Set as Current)</option>
+                    <option value="0">No QC Required</option>
+                    <option value="1">QC Required on Intake</option>
                   </Select>
+                </FormField>
+
+                <FormField label="Display Order" error={errors.display_order}>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={form.display_order}
+                    onChange={(e) => handleFormChange('display_order', e.target.value)}
+                  />
                 </FormField>
 
                 <FormField label="Active Status" error={errors.is_active}>
@@ -420,12 +432,21 @@ export function FinancialYearsPage() {
                     <option value="0">Inactive</option>
                   </Select>
                 </FormField>
+
+                <FormField label="Description" className="md:col-span-2" error={errors.description}>
+                  <Textarea
+                    placeholder="Summary of scope of materials inside category..."
+                    value={form.description}
+                    onChange={(e) => handleFormChange('description', e.target.value)}
+                    rows={3}
+                  />
+                </FormField>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>
           </EntityEditModal.Body>
           <EntityEditModal.Footer
-            formId="financial-year-form"
-            submitLabel={editingItem ? 'Update Financial Year' : 'Create Financial Year'}
+            formId="mat-category-form"
+            submitLabel={editingItem ? 'Update Category' : 'Create Category'}
             onCancel={() => {
               setIsAddOpen(false);
               setEditingItem(null);
@@ -438,8 +459,8 @@ export function FinancialYearsPage() {
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={Boolean(deletingItem)}
-        title="Delete Financial Year"
-        message="Are you sure you want to delete this financial year? This cannot be undone if it is already referenced by active projects."
+        title="Delete Material Category"
+        message="Are you sure you want to delete this material category? It cannot be deleted if associated with active materials or subcategories."
         variant="danger"
         confirmLabel="Delete"
         onConfirm={confirmDelete}
