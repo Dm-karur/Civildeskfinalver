@@ -75,20 +75,34 @@ export function BoqSectionsPage() {
       if (selectedBoqId !== 'all') {
         const res = await boqApi.sections.list(Number(selectedBoqId));
         const list = res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
-        if (Array.isArray(list) && list.length > 0) {
-          setSections(list);
+        setSections(Array.isArray(list) ? list : []);
+      } else {
+        const boqsToFetch = boqs.filter(b => selectedProjectId === 'all' || String(b.project_id) === String(selectedProjectId));
+        if (boqsToFetch.length === 0) {
+          setSections([]);
+        } else {
+          const promises = boqsToFetch.map(b => boqApi.sections.list(Number(b.id)).catch(() => null));
+          const results = await Promise.all(promises);
+          let allSections = [];
+          results.forEach(res => {
+            if (res) {
+              const list = res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
+              if (Array.isArray(list)) allSections = [...allSections, ...list];
+            }
+          });
+          setSections(allSections);
         }
       }
     } catch {
-      // Local fallback
+      setSections([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedBoqId]);
+  }, [selectedBoqId, selectedProjectId, boqs]);
 
   useEffect(() => {
     fetchSections();
-  }, [selectedBoqId, fetchSections]);
+  }, [selectedBoqId, selectedProjectId, boqs, fetchSections]);
 
   // Form Handlers
   const handleOpenAdd = () => {

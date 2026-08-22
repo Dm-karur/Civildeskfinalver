@@ -39,7 +39,7 @@ export function BoqFormModal({ isOpen, boq = null, onClose, onSaveSuccess }) {
     setLoadingMasters(true);
     projectsApi.list()
       .then((res) => {
-        const list = res?.data?.projects ?? res?.projects ?? [];
+        const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
         setProjects(Array.isArray(list) ? list : []);
       })
       .catch((err) => toast.error(err?.message || 'Unable to load projects.'))
@@ -65,7 +65,7 @@ export function BoqFormModal({ isOpen, boq = null, onClose, onSaveSuccess }) {
     if (!validate()) return;
     setSaving(true);
     try {
-      const payload = { ...form, project_id: Number(form.project_id) };
+      const payload = { ...form, project_id: Number(form.project_id), status_id: 1 };
       if (isEditing) await boqApi.update(boq.id, payload);
       else await boqApi.create(payload);
       toast.success(isEditing ? 'BOQ updated.' : 'BOQ created.');

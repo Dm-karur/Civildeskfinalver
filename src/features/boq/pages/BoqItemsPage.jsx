@@ -99,20 +99,37 @@ export function BoqItemsPage() {
         if (selectedSectionId !== 'all') params.section_id = selectedSectionId;
         const res = await boqApi.items.list(Number(selectedBoqId), params);
         const list = res?.data?.items ?? res?.data?.data ?? res?.items ?? [];
-        if (Array.isArray(list) && list.length > 0) {
-          setItems(list);
+        setItems(Array.isArray(list) ? list : []);
+      } else {
+        const boqsToFetch = boqs.filter(b => selectedProjectId === 'all' || String(b.project_id) === String(selectedProjectId));
+        if (boqsToFetch.length === 0) {
+          setItems([]);
+        } else {
+          const promises = boqsToFetch.map(b => boqApi.items.list(Number(b.id)).catch(() => null));
+          const results = await Promise.all(promises);
+          let allItems = [];
+          results.forEach(res => {
+            if (res) {
+              const list = res?.data?.items ?? res?.data?.data ?? res?.items ?? [];
+              if (Array.isArray(list)) allItems = [...allItems, ...list];
+            }
+          });
+          if (selectedSectionId !== 'all') {
+            allItems = allItems.filter(item => String(item.section_id) === String(selectedSectionId));
+          }
+          setItems(allItems);
         }
       }
     } catch {
-      // Local fallback
+      setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedBoqId, selectedSectionId]);
+  }, [selectedBoqId, selectedSectionId, selectedProjectId, boqs]);
 
   useEffect(() => {
     fetchItems();
-  }, [selectedBoqId, selectedSectionId, fetchItems]);
+  }, [selectedBoqId, selectedSectionId, selectedProjectId, boqs, fetchItems]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -218,23 +235,20 @@ export function BoqItemsPage() {
       try {
         if (editingItem?.id) {
           await boqApi.items.update(payload.boq_id, editingItem.id, payload);
+          setItems(prev => prev.map(i => i.id === editingItem.id ? newItemObj : i));
+          toast.success('BOQ item updated successfully.');
         } else {
           await boqApi.items.create(payload.boq_id, payload);
+          setItems(prev => [newItemObj, ...prev]);
+          toast.success('BOQ item added successfully.');
         }
-      } catch {
-        // Local fallback
-      }
 
-      if (editingItem?.id) {
-        setItems(prev => prev.map(i => i.id === editingItem.id ? newItemObj : i));
-        toast.success('BOQ item updated successfully.');
-      } else {
-        setItems(prev => [newItemObj, ...prev]);
-        toast.success('BOQ item added successfully.');
+        setIsAddOpen(false);
+        setEditingItem(null);
+      } catch (error) {
+        console.error('API Error:', error);
+        toast.error(error?.message || 'Failed to save BOQ item. Target BOQ must be in draft state.');
       }
-
-      setIsAddOpen(false);
-      setEditingItem(null);
     } catch {
       toast.error('Failed to save BOQ item.');
     } finally {

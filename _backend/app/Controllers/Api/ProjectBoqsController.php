@@ -40,7 +40,7 @@ class ProjectBoqsController extends BaseController
                     return $this->forbidden('You cannot access the selected project.');
                 }
                 $builder->where('project_boqs.project_id', $projectId);
-            } elseif (! $this->authorization->isSuperAdmin($user)) {
+            } elseif (!$this->authorization->isSuperAdmin($user)) {
                 $branchIds = $this->authorization->getAccessibleBranchIds($user);
                 if ($branchIds === []) {
                     return $this->successList([]);
@@ -88,7 +88,7 @@ class ProjectBoqsController extends BaseController
                 ->where('project_boqs.company_id', (int) $user->company_id)
                 ->find($id);
 
-            if ($boq === null || ! $this->canAccessBoq($boq, $user)) {
+            if ($boq === null || !$this->canAccessBoq($boq, $user)) {
                 return $this->notFound();
             }
 
@@ -110,7 +110,7 @@ class ProjectBoqsController extends BaseController
         }
 
         $input = $this->request->getJSON(true);
-        if (! is_array($input)) {
+        if (!is_array($input)) {
             return $this->invalid(['body' => 'A valid JSON request body is required.']);
         }
 
@@ -147,7 +147,7 @@ class ProjectBoqsController extends BaseController
         try {
             $db->transBegin();
 
-            if (! $this->boqs->insert($data)) {
+            if (!$this->boqs->insert($data)) {
                 $db->transRollback();
                 return $this->invalid($this->boqs->errors());
             }
@@ -185,16 +185,16 @@ class ProjectBoqsController extends BaseController
         $existing = $this->boqs
             ->where('company_id', (int) $user->company_id)
             ->find($id);
-        if ($existing === null || ! $this->canAccessBoq($existing, $user, true)) {
+        if ($existing === null || !$this->canAccessBoq($existing, $user, true)) {
             return $this->notFound();
         }
 
-        if (! $this->hasStatusCode($existing, 'DRAFT')) {
+        if (!$this->hasStatusCode($existing, 'DRAFT')) {
             return $this->conflict('Only a draft Project BOQ can be updated.');
         }
 
         $input = $this->request->getJSON(true);
-        if (! is_array($input) || $input === []) {
+        if (!is_array($input) || $input === []) {
             return $this->invalid(['body' => 'A non-empty JSON request body is required.']);
         }
 
@@ -214,7 +214,7 @@ class ProjectBoqsController extends BaseController
         try {
             $db->transBegin();
 
-            if (! $this->boqs->update($id, $data)) {
+            if (!$this->boqs->update($id, $data)) {
                 $db->transRollback();
                 return $this->invalid($this->boqs->errors());
             }
@@ -264,22 +264,22 @@ class ProjectBoqsController extends BaseController
         $existing = $this->boqs
             ->where('company_id', (int) $user->company_id)
             ->find($id);
-        if ($existing === null || ! $this->canAccessBoq($existing, $user, true)) {
+        if ($existing === null || !$this->canAccessBoq($existing, $user, true)) {
             return $this->notFound();
         }
 
-        if (! $this->hasStatusCode($existing, 'DRAFT')) {
+        if (!$this->hasStatusCode($existing, 'DRAFT')) {
             return $this->conflict('Only a draft Project BOQ can be deleted.');
         }
 
         $db = db_connect();
         try {
             $db->transBegin();
-            if (! $this->boqs->update($id, ['updated_by' => (int) $user->id])) {
+            if (!$this->boqs->update($id, ['updated_by' => (int) $user->id])) {
                 $db->transRollback();
                 return $this->invalid($this->boqs->errors());
             }
-            if (! $this->boqs->delete($id) || $db->transStatus() === false) {
+            if (!$this->boqs->delete($id) || $db->transStatus() === false) {
                 throw new DatabaseException('Unable to delete the project BOQ.');
             }
             $db->transCommit();
@@ -334,7 +334,7 @@ class ProjectBoqsController extends BaseController
                 [$id, (int) $user->company_id]
             )->getRowArray();
 
-            if ($boq === null || ! $this->canAccessBoq($boq, $user, true)) {
+            if ($boq === null || !$this->canAccessBoq($boq, $user, true)) {
                 $db->transRollback();
                 return $this->notFound();
             }
@@ -375,7 +375,7 @@ class ProjectBoqsController extends BaseController
                 ->where('status_id', (int) $boq['status_id'])
                 ->update($update);
 
-            if (! $updated || $db->affectedRows() !== 1 || $db->transStatus() === false) {
+            if (!$updated || $db->affectedRows() !== 1 || $db->transStatus() === false) {
                 throw new DatabaseException('Unable to change the Project BOQ status.');
             }
 
@@ -446,8 +446,16 @@ class ProjectBoqsController extends BaseController
     private function writableData(array $input): array
     {
         $fields = [
-            'project_id', 'boq_code', 'boq_name', 'version_no', 'revision_no',
-            'boq_date', 'valid_from', 'currency_code', 'total_amount', 'notes',
+            'project_id',
+            'boq_code',
+            'boq_name',
+            'version_no',
+            'revision_no',
+            'boq_date',
+            'valid_from',
+            'currency_code',
+            'total_amount',
+            'notes',
         ];
 
         return array_intersect_key($input, array_flip($fields));
@@ -475,11 +483,13 @@ class ProjectBoqsController extends BaseController
         }
 
         $branchId = (int) ($project['branch_id'] ?? 0);
-        if ($branchId > 0 && ! $this->authorization->canAccessBranch(
-            $branchId,
-            $operate ? 'OPERATE' : 'VIEW',
-            $user
-        )) {
+        if (
+            $branchId > 0 && !$this->authorization->canAccessBranch(
+                $branchId,
+                $operate ? 'OPERATE' : 'VIEW',
+                $user
+            )
+        ) {
             return null;
         }
 
@@ -517,7 +527,7 @@ class ProjectBoqsController extends BaseController
             (int) ($data['project_id'] ?? 0) <= 0
             || trim((string) ($data['boq_code'] ?? '')) === ''
             || (int) ($data['version_no'] ?? 0) <= 0
-            || ! array_key_exists('revision_no', $data)
+            || !array_key_exists('revision_no', $data)
         ) {
             return false;
         }
