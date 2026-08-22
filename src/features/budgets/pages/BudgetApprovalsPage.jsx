@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   ShieldCheck, CheckCircle2, Clock, XCircle, IndianRupee,
   Building2, Search, Filter, Eye, Check, X, FileText,
@@ -40,13 +40,77 @@ export function BudgetApprovalsPage() {
   const [decisionComments, setDecisionComments] = useState('');
   const [viewingApproval, setViewingApproval] = useState(null);
 
-  // Load Projects
-  useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
+  const fetchApprovals = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [pRes, bRes] = await Promise.all([
+        projectsApi.list().catch(() => ({ data: { projects: [] } })),
+        budgetsApi.list().catch(() => ({ data: { project_budgets: [] } }))
+      ]);
+      const pList = Array.isArray(pRes) ? pRes : (pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []));
+      const allBudgets = Array.isArray(bRes) ? bRes : (bRes?.data?.project_budgets ?? bRes?.project_budgets ?? (Array.isArray(bRes?.data) ? bRes.data : []));
+      setProjects(pList);
+
+      const allApprovals = [];
+      for (const b of allBudgets) {
+        allApprovals.push({
+          id: `b_${b.id}`,
+          budget_id: b.id,
+          revision_id: null,
+          budget_code: b.budget_code,
+          budget_name: b.budget_name,
+          project_id: b.project_id,
+          project_name: b.project_name || pList.find(p => String(p.id) === String(b.project_id))?.project_name || 'Project',
+          revision_tag: 'Original Budget',
+          approval_level: 1,
+          approval_level_name: 'Level 1: Project Manager',
+          total_amount: b.total_budget || 0,
+          requested_by: b.created_by_name || 'QS Engineer',
+          submitted_at: b.created_at ? String(b.created_at).slice(0, 10) : '2026-08-01',
+          status: b.status_name || b.status_code || 'Draft',
+          comments: ''
+        });
+
+        try {
+          const rRes = await budgetsApi.revisions.list(b.id);
+          const revisions = Array.isArray(rRes) ? rRes : (rRes?.data?.budget_revisions ?? rRes?.budget_revisions ?? (Array.isArray(rRes?.data) ? rRes.data : []));
+          for (const r of revisions) {
+            allApprovals.push({
+              id: `r_${r.id}`,
+              budget_id: b.id,
+              revision_id: r.id,
+              budget_code: b.budget_code,
+              budget_name: b.budget_name,
+              project_id: b.project_id,
+              project_name: b.project_name || pList.find(p => String(p.id) === String(b.project_id))?.project_name || 'Project',
+              revision_tag: `Rev-${r.revision_no}`,
+              approval_level: 2,
+              approval_level_name: 'Level 2: Commercial Director',
+              total_amount: r.revised_total || 0,
+              requested_by: r.requested_by_name || 'QS Engineer',
+              submitted_at: r.created_at ? String(r.created_at).slice(0, 10) : '2026-08-01',
+              status: r.status_name || r.status_code || 'Draft',
+              comments: r.decision_note || ''
+            });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      const visibleApprovals = allApprovals.filter(a => String(a.status).toUpperCase() !== 'DRAFT');
+      setApprovals(visibleApprovals);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load approvals.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchApprovals();
+  }, [fetchApprovals]);
 
   // Filtered List
   const filtered = useMemo(() => {
@@ -86,25 +150,28 @@ export function BudgetApprovalsPage() {
     setDecisionComments(action === 'Approve' ? 'Approved after commercial rate verification and budget audit.' : 'Returned with comments for revision.');
   };
 
-  const handleConfirmDecision = () => {
+  const handleConfirmDecision = async () => {
     if (!decisionItem) return;
     const isApprove = decisionAction === 'Approve';
-
-    setApprovals(prev => prev.map(a => {
-      if (a.id === decisionItem.id) {
-        return {
-          ...a,
-          status: isApprove ? 'Approved' : 'Rejected',
-          decided_by: 'Authorized Approver',
-          decided_at: new Date().toISOString().replace('T', ' ').slice(0, 16),
-          comments: decisionComments || a.comments,
-        };
+    setLoading(true);
+    try {
+      const payload = { comments: decisionComments };
+      if (decisionItem.revision_id) {
+        if (isApprove) await budgetsApi.revisions.approve(decisionItem.budget_id, decisionItem.revision_id, payload);
+        else await budgetsApi.revisions.reject(decisionItem.budget_id, decisionItem.revision_id, payload);
+      } else {
+        if (isApprove) await budgetsApi.approve(decisionItem.budget_id, payload);
+        else await budgetsApi.reject(decisionItem.budget_id, payload);
       }
-      return a;
-    }));
-
-    toast.success(`Budget ${decisionItem.budget_code} ${isApprove ? 'Approved' : 'Rejected'}.`);
-    setDecisionItem(null);
+      toast.success(`Budget ${decisionItem.budget_code} ${isApprove ? 'Approved' : 'Rejected'}.`);
+      fetchApprovals();
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || `Failed to ${isApprove ? 'approve' : 'reject'} budget.`);
+    } finally {
+      setDecisionItem(null);
+      setLoading(false);
+    }
   };
 
   const getStatusVariant = (status) => {

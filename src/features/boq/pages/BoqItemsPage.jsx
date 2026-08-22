@@ -84,11 +84,28 @@ export function BoqItemsPage() {
   useEffect(() => {
     if (selectedBoqId !== 'all') {
       boqApi.sections.list(Number(selectedBoqId)).then(res => {
-        const list = res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
+        const list = res?.data?.boq_sections ?? res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
         setSections(Array.isArray(list) ? list : []);
       }).catch(() => setSections([]));
+    } else {
+      const boqsToFetch = boqs.filter(b => selectedProjectId === 'all' || String(b.project_id) === String(selectedProjectId));
+      if (boqsToFetch.length === 0) {
+        setSections([]);
+      } else {
+        const promises = boqsToFetch.map(b => boqApi.sections.list(Number(b.id)).catch(() => null));
+        Promise.all(promises).then(results => {
+          let allSecs = [];
+          results.forEach(res => {
+            if (res) {
+              const list = res?.data?.boq_sections ?? res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
+              if (Array.isArray(list)) allSecs = [...allSecs, ...list];
+            }
+          });
+          setSections(allSecs);
+        });
+      }
     }
-  }, [selectedBoqId]);
+  }, [selectedBoqId, selectedProjectId, boqs]);
 
   // Fetch BOQ Items
   const fetchItems = useCallback(async () => {
@@ -98,7 +115,7 @@ export function BoqItemsPage() {
         const params = {};
         if (selectedSectionId !== 'all') params.section_id = selectedSectionId;
         const res = await boqApi.items.list(Number(selectedBoqId), params);
-        const list = res?.data?.items ?? res?.data?.data ?? res?.items ?? [];
+        const list = res?.data?.boq_items ?? res?.data?.items ?? res?.data?.data ?? res?.items ?? [];
         setItems(Array.isArray(list) ? list : []);
       } else {
         const boqsToFetch = boqs.filter(b => selectedProjectId === 'all' || String(b.project_id) === String(selectedProjectId));
@@ -110,7 +127,7 @@ export function BoqItemsPage() {
           let allItems = [];
           results.forEach(res => {
             if (res) {
-              const list = res?.data?.items ?? res?.data?.data ?? res?.items ?? [];
+              const list = res?.data?.boq_items ?? res?.data?.items ?? res?.data?.data ?? res?.items ?? [];
               if (Array.isArray(list)) allItems = [...allItems, ...list];
             }
           });
@@ -247,10 +264,12 @@ export function BoqItemsPage() {
         setEditingItem(null);
       } catch (error) {
         console.error('API Error:', error);
+        setErrors(error?.errors || {});
         toast.error(error?.message || 'Failed to save BOQ item. Target BOQ must be in draft state.');
       }
-    } catch {
-      toast.error('Failed to save BOQ item.');
+    } catch (error) {
+      setErrors(error?.errors || {});
+      toast.error(error?.message || 'Failed to save BOQ item.');
     } finally {
       setSaving(false);
     }
@@ -661,7 +680,9 @@ export function BoqItemsPage() {
 
                 <FormField label="Target Section" required error={errors.section_id}>
                   <Select
-                    options={sections.map(s => ({ value: String(s.id), label: `${s.section_code} - ${s.section_name}` }))}
+                    options={sections
+                      .filter(s => String(s.boq_id) === String(form.boq_id))
+                      .map(s => ({ value: String(s.id), label: `${s.section_code} - ${s.section_name}` }))}
                     value={form.section_id}
                     onChange={(v) => handleFormChange('section_id', v)}
                   />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   GitBranch, CheckCircle2, Clock, AlertCircle, IndianRupee,
   TrendingUp, TrendingDown, Plus, Edit, Trash2, Search, Filter,
@@ -66,12 +66,40 @@ export function BudgetRevisionsPage() {
       projectsApi.list().catch(() => ({ data: { projects: [] } })),
       budgetsApi.list().catch(() => ({ data: { project_budgets: [] } })),
     ]).then(([pRes, bRes]) => {
-      const pList = pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []);
-      const bList = bRes?.data?.project_budgets ?? bRes?.project_budgets ?? (Array.isArray(bRes?.data) ? bRes.data : []);
+      const pList = Array.isArray(pRes) ? pRes : (pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []));
+      const bList = Array.isArray(bRes) ? bRes : (bRes?.data?.project_budgets ?? bRes?.project_budgets ?? (Array.isArray(bRes?.data) ? bRes.data : []));
       setProjects(Array.isArray(pList) ? pList : []);
       setBudgets(Array.isArray(bList) ? bList : []);
     });
   }, []);
+
+  const fetchRevisions = useCallback(async () => {
+    if (!budgets || budgets.length === 0) {
+      setRevisions([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const promises = budgets.map(b => budgetsApi.revisions.list(b.id).catch(() => null));
+      const results = await Promise.all(promises);
+      const allRevisions = [];
+      results.forEach((res) => {
+        const list = Array.isArray(res) ? res : (res?.data?.budget_revisions ?? res?.budget_revisions ?? (Array.isArray(res?.data) ? res.data : []));
+        if (Array.isArray(list)) allRevisions.push(...list);
+      });
+      setRevisions(allRevisions);
+    } catch (err) {
+      console.error('Failed to fetch revisions:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [budgets]);
+
+  useEffect(() => {
+    if (budgets.length > 0) {
+      fetchRevisions();
+    }
+  }, [fetchRevisions, budgets]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -139,9 +167,6 @@ export function BudgetRevisionsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const selectedBudg = budgets.find(b => String(b.id) === String(form.budget_id));
-
       const payload = {
         project_id: Number(form.project_id || 1),
         budget_id: Number(form.budget_id),
@@ -156,37 +181,37 @@ export function BudgetRevisionsPage() {
         decision_note: form.decision_note || '',
       };
 
-      const newRevItem = {
-        id: editingRev?.id || Date.now(),
-        ...payload,
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        budget_code: selectedBudg?.budget_code || 'BUD-001',
-        budget_name: selectedBudg?.budget_name || 'Project Cost Budget',
-      };
-
       if (editingRev?.id) {
-        setRevisions(prev => prev.map(r => r.id === editingRev.id ? newRevItem : r));
+        await budgetsApi.revisions.update(form.budget_id, editingRev.id, payload);
         toast.success('Budget revision updated successfully.');
       } else {
-        setRevisions(prev => [newRevItem, ...prev]);
+        await budgetsApi.revisions.create(form.budget_id, payload);
         toast.success('Budget revision request submitted.');
       }
 
       setIsAddOpen(false);
       setEditingRev(null);
-    } catch {
-      toast.error('Failed to save budget revision.');
+      fetchRevisions();
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || 'Failed to save budget revision.');
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteRev?.id) return;
-    setRevisions(prev => prev.filter(r => r.id !== deleteRev.id));
-    toast.success('Budget revision deleted.');
-    setDeleteRev(null);
+    try {
+      await budgetsApi.revisions.remove(deleteRev.budget_id, deleteRev.id);
+      toast.success('Budget revision deleted.');
+      fetchRevisions();
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || 'Failed to delete budget revision.');
+    } finally {
+      setDeleteRev(null);
+    }
   };
 
   // Filtered List
@@ -614,10 +639,10 @@ export function BudgetRevisionsPage() {
                   />
                 </FormField>
 
-                <FormField label="Target Budget" required error={errors.budget_id}>
+                <FormField label="Target Budget (Approved only)" required error={errors.budget_id}>
                   <Select
                     options={budgets
-                      .filter(b => !form.project_id || String(b.project_id) === String(form.project_id))
+                      .filter(b => (!form.project_id || String(b.project_id) === String(form.project_id)) && (b.status_code === 'APPROVED' || b.status_name === 'APPROVED'))
                       .map(b => ({ value: String(b.id), label: `${b.budget_code} - ${b.budget_name}` }))}
                     value={form.budget_id}
                     onChange={(v) => {

@@ -26,7 +26,29 @@ export function ConvertTakeoffPage() {
   const [projects, setProjects] = useState([]);
   const [boqs, setBoqs] = useState([]);
   const [sections, setSections] = useState([]);
-  const [items, setItems] = useState([]);
+  const [allTakeoffs, setAllTakeoffs] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_boq_takeoffs');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mock_boq_takeoffs', JSON.stringify(allTakeoffs));
+  }, [allTakeoffs]);
+
+  const items = useMemo(() => {
+    return allTakeoffs
+      .filter(r => r.status === 'Verified')
+      .map(r => ({
+         ...r,
+         conversion_status: r.conversion_status || 'Ready to Convert',
+         projected_rate: r.projected_rate || 500,
+         projected_amount: (r.verified_quantity ?? r.measured_quantity ?? r.calculated_quantity ?? 0) * (r.projected_rate || 500),
+      }));
+  }, [allTakeoffs]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -147,7 +169,7 @@ export function ConvertTakeoffPage() {
         // Fallback
       }
 
-      setItems(prev => prev.map(i => {
+      setAllTakeoffs(prev => prev.map(i => {
         if (i.id === convertingItem.id) {
           return {
             ...i,
@@ -173,11 +195,12 @@ export function ConvertTakeoffPage() {
       return;
     }
 
-    setItems(prev => prev.map(i => {
+    setAllTakeoffs(prev => prev.map(i => {
       if (selectedIds.includes(i.id)) {
         return {
           ...i,
           conversion_status: 'Converted to BOQ',
+          mapped_boq: 'Auto-Mapped BOQ',
         };
       }
       return i;

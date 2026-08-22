@@ -8,7 +8,7 @@ import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { toast } from '../../../components/composite/Toast';
 
-const EMPTY_FORM = { budget_code: '', budget_name: '', project_id: '', description: '' };
+const EMPTY_FORM = { budget_code: '', budget_name: '', project_id: '', budget_date: new Date().toISOString().split('T')[0], notes: '' };
 
 const options = (items, labelKeys) => (items ?? []).map((item) => ({
   value: String(item.id),
@@ -44,6 +44,7 @@ export function BudgetFormModal({ isOpen, budget = null, onClose, onSaveSuccess 
     if (!form.budget_code.trim()) next.budget_code = 'Required.';
     if (!form.budget_name.trim()) next.budget_name = 'Required.';
     if (!form.project_id) next.project_id = 'Required.';
+    if (!form.budget_date) next.budget_date = 'Required.';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -60,6 +61,7 @@ export function BudgetFormModal({ isOpen, budget = null, onClose, onSaveSuccess 
       onSaveSuccess?.();
       onClose?.();
     } catch (error) {
+      console.error('API Error:', error);
       setErrors(error?.errors ?? {});
       toast.error(error?.message || 'Failed to save budget.');
     } finally {
@@ -79,10 +81,11 @@ export function BudgetFormModal({ isOpen, budget = null, onClose, onSaveSuccess 
               <FormField label="Budget Code" required error={errors.budget_code}><Input value={form.budget_code} onChange={(e) => change('budget_code', e.target.value)} placeholder="BDG-001" /></FormField>
               <FormField label="Budget Name" required error={errors.budget_name}><Input value={form.budget_name} onChange={(e) => change('budget_name', e.target.value)} /></FormField>
               <FormField label="Project" required error={errors.project_id}><Select value={form.project_id} onChange={(v) => change('project_id', v)} options={options(projects, ['project_name', 'name'])} placeholder="Select project" /></FormField>
+              <FormField label="Budget Date" required error={errors.budget_date}><Input type="date" value={form.budget_date} onChange={(e) => change('budget_date', e.target.value)} /></FormField>
             </EntityEditModal.Grid>
           </EntityEditModal.Section>
-          <EntityEditModal.Section title="Description" noBorder>
-            <Textarea value={form.description} onChange={(e) => change('description', e.target.value)} rows={3} />
+          <EntityEditModal.Section title="Notes" noBorder>
+            <Textarea value={form.notes} onChange={(e) => change('notes', e.target.value)} rows={3} />
           </EntityEditModal.Section>
         </EntityEditModal.Body>
         <EntityEditModal.Footer formId="budget-form" submitLabel={isEditing ? 'Update Budget' : 'Create Budget'} onCancel={onClose} isSubmitting={saving || loadingMasters} />

@@ -24,7 +24,7 @@ export function BudgetListPage() {
   useEffect(() => {
     projectsApi.list()
       .then((res) => {
-        const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
+        const list = Array.isArray(res) ? res : (res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []));
         setProjects(Array.isArray(list) ? list : []);
       })
       .catch(() => setProjects([]));

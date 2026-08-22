@@ -50,7 +50,18 @@ const EMPTY_FORM = {
 
 export function DrawingTakeoffPage() {
   const [projects, setProjects] = useState([]);
-  const [takeoffs, setTakeoffs] = useState([]);
+  const [takeoffs, setTakeoffs] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_boq_takeoffs');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mock_boq_takeoffs', JSON.stringify(takeoffs));
+  }, [takeoffs]);
   const [loading, setLoading] = useState(false);
 
   // Filters

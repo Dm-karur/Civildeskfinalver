@@ -49,7 +49,18 @@ const EMPTY_FORM = {
 
 export function BudgetVariationsPage() {
   const [projects, setProjects] = useState([]);
-  const [variations, setVariations] = useState([]);
+  const [variations, setVariations] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_budget_variations');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mock_budget_variations', JSON.stringify(variations));
+  }, [variations]);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -72,7 +83,7 @@ export function BudgetVariationsPage() {
   // Initial Load: Projects
   useEffect(() => {
     projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
+      const list = Array.isArray(res) ? res : (res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []));
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
   }, []);

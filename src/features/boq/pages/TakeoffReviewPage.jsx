@@ -24,7 +24,29 @@ import { projectsApi } from '../../../api/apiservice';
 
 export function TakeoffReviewPage() {
   const [projects, setProjects] = useState([]);
-  const [reviews, setReviews] = useState([]);
+  const [reviews, setReviews] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_boq_takeoffs');
+      if (saved) {
+        return JSON.parse(saved).map(r => ({
+          ...r,
+          measured_quantity: r.measured_quantity ?? r.calculated_quantity ?? 0,
+          verified_quantity: r.verified_quantity ?? r.calculated_quantity ?? 0,
+          discipline: r.discipline ?? r.drawing_category_id ?? 'structural',
+          status: r.status === 'In Progress' ? 'Pending Audit' : r.status,
+          auditor_name: r.auditor_name ?? 'Pending Assignment',
+          audit_date: r.audit_date ?? '-',
+        }));
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mock_boq_takeoffs', JSON.stringify(reviews));
+  }, [reviews]);
   const [loading, setLoading] = useState(false);
 
   // Filters
