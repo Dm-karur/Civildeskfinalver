@@ -175,6 +175,11 @@ import { IncomeCategoriesPage } from '../../features/masters/pages/IncomeCategor
 import { BanksPage } from '../../features/masters/pages/BanksPage';
 import { AccountsPage } from '../../features/masters/pages/AccountsPage';
 import { CostHeadsPage } from '../../features/masters/pages/CostHeadsPage';
+import { NumberingPage } from '../../features/masters/pages/NumberingPage';
+import { NotificationLogsPage } from '../../features/masters/pages/NotificationLogsPage';
+import { EmailPage } from '../../features/masters/pages/EmailPage';
+import { WhatsAppPage } from '../../features/masters/pages/WhatsAppPage';
+import { SystemSettingsPage } from '../../features/masters/pages/SystemSettingsPage';
 // Phase 3 — Admin
 import { AuditLogsPage } from '../../features/settings/pages/AuditLogsPage';
 
@@ -411,13 +416,13 @@ export const router = createBrowserRouter([
           { path: 'administration/branches', element: R('branch.view', BranchListPage) },
           { path: 'administration/users', element: R('user.view', UsersListPage) },
           { path: 'administration/roles-permissions', element: R('role.view', PermissionsPage) },
-          { path: 'administration/approval-workflows', element: <ApprovalWorkflowsPage /> },
-          { path: 'administration/numbering', element: R('settings.view', AuditLogsPage) },
-          { path: 'administration/notifications', element: R('settings.view', AuditLogsPage) },
-          { path: 'administration/email', element: R('settings.view', AuditLogsPage) },
-          { path: 'administration/whatsapp', element: R('settings.view', AuditLogsPage) },
+          { path: 'administration/approval-workflows', element: R('approvals.view', ApprovalWorkflowsPage) },
+          { path: 'administration/numbering', element: R('settings.view', NumberingPage) },
+          { path: 'administration/notifications', element: R('system_admin.view', NotificationLogsPage) },
+          { path: 'administration/email', element: R('settings.view', EmailPage) },
+          { path: 'administration/whatsapp', element: R('settings.view', WhatsAppPage) },
           { path: 'administration/audit-logs', element: R('activity_log.view', AuditLogsPage) },
-          { path: 'administration/system-settings', element: R('settings.view', AuditLogsPage) },
+          { path: 'administration/system-settings', element: R('settings.view', SystemSettingsPage) },
 
           // ─── Utility ─────────────────────────────────────
           { path: 'forbidden', element: <div className="p-8 text-center text-text-secondary">You do not have permission to access this page.</div> },
