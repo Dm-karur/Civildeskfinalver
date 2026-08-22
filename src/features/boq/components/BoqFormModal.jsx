@@ -12,7 +12,8 @@ const EMPTY_FORM = {
   boq_code: '',
   boq_name: '',
   project_id: '',
-  description: '',
+  boq_date: '',
+  notes: '',
 };
 
 const options = (items, labelKeys) => (items ?? []).map((item) => ({
@@ -34,6 +35,7 @@ export function BoqFormModal({ isOpen, boq = null, onClose, onSaveSuccess }) {
       ...EMPTY_FORM,
       ...boq,
       project_id: String(boq.project_id ?? ''),
+      boq_date: boq.boq_date ? boq.boq_date.substring(0, 10) : '',
     } : EMPTY_FORM);
     setErrors({});
     setLoadingMasters(true);
@@ -56,6 +58,7 @@ export function BoqFormModal({ isOpen, boq = null, onClose, onSaveSuccess }) {
     if (!form.boq_code.trim()) next.boq_code = 'Required.';
     if (!form.boq_name.trim()) next.boq_name = 'Required.';
     if (!form.project_id) next.project_id = 'Required.';
+    if (!form.boq_date) next.boq_date = 'Required.';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -91,10 +94,11 @@ export function BoqFormModal({ isOpen, boq = null, onClose, onSaveSuccess }) {
               <FormField label="BOQ Code" required error={errors.boq_code}><Input value={form.boq_code} onChange={(e) => change('boq_code', e.target.value)} placeholder="BOQ-001" /></FormField>
               <FormField label="BOQ Name" required error={errors.boq_name}><Input value={form.boq_name} onChange={(e) => change('boq_name', e.target.value)} /></FormField>
               <FormField label="Project" required error={errors.project_id}><Select value={form.project_id} onChange={(v) => change('project_id', v)} options={options(projects, ['project_name', 'name'])} placeholder="Select project" /></FormField>
+              <FormField label="BOQ Date" required error={errors.boq_date}><Input type="date" value={form.boq_date} onChange={(e) => change('boq_date', e.target.value)} /></FormField>
             </EntityEditModal.Grid>
           </EntityEditModal.Section>
-          <EntityEditModal.Section title="Description" noBorder>
-            <Textarea value={form.description} onChange={(e) => change('description', e.target.value)} rows={3} />
+          <EntityEditModal.Section title="Notes" noBorder>
+            <Textarea value={form.notes} onChange={(e) => change('notes', e.target.value)} rows={3} />
           </EntityEditModal.Section>
         </EntityEditModal.Body>
         <EntityEditModal.Footer formId="boq-form" submitLabel={isEditing ? 'Update BOQ' : 'Create BOQ'} onCancel={onClose} isSubmitting={saving || loadingMasters} />

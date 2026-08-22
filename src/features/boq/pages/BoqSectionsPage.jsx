@@ -74,7 +74,7 @@ export function BoqSectionsPage() {
     try {
       if (selectedBoqId !== 'all') {
         const res = await boqApi.sections.list(Number(selectedBoqId));
-        const list = res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
+        const list = res?.data?.boq_sections ?? res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
         setSections(Array.isArray(list) ? list : []);
       } else {
         const boqsToFetch = boqs.filter(b => selectedProjectId === 'all' || String(b.project_id) === String(selectedProjectId));
@@ -86,7 +86,7 @@ export function BoqSectionsPage() {
           let allSections = [];
           results.forEach(res => {
             if (res) {
-              const list = res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
+              const list = res?.data?.boq_sections ?? res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
               if (Array.isArray(list)) allSections = [...allSections, ...list];
             }
           });
@@ -194,10 +194,12 @@ export function BoqSectionsPage() {
         setEditingSection(null);
       } catch (error) {
         console.error('API Error:', error);
+        setErrors(error?.errors || {});
         toast.error(error?.message || 'Failed to save BOQ section.');
       }
-    } catch {
-      toast.error('Failed to save BOQ section.');
+    } catch (error) {
+      setErrors(error?.errors || {});
+      toast.error(error?.message || 'Failed to save BOQ section.');
     } finally {
       setSaving(false);
     }
