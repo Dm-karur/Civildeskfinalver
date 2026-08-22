@@ -248,7 +248,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
     <>
       {isMobileOpen && <button type="button" aria-label="Close navigation" className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onCloseMobile} />}
       <aside className={clsx(
-        'fixed inset-y-0 left-0 z-50 flex h-full w-[230px] shrink-0 flex-col border-r border-white/10 bg-secondary transition-transform lg:static lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-50 flex h-full w-[250px] shrink-0 flex-col border-r border-white/10 bg-secondary transition-transform lg:static lg:translate-x-0',
         isMobileOpen ? 'translate-x-0' : '-translate-x-full',
       )}>
         <div className="flex h-16 items-center border-b border-white/10 px-5 text-[18px] font-bold tracking-tight text-white">CIVIL DESK</div>
