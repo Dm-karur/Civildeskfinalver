@@ -82,12 +82,11 @@ export function ProjectDocumentsPage() {
     setLoading(true);
     try {
       const res = await projectDocumentsApi.list(selectedProjectId !== 'all' ? { project_id: selectedProjectId } : {});
-      const list = res?.data?.project_documents ?? res?.data?.data ?? [];
-      if (Array.isArray(list) && list.length > 0) {
-        setDocuments(list);
-      }
-    } catch {
-      // Keep existing default documents
+      const list = res?.data?.project_documents ?? res?.data?.data ?? res?.data ?? [];
+      setDocuments(Array.isArray(list) ? list : []);
+    } catch (error) {
+      setDocuments([]);
+      console.error('Failed to fetch documents:', error);
     } finally {
       setLoading(false);
     }
@@ -147,49 +146,49 @@ export function ProjectDocumentsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const newDoc = {
-        id: editingDoc?.id || Date.now(),
+      const payload = {
         project_id: Number(form.project_id),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
         document_title: form.document_title,
         document_number: form.document_number,
-        document_type_name: DOCUMENT_CATEGORIES.find(c => c.id === form.category_id)?.name || 'General Document',
         category_id: form.category_id,
         revision_number: form.revision_number || 'R0',
-        version_number: 1,
         document_date: form.document_date || null,
         expiry_date: form.expiry_date || null,
         original_file_name: form.original_file_name || `${form.document_number}.${form.file_extension}`,
         file_extension: form.file_extension || 'pdf',
-        file_size_bytes: 2097152, // 2 MB
         status_name: form.status_name || 'Approved',
         remarks: form.remarks || '',
       };
 
       if (editingDoc?.id) {
-        setDocuments(prev => prev.map(d => d.id === editingDoc.id ? newDoc : d));
+        await projectDocumentsApi.update(editingDoc.id, payload);
         toast.success('Document updated successfully.');
       } else {
-        setDocuments(prev => [newDoc, ...prev]);
+        await projectDocumentsApi.create(payload);
         toast.success('Document uploaded successfully.');
       }
 
+      await fetchDocuments();
       setIsAddOpen(false);
       setEditingDoc(null);
-    } catch {
-      toast.error('Failed to save document.');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to save document.');
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteDoc?.id) return;
-    setDocuments(prev => prev.filter(d => d.id !== deleteDoc.id));
-    toast.success('Document deleted.');
-    setDeleteDoc(null);
+    try {
+      await projectDocumentsApi.remove(deleteDoc.id);
+      toast.success('Document deleted.');
+      await fetchDocuments();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to delete document.');
+    } finally {
+      setDeleteDoc(null);
+    }
   };
 
   // Filtered List

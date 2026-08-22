@@ -236,7 +236,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
 
   const activeGroup = useMemo(() => navigation.find((item) =>
     item.children?.some((child) => location.pathname.startsWith(child.route_path))),
-  [location.pathname, navigation]);
+    [location.pathname, navigation]);
 
   useEffect(() => {
     if (activeGroup) {

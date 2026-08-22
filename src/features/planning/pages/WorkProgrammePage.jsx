@@ -21,84 +21,6 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi } from '../../../api/apiservice';
 
-const PROGRAMME_PACKAGES = [
-  {
-    id: 1,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    stage_code: 'STG-01',
-    stage_name: 'Stage 1: Basement Excavation & Foundation Raft',
-    baseline_start: '2026-06-01',
-    baseline_end: '2026-08-25',
-    baseline_duration: 85,
-    actual_start: '2026-06-01',
-    actual_end: '2026-08-20',
-    planned_progress_pct: 100,
-    actual_progress_pct: 95,
-    schedule_variance_days: -5,
-    status: 'On Schedule',
-    milestones: 'Complete 2-level basement mass excavation and casting of 1,455 Cu.M M40 concrete raft slab.',
-    mitigation_notes: 'Parallel pouring with 2 boom pump lines to recover 5 rain delay days.'
-  },
-  {
-    id: 2,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    stage_code: 'STG-02',
-    stage_name: 'Stage 2: Podium & Superstructure RCC Levels 1 to 15',
-    baseline_start: '2026-08-25',
-    baseline_end: '2027-02-28',
-    baseline_duration: 187,
-    actual_start: '2026-08-22',
-    actual_end: '2027-03-10',
-    planned_progress_pct: 30,
-    actual_progress_pct: 22,
-    schedule_variance_days: 10,
-    status: 'Minor Delay',
-    milestones: '15 structural slab cycles with aluminium system formwork (target 10-day floor cycle).',
-    mitigation_notes: 'Adding second tower crane to expedite rebar and formwork vertical lifting.'
-  },
-  {
-    id: 3,
-    project_id: 1,
-    project_code: 'PRJ-2026-001',
-    project_name: 'Metro Commercial Tower Block A',
-    stage_code: 'STG-03',
-    stage_name: 'Stage 3: Building Envelope & Low-E Facade Glazing',
-    baseline_start: '2026-11-01',
-    baseline_end: '2027-04-30',
-    baseline_duration: 180,
-    actual_start: '2026-11-15',
-    actual_end: '2027-05-15',
-    planned_progress_pct: 0,
-    actual_progress_pct: 0,
-    schedule_variance_days: 0,
-    status: 'Not Started',
-    milestones: 'Unitized curtain wall installation across all commercial floor perimeter panels.',
-    mitigation_notes: 'Pre-fabrication of glass panels underway in factory off-site.'
-  },
-  {
-    id: 4,
-    project_id: 2,
-    project_code: 'PRJ-2026-002',
-    project_name: 'Highway Expansion Package 3',
-    stage_code: 'STG-HWY-01',
-    stage_name: 'Stage 1: Earthwork Formation & Granular Sub-Base (GSB)',
-    baseline_start: '2026-06-15',
-    baseline_end: '2026-11-30',
-    baseline_duration: 168,
-    actual_start: '2026-06-15',
-    actual_end: '2026-11-20',
-    planned_progress_pct: 75,
-    actual_progress_pct: 80,
-    schedule_variance_days: -10,
-    status: 'Ahead of Schedule',
-    milestones: 'Compacted subgrade preparation and 200mm GSB layer across 18.5 KM dual carriageway.',
-    mitigation_notes: 'Operating 3 motor grader spreading teams simultaneously.'
-  },
-];
 
 const EMPTY_FORM = {
   project_id: '',
@@ -119,7 +41,7 @@ const EMPTY_FORM = {
 
 export function WorkProgrammePage() {
   const [projects, setProjects] = useState([]);
-  const [packages, setPackages] = useState(PROGRAMME_PACKAGES);
+  const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters
