@@ -66,6 +66,50 @@ export function LabourCostsPage() {
     }).catch(() => setProjects([]));
   }, []);
 
+  // Load Costs from LocalStorage (Mock Backend)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('mock_finance_labour_costs');
+      if (saved) {
+        setCosts(JSON.parse(saved));
+      } else {
+        // Default mock data if empty
+        setCosts([
+          {
+            id: 1,
+            project_id: 1,
+            wbs_code: 'WBS-1.1',
+            trade_name: 'Testing the labour cost',
+            category_name: 'RCC Concrete Squad',
+            contractor_name: 'Direct Roll',
+            mandays_spent: 50,
+            regular_hours: 400,
+            ot_hours: 20,
+            output_qty: 100,
+            uom: 'cum',
+            budgeted_cost: 60000,
+            actual_cost: 55000,
+            variance_amount: 5000,
+            variance_pct: 8.3,
+            unit_rate_actual: 550,
+            unit_rate_budget: 600,
+            status: 'Under Budget',
+            notes: '',
+          }
+        ]);
+      }
+    } catch (e) {
+      console.error('Failed to load mock finance labour costs', e);
+    }
+  }, []);
+
+  // Save Costs to LocalStorage
+  useEffect(() => {
+    if (costs.length > 0) {
+      localStorage.setItem('mock_finance_labour_costs', JSON.stringify(costs));
+    }
+  }, [costs]);
+
   // Form Handlers
   const handleOpenAdd = () => {
     const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
