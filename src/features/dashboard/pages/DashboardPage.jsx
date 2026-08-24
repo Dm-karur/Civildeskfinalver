@@ -15,6 +15,7 @@ import { CostOverviewCard } from '../components/CostOverviewCard';
 import { RecentActivityCard } from '../components/RecentActivityCard';
 import { TopProjectsCard } from '../components/TopProjectsCard';
 import { dashboardService } from '../services/dashboard.service';
+import { projectsApi } from '../../../api/apiservice';
 
 export function DashboardPage() {
   const [data, setData] = useState(null);
@@ -26,7 +27,20 @@ export function DashboardPage() {
     try {
       setLoading(true);
       setError(null);
-      const result = await dashboardService.getSummary();
+      const [result, projectsRes] = await Promise.all([
+        dashboardService.getSummary(),
+        projectsApi.list()
+      ]);
+
+      const projectsList = projectsRes?.data?.projects ?? projectsRes?.data ?? projectsRes ?? [];
+      const totalProjectBudget = Array.isArray(projectsList)
+        ? projectsList.reduce((sum, p) => sum + Number(p.approved_budget || p.contract_value || 0), 0)
+        : 0;
+
+      if (result?.kpis?.totalBudget) {
+        result.kpis.totalBudget.value = `₹${totalProjectBudget.toLocaleString('en-IN')}`;
+      }
+
       setData(result);
       if (showToast) {
         toast.success("Dashboard refreshed successfully.");
@@ -60,10 +74,10 @@ export function DashboardPage() {
     return (
       <PageContainer>
         <PageHeader title="Dashboard" description="Overview of your projects and key performance." actions={renderHeaderActions()} />
-        <ErrorState 
-          title="Unable to load dashboard" 
-          description="We couldn't retrieve the latest project information." 
-          action={<Button onClick={handleRefresh}>Try Again</Button>} 
+        <ErrorState
+          title="Unable to load dashboard"
+          description="We couldn't retrieve the latest project information."
+          action={<Button onClick={handleRefresh}>Try Again</Button>}
         />
       </PageContainer>
     );
@@ -102,10 +116,10 @@ export function DashboardPage() {
     return (
       <PageContainer>
         <PageHeader title="Dashboard" description="Overview of your projects and key performance." actions={renderHeaderActions()} />
-        <EmptyState 
-          title="No Projects Yet" 
-          description="Create your first project to start tracking construction operations and performance." 
-          action={<Button variant="primary">Create Project</Button>} 
+        <EmptyState
+          title="No Projects Yet"
+          description="Create your first project to start tracking construction operations and performance."
+          action={<Button variant="primary">Create Project</Button>}
         />
       </PageContainer>
     );
@@ -115,10 +129,10 @@ export function DashboardPage() {
 
   return (
     <PageContainer>
-      <PageHeader 
-        title="Dashboard" 
-        description="Overview of your projects and key performance." 
-        actions={renderHeaderActions()} 
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your projects and key performance."
+        actions={renderHeaderActions()}
       />
 
       <div className="flex flex-col gap-6">

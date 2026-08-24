@@ -16,7 +16,7 @@ export function KpiCard({
 }) {
   const isPositive = trendDirection === 'up';
   const isNegative = trendDirection === 'down';
-  
+
   const iconBgClasses = {
     primary: 'bg-primary/10 text-primary',
     success: 'bg-success/10 text-success',
@@ -28,32 +28,32 @@ export function KpiCard({
 
   if (loading) {
     return (
-      <Card className={cn("animate-pulse flex items-center gap-3 min-h-[100px] p-4", className)}>
+      <Card className={cn("animate-pulse flex items-center gap-2.5 px-3 py-2", className)}>
         <div className="w-9 h-9 rounded-lg bg-surface-muted flex-shrink-0"></div>
         <div className="flex-1 min-w-0">
-          <div className="h-3 bg-surface-muted rounded w-1/2 mb-2"></div>
-          <div className="h-6 bg-surface-muted rounded w-1/3 mb-2"></div>
-          <div className="h-3 bg-surface-muted rounded w-2/3"></div>
+          <div className="h-2.5 bg-surface-muted rounded w-1/2 mb-1.5"></div>
+          <div className="h-5 bg-surface-muted rounded w-1/3 mb-1.5"></div>
+          <div className="h-2.5 bg-surface-muted rounded w-2/3"></div>
         </div>
       </Card>
     );
   }
 
   return (
-    <Card className={cn("flex flex-row items-center gap-3 min-h-[100px] p-4", className)}>
-      <div className={cn("w-10 h-10 rounded-lg flex flex-shrink-0 items-center justify-center [&>svg]:w-5 [&>svg]:h-5", iconBgClasses[status])}>
+    <Card className={cn("flex flex-row items-center gap-2.5 px-3 py-2", className)}>
+      <div className={cn("w-9 h-9 rounded-lg flex flex-shrink-0 items-center justify-center [&>svg]:w-4 [&>svg]:h-4", iconBgClasses[status])}>
         {icon}
       </div>
-      
+
       <div className="flex-1 min-w-0 flex flex-col justify-center">
         {/* Removed truncate, reduced font size to 11px with tight line height */}
         <div className="text-[11px] font-medium text-text-secondary leading-tight pr-1 break-words">{label}</div>
-        <div className="text-[20px] font-bold text-text-primary leading-tight mt-0.5">{value}</div>
-        
+        <div className="text-[15px] font-bold text-text-primary leading-tight mt-0.5">{value}</div>
+
         {/* Flex layout to keep description and trend horizontally aligned even when tight */}
-        <div className="flex items-center justify-between gap-1 mt-1 min-w-0">
+        <div className="flex items-start justify-between gap-1 mt-1 min-w-0">
           {description && (
-            <span className="text-[11px] text-text-secondary truncate block">
+            <span className="text-[10px] text-text-secondary leading-tight line-clamp-2">
               {description}
             </span>
           )}

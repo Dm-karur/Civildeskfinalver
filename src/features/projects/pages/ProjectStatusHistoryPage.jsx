@@ -51,13 +51,13 @@ export function ProjectStatusHistoryPage() {
       const pList = pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []);
       const statuses = mRes?.data?.project_statuses ?? [];
       setProjects(Array.isArray(pList) ? pList : []);
-      setProjectStatuses(Array.isArray(statuses) ? statuses : [
-        { id: 1, status_name: 'Draft (Tender)' },
-        { id: 2, status_name: 'Planning & Estimate' },
-        { id: 3, status_name: 'In Progress (Active)' },
-        { id: 4, status_name: 'On Hold (Pending Clearance)' },
-        { id: 5, status_name: 'Completed & Handover' },
-        { id: 6, status_name: 'Closed / Archived' },
+      setProjectStatuses(Array.isArray(statuses) && statuses.length > 0 ? statuses : [
+        { id: 1, name: 'Draft (Tender)' },
+        { id: 2, name: 'Planning & Estimate' },
+        { id: 3, name: 'In Progress (Active)' },
+        { id: 4, name: 'On Hold (Pending Clearance)' },
+        { id: 5, name: 'Completed & Handover' },
+        { id: 6, name: 'Closed / Archived' },
       ]);
     });
   }, []);
@@ -109,7 +109,7 @@ export function ProjectStatusHistoryPage() {
         project_code: targetProj?.project_code || 'PRJ-2026-001',
         project_name: targetProj?.project_name || 'Civil Project',
         from_status_name: targetProj?.project_status_name || targetProj?.status_name || 'Previous Status',
-        to_status_name: targetStatus?.status_name || 'In Progress (Active)',
+        to_status_name: targetStatus?.name || targetStatus?.status_name || 'In Progress (Active)',
         change_reason: form.change_reason,
         changed_by_name: 'Admin Civilpro',
         changed_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
@@ -190,13 +190,19 @@ export function ProjectStatusHistoryPage() {
           />
           <KpiCard
             label="Active / In Progress"
-            value={projects.filter(p => (p.project_status_name || '').toLowerCase().includes('progress') || (p.project_status_name || '').toLowerCase().includes('active')).length || 1}
+            value={projects.filter(p => {
+              const st = String(p.status_name || p.project_status_name || p.status || '').toLowerCase();
+              return st.includes('progress') || st.includes('active') || st === '3';
+            }).length}
             status="success"
             icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
             label="Projects On Hold"
-            value={projects.filter(p => (p.project_status_name || '').toLowerCase().includes('hold')).length || 0}
+            value={projects.filter(p => {
+              const st = String(p.status_name || p.project_status_name || p.status || '').toLowerCase();
+              return st.includes('hold') || st === '4';
+            }).length}
             status="warning"
             icon={<AlertTriangle className="w-4 h-4 text-amber-500" />}
           />
@@ -472,7 +478,7 @@ export function ProjectStatusHistoryPage() {
 
                 <FormField label="New Target Status" required>
                   <Select
-                    options={projectStatuses.map(s => ({ value: String(s.id), label: s.status_name }))}
+                    options={projectStatuses.map(s => ({ value: String(s.id), label: s.name || s.status_name }))}
                     value={form.to_status_id}
                     onChange={(v) => setForm(f => ({ ...f, to_status_id: v }))}
                   />

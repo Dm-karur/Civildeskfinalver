@@ -224,6 +224,32 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
 
   useEffect(() => {
     let active = true;
+
+    // Hide submenus that are not fully supported by the backend yet
+    const HIDDEN_PATHS = [
+      '/dashboards/projects',
+      '/dashboards/sites',
+      '/dashboards/finance',
+      '/alerts',
+      '/notifications',
+      '/projects/milestones'
+    ];
+
+    const filterHidden = (items) => {
+      return items
+        .map(item => ({
+          ...item,
+          children: item.children ? filterHidden(item.children) : []
+        }))
+        .filter(item => {
+          // Hide specific submenus by checking route_path
+          if (item.route_path && HIDDEN_PATHS.some(path => item.route_path.includes(path))) {
+            return false;
+          }
+          return true;
+        });
+    };
+
     navigationApi.list()
       .then((items) => {
         if (active) {
@@ -265,7 +291,9 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
               return newItem;
             });
           };
-          setNavigation(filterNavigation(items));
+          
+          const renamedItems = filterNavigation(items);
+          setNavigation(filterHidden(renamedItems));
         }
       })
       .catch((requestError) => {
