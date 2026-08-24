@@ -62,40 +62,63 @@ export function DailyProgressReportsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects & API Data safely
+  // Load Projects & API Data safely with LocalStorage Mock Persistence
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      projectsApi.list().catch(() => ({ data: [] })),
-      dailyReportsApi?.list ? dailyReportsApi.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([projRes, dprRes]) => {
+    projectsApi.list().then(projRes => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
-      const rList = dprRes?.data?.daily_site_reports ?? dprRes?.data?.reports ?? dprRes?.data?.data ?? [];
-      if (Array.isArray(rList) && rList.length > 0) {
-        const normalized = rList.map((r, idx) => ({
-          id: r.id || idx + 1,
-          project_id: r.project_id || 1,
-          project_code: r.project_code || 'PRJ-2026-001',
-          project_name: r.project_name || 'Civil Project',
-          site_name: r.site_name || 'Site Yard',
-          zone_name: r.zone_name || 'Active Zone',
-          report_date: r.report_date || new Date().toISOString().split('T')[0],
-          weather: r.weather || 'Sunny & Clear (32°C)',
-          overall_progress: Number(r.overall_progress || 60),
-          total_manpower: Number(r.total_manpower || 40),
-          total_equipment: Number(r.total_equipment || 5),
-          material_consumption_summary: r.material_consumption_summary || 'Standard Batching',
-          issues_count: Number(r.issues_count || 0),
-          status_name: r.status_name || 'Submitted for Review',
-          submitted_by: r.submitted_by || 'Site Engineer',
-          approved_by: r.approved_by || 'Project Manager',
-          work_summary: r.work_summary || r.notes || '',
-        }));
-        setReports(normalized);
+    }).catch(() => setProjects([]));
+
+    try {
+      const saved = localStorage.getItem('mock_daily_progress_reports');
+      if (saved) {
+        setReports(JSON.parse(saved));
+        setLoading(false);
+      } else {
+        // Fallback to API load if local storage is empty
+        if (dailyReportsApi?.list) {
+          dailyReportsApi.list().then(dprRes => {
+            const rList = dprRes?.data?.daily_site_reports ?? dprRes?.data?.reports ?? dprRes?.data?.data ?? [];
+            if (Array.isArray(rList) && rList.length > 0) {
+              const normalized = rList.map((r, idx) => ({
+                id: r.id || idx + 1,
+                project_id: r.project_id || 1,
+                project_code: r.project_code || 'PRJ-2026-001',
+                project_name: r.project_name || 'Civil Project',
+                site_name: r.site_name || 'Site Yard',
+                zone_name: r.zone_name || 'Active Zone',
+                report_date: r.report_date || new Date().toISOString().split('T')[0],
+                weather: r.weather || 'Sunny & Clear (32°C)',
+                overall_progress: Number(r.overall_progress || 60),
+                total_manpower: Number(r.total_manpower || 40),
+                total_equipment: Number(r.total_equipment || 5),
+                material_consumption_summary: r.material_consumption_summary || 'Standard Batching',
+                issues_count: Number(r.issues_count || 0),
+                status_name: r.status_name || 'Submitted for Review',
+                submitted_by: r.submitted_by || 'Site Engineer',
+                approved_by: r.approved_by || 'Project Manager',
+                work_summary: r.work_summary || r.notes || '',
+              }));
+              setReports(normalized);
+            }
+          }).catch(() => {}).finally(() => setLoading(false));
+        } else {
+          setLoading(false);
+        }
       }
-    }).catch(() => {}).finally(() => setLoading(false));
+    } catch (e) {
+      console.error('Failed to load mock daily progress reports', e);
+      setLoading(false);
+    }
   }, []);
+
+  // Save Reports to LocalStorage
+  useEffect(() => {
+    if (reports.length > 0) {
+      localStorage.setItem('mock_daily_progress_reports', JSON.stringify(reports));
+    }
+  }, [reports]);
 
   // Form Handlers
   const handleOpenAdd = () => {
