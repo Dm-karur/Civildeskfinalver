@@ -62,19 +62,42 @@ export function ProjectStatusHistoryPage() {
     });
   }, []);
 
-  // Fetch status history for selected project
+  // Fetch status history
   useEffect(() => {
+    const formatLogs = (logs) => {
+      return logs.map(log => {
+        const proj = projects.find(p => String(p.id) === String(log.project_id));
+        return {
+          ...log,
+          project_name: proj?.project_name || log.project_name || 'Unknown Project',
+          project_code: proj?.project_code || log.project_code || 'Unknown Code',
+        };
+      });
+    };
+
     if (selectedProjectId !== 'all') {
       projectsApi.statusHistory(Number(selectedProjectId))
         .then(res => {
-          const list = res?.data?.status_logs ?? res?.data?.data ?? [];
-          if (Array.isArray(list) && list.length > 0) {
-            setStatusLogs(list);
-          }
+          const list = res?.data?.status_history ?? res?.data?.status_logs ?? res?.data?.data ?? [];
+          if (Array.isArray(list)) setStatusLogs(formatLogs(list));
         })
         .catch(() => {});
+    } else if (projects.length > 0) {
+      // Fetch for all projects (Consolidated)
+      const promises = projects.map(p => projectsApi.statusHistory(Number(p.id)));
+      Promise.allSettled(promises).then(results => {
+        let allLogs = [];
+        results.forEach(res => {
+          if (res.status === 'fulfilled') {
+            const list = res.value?.data?.status_history ?? res.value?.data?.status_logs ?? [];
+            if (Array.isArray(list)) allLogs = [...allLogs, ...list];
+          }
+        });
+        allLogs.sort((a, b) => new Date(b.changed_at) - new Date(a.changed_at));
+        setStatusLogs(formatLogs(allLogs));
+      });
     }
-  }, [selectedProjectId]);
+  }, [selectedProjectId, projects]);
 
   const handleOpenChangeStatus = () => {
     const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
@@ -119,7 +142,7 @@ export function ProjectStatusHistoryPage() {
       try {
         await projectsApi.changeStatus(Number(form.project_id), {
           project_status_id: Number(form.to_status_id),
-          reason: form.change_reason
+          change_reason: form.change_reason
         });
       } catch {
         // Fallback to local state update
@@ -164,6 +187,18 @@ export function ProjectStatusHistoryPage() {
     if (s.includes('hold') || s.includes('pending')) return 'warning';
     if (s.includes('complete') || s.includes('closed')) return 'info';
     return 'neutral';
+  };
+
+  const formatLocalTime = (timestamp) => {
+    if (!timestamp) return '—';
+    // Append 'Z' to treat backend time as UTC if it doesn't have a timezone indicator
+    const dateStr = timestamp.endsWith('Z') ? timestamp : `${timestamp.replace(' ', 'T')}Z`;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return timestamp;
+    return d.toLocaleString('en-IN', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    });
   };
 
   const breadcrumbs = [
@@ -297,7 +332,7 @@ export function ProjectStatusHistoryPage() {
                         {(page - 1) * perPage + idx + 1}
                       </td>
                       <td className="px-3 py-2 font-mono text-[11px] text-text-secondary whitespace-nowrap">
-                        {log.changed_at || '—'}
+                        {formatLocalTime(log.changed_at)}
                       </td>
                       <td className="px-3 py-2 hidden md:table-cell">
                         <div className="flex flex-col min-w-0">
@@ -359,7 +394,7 @@ export function ProjectStatusHistoryPage() {
             <div key={log.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="text-[10px] font-mono text-text-muted">{log.changed_at}</span>
+                  <span className="text-[10px] font-mono text-text-muted">{formatLocalTime(log.changed_at)}</span>
                   <h4 className="font-semibold text-text-primary text-[13px]">{log.project_name}</h4>
                 </div>
                 <Badge
@@ -437,7 +472,7 @@ export function ProjectStatusHistoryPage() {
               <div className="border border-border rounded-lg p-3.5 space-y-2">
                 <div>
                   <span className="text-text-muted text-[10px] uppercase font-bold block">Timestamp & Author</span>
-                  <span className="font-mono text-text-primary">{selectedLog.changed_at} by {selectedLog.changed_by_name}</span>
+                  <span className="font-mono text-text-primary">{formatLocalTime(selectedLog.changed_at)} by {selectedLog.changed_by_first_name ? `${selectedLog.changed_by_first_name} ${selectedLog.changed_by_last_name || ''}` : selectedLog.changed_by_name || 'Admin'}</span>
                 </div>
                 <div className="pt-2 border-t border-border">
                   <span className="text-text-muted text-[10px] uppercase font-bold block mb-1">Reason / Justification</span>

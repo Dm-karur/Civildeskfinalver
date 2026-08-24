@@ -311,7 +311,7 @@ export function SiteTeamPage() {
               <Select
                 options={[
                   { value: 'all', label: 'All Roles' },
-                  ...teamRoles.map(r => ({ value: String(r.id), label: r.role_name }))
+                  ...teamRoles.map(r => ({ value: String(r.id), label: r.name || r.role_name }))
                 ]}
                 value={roleFilter}
                 onChange={setRoleFilter}
@@ -590,7 +590,7 @@ export function SiteTeamPage() {
 
                 <FormField label="Site Role" required error={errors.team_role_id}>
                   <Select
-                    options={teamRoles.map(r => ({ value: String(r.id), label: r.role_name }))}
+                    options={teamRoles.map(r => ({ value: String(r.id), label: r.name || r.role_name }))}
                     value={form.team_role_id}
                     onChange={(v) => handleFormChange('team_role_id', v)}
                   />

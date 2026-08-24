@@ -232,7 +232,12 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
       '/dashboards/finance',
       '/alerts',
       '/notifications',
-      '/projects/milestones'
+      '/projects/milestones',
+      '/projects/documents',
+      '/sites/instructions',
+      '/sites/documents',
+      '/planning',
+      '/procurement'
     ];
 
     const filterHidden = (items) => {
@@ -244,6 +249,10 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
         .filter(item => {
           // Hide specific submenus by checking route_path
           if (item.route_path && HIDDEN_PATHS.some(path => item.route_path.includes(path))) {
+            return false;
+          }
+          // Hide specific parent menus by name
+          if (item.item_name && ['Project Planning', 'Procurement'].includes(item.item_name.trim())) {
             return false;
           }
           return true;
