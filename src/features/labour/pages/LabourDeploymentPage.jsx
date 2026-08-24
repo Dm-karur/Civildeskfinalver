@@ -23,7 +23,7 @@ import { toast } from '../../../components/composite/Toast';
 import { labourApi, projectsApi, sitesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-const extract = (res) => res?.data?.assignments ?? res?.data?.data ?? [];
+const extract = (res) => res?.data?.labour_assignments ?? res?.data?.assignments ?? res?.data?.data ?? [];
 
 
 
@@ -34,12 +34,15 @@ const EMPTY_FORM = {
   category_name: 'General Helper',
   contractor_name: 'Direct Company Roll',
   project_id: '',
+  site_id: '',
   site_name: '',
   shift_name: 'General Day Shift (8 AM - 5 PM)',
   shift_type: 'Day',
   assigned_from: '',
   assigned_until: '',
   agreed_wage_rate: '850',
+  wage_basis_id: '',
+  status_id: '',
   status_name: 'Active On Site',
   supervisor_name: '',
   notes: '',
@@ -50,6 +53,8 @@ export function LabourDeploymentPage() {
   const [items, setItems] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [masters, setMasters] = useState({});
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -71,23 +76,39 @@ export function LabourDeploymentPage() {
   const [saving, setSaving] = useState(false);
 
   // Load API data
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     setLoading(true);
     Promise.all([
       labourApi.assignments.list().catch(() => ({ data: [] })),
       labourApi.workers.list().catch(() => ({ data: [] })),
       projectsApi.list().catch(() => ({ data: [] })),
-    ]).then(([assignRes, workerRes, projRes]) => {
+      sitesApi.list().catch(() => ({ data: [] })),
+      labourApi.masters().catch(() => ({ data: {} })),
+    ]).then(([assignRes, workerRes, projRes, siteRes, masterRes]) => {
       const assignList = extract(assignRes);
       if (Array.isArray(assignList) && assignList.length > 0) {
         setItems(assignList);
+      } else if (Array.isArray(assignList) && assignList.length === 0) {
+        setItems([]);
       }
+      
       const wList = workerRes?.data?.labour_workers ?? workerRes?.data?.data ?? [];
       setWorkers(Array.isArray(wList) ? wList : []);
+      
       const pList = projRes?.data?.projects ?? projRes?.data?.data ?? [];
       setProjects(Array.isArray(pList) ? pList : []);
+      
+      const sList = siteRes?.data?.sites ?? siteRes?.data?.data ?? [];
+      setSites(Array.isArray(sList) ? sList : []);
+      
+      const mData = masterRes?.data?.masters ?? masterRes?.data ?? {};
+      setMasters(mData);
     }).finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Form Handlers
   const openAdd = () => {
@@ -114,15 +135,18 @@ export function LabourDeploymentPage() {
       category_name: item.category_name || 'General Helper',
       contractor_name: item.contractor_name || 'Direct Company Roll',
       project_id: String(item.project_id || '1'),
+      site_id: String(item.site_id || ''),
       site_name: item.site_name || '',
       shift_name: item.shift_name || 'General Day Shift (8 AM - 5 PM)',
       shift_type: item.shift_type || 'Day',
       assigned_from: item.assigned_from || '',
       assigned_until: item.assigned_until || '',
       agreed_wage_rate: String(item.agreed_wage_rate || '850'),
+      wage_basis_id: String(item.wage_basis_id || ''),
+      status_id: String(item.status_id || ''),
       status_name: item.status_name || 'Active On Site',
       supervisor_name: item.supervisor_name || '',
-      notes: item.notes || '',
+      notes: item.notes || item.remarks || '',
     });
     setErrors({});
     setEditItem(item);
@@ -149,8 +173,10 @@ export function LabourDeploymentPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.worker_id && !form.worker_name) errs.worker_id = 'Select a worker';
-    if (!form.site_name.trim()) errs.site_name = 'Site / Location is required';
+    if (!form.worker_id) errs.worker_id = 'Select a worker';
+    if (!form.project_id) errs.project_id = 'Project is required';
+    if (!form.site_id) errs.site_id = 'Site is required';
+    if (!form.assigned_from) errs.assigned_from = 'Start date is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -159,52 +185,53 @@ export function LabourDeploymentPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
+      const selectedWorker = workers.find(w => String(w.id) === String(form.worker_id));
+      const activeStatus = (masters['assignment-statuses'] || []).find(s => (s.status_name || '').toLowerCase().includes('active')) || (masters['assignment-statuses'] || [])[0];
+      const dailyBasis = (masters['assignment-wage-bases'] || []).find(w => (w.wage_basis_name || '').toLowerCase().includes('daily')) || (masters['assignment-wage-bases'] || [])[0];
 
-      const newAssignment = {
-        id: editItem?.id || Date.now(),
-        worker_id: Number(form.worker_id || Date.now()),
-        worker_code: form.worker_code || 'W-000',
-        worker_name: form.worker_name || 'Assigned Worker',
-        category_name: form.category_name,
-        contractor_name: form.contractor_name,
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        site_name: form.site_name,
-        shift_name: form.shift_name,
-        shift_type: form.shift_name.includes('Night') ? 'Night' : 'Day',
+      const payload = {
+        project_id: Number(form.project_id),
+        site_id: Number(form.site_id),
+        worker_id: Number(form.worker_id),
+        labour_category_id: Number(selectedWorker?.labour_category_id || selectedWorker?.category_id || 1),
         assigned_from: form.assigned_from,
-        assigned_until: form.assigned_until,
-        agreed_wage_rate: Number(form.agreed_wage_rate || 850),
-        status_name: form.status_name,
-        attendance_status: 'Present',
-        supervisor_name: form.supervisor_name || 'Site Incharge',
-        notes: form.notes,
+        assigned_until: form.assigned_until || null,
+        wage_basis_id: Number(form.wage_basis_id || selectedWorker?.wage_basis_id || dailyBasis?.id || 1),
+        agreed_wage_rate: Number(form.agreed_wage_rate || selectedWorker?.base_wage_rate || 850),
+        shift_name: form.shift_name,
+        status_id: Number(form.status_id || activeStatus?.id || 1),
+        remarks: form.notes || '',
       };
 
       if (editItem?.id) {
-        setItems(prev => prev.map(i => i.id === editItem.id ? newAssignment : i));
+        await labourApi.assignments.update(editItem.id, payload);
         toast.success('Labour deployment updated.');
       } else {
-        setItems(prev => [newAssignment, ...prev]);
+        await labourApi.assignments.create(payload);
         toast.success('Worker allocated to site.');
       }
 
       setIsAddOpen(false);
       setEditItem(null);
-    } catch {
-      toast.error('Failed to save Deployment.');
+      fetchData(); // Refresh list from backend
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save Deployment.');
+      if (err?.errors) setErrors(err.errors);
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setItems(prev => prev.filter(i => i.id !== deleteItem.id));
-    toast.success('Deployment assignment released.');
-    setDeleteItem(null);
+    try {
+      await labourApi.assignments.remove(deleteItem.id);
+      toast.success('Deployment assignment released.');
+      setDeleteItem(null);
+      fetchData(); // Refresh list from backend
+    } catch (err) {
+      toast.error(err?.message || 'Failed to release assignment.');
+    }
   };
 
   const handlePrint = () => {
@@ -671,11 +698,16 @@ export function LabourDeploymentPage() {
                   />
                 </FormField>
 
-                <FormField label="Site Location / Grid Zone" required className="md:col-span-2" error={errors.site_name}>
-                  <Input
-                    value={form.site_name}
-                    onChange={(e) => handleFormChange('site_name', e.target.value)}
-                    placeholder="e.g. Tower A Core - Level 2 / Basement Sump"
+                <FormField label="Site Location / Grid Zone" required className="md:col-span-2" error={errors.site_id}>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Site Location' },
+                      ...sites
+                        .filter(s => String(s.project_id) === String(form.project_id))
+                        .map(s => ({ value: String(s.id), label: `${s.site_code || ''} ${s.site_name}` }))
+                    ]}
+                    value={form.site_id}
+                    onChange={(v) => handleFormChange('site_id', v)}
                   />
                 </FormField>
               </EntityEditModal.Grid>

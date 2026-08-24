@@ -226,7 +226,47 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
     let active = true;
     navigationApi.list()
       .then((items) => {
-        if (active) setNavigation(items);
+        if (active) {
+          const filterNavigation = (navItems) => {
+            return navItems.map((item) => {
+              let newItem = { ...item };
+              if (newItem.children) {
+                newItem.children = filterNavigation(newItem.children);
+              }
+              
+              if (
+                newItem.item_code === 'LABOUR' ||
+                newItem.item_code === 'LABOUR_ATTENDANCE' ||
+                (newItem.item_name && ['labour', 'labour & attendance'].includes(newItem.item_name.toLowerCase().trim()))
+              ) {
+                const desiredMenu = [
+                  { original: 'Labour Register', newName: 'Labour master' },
+                  { original: 'Labour Deployment', newName: 'Labour allocation' },
+                  { original: 'Daily Attendance', newName: 'Daily attendance' },
+                  { original: 'Manpower Cost', newName: 'Labour cost' }
+                ];
+                
+                const filteredChildren = [];
+                
+                // Map the existing backend items to the new names
+                desiredMenu.forEach(mapping => {
+                  const found = (newItem.children || []).find(c => c.item_name && c.item_name.trim().toLowerCase() === mapping.original.toLowerCase());
+                  if (found) {
+                    filteredChildren.push({ ...found, item_name: mapping.newName, children: [] });
+                  } else {
+                    // Fallback in case backend already renamed them
+                    const alreadyRenamed = (newItem.children || []).find(c => c.item_name && c.item_name.trim().toLowerCase() === mapping.newName.toLowerCase());
+                    if (alreadyRenamed) filteredChildren.push({ ...alreadyRenamed, children: [] });
+                  }
+                });
+                
+                newItem.children = filteredChildren;
+              }
+              return newItem;
+            });
+          };
+          setNavigation(filterNavigation(items));
+        }
       })
       .catch((requestError) => {
         if (active) setError(requestError.message || 'Navigation could not be loaded.');

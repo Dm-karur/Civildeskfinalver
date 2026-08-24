@@ -47,9 +47,9 @@ export function ProjectsListPage() {
             const b = Number(p.contract_value || p.estimated_cost || p.budget || 0);
             if (!isNaN(b)) budgetSum += b;
 
-            const st = String(p.status_name || p.status || '').toLowerCase();
-            if (st.includes('progress') || st === '1') inProg++;
-            else if (st.includes('hold') || st === '2') hold++;
+            const st = String(p.project_status_name || p.status_name || p.status || '').toLowerCase();
+            if (st.includes('progress') || st.includes('active') || st === '1' || st === '2') inProg++;
+            else if (st.includes('hold') || st.includes('pending') || st === '3') hold++;
             else notStart++;
           });
 

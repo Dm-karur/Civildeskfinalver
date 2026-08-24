@@ -62,10 +62,10 @@ export function LabourCategoriesPage() {
       const catList = resCategories?.data?.labour_categories ?? resCategories?.labour_categories ?? (Array.isArray(resCategories) ? resCategories : []);
       setCategories(Array.isArray(catList) ? catList : []);
 
-      const skillList = resMasters?.data?.['category-skill-levels'] ?? resMasters?.['category-skill-levels'] ?? [];
+      const skillList = resMasters?.data?.masters?.['category-skill-levels'] ?? resMasters?.data?.['category-skill-levels'] ?? resMasters?.['category-skill-levels'] ?? [];
       setSkillLevels(Array.isArray(skillList) ? skillList : []);
 
-      const wageList = resMasters?.data?.['category-wage-bases'] ?? resMasters?.['category-wage-bases'] ?? [];
+      const wageList = resMasters?.data?.masters?.['category-wage-bases'] ?? resMasters?.data?.['category-wage-bases'] ?? resMasters?.['category-wage-bases'] ?? [];
       setWageBases(Array.isArray(wageList) ? wageList : []);
     } catch (err) {
       toast.error('Failed to load labour category data.');
@@ -383,29 +383,23 @@ export function LabourCategoriesPage() {
                 <FormField label="Skill Level" required error={errors.skill_level_id}>
                   <Select
                     value={form.skill_level_id}
-                    onChange={(e) => handleFormChange('skill_level_id', e.target.value)}
-                  >
-                    <option value="">Select skill level</option>
-                    {skillLevels.map((sl) => (
-                      <option key={sl.id} value={sl.id}>
-                        {sl.skill_level_name || sl.name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(value) => handleFormChange('skill_level_id', value)}
+                    options={[
+                      { value: '', label: 'Select skill level' },
+                      ...skillLevels.map((sl) => ({ value: String(sl.id), label: sl.skill_level_name || sl.level_name || sl.name || sl.id }))
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Wage Basis" required error={errors.wage_basis_id}>
                   <Select
                     value={form.wage_basis_id}
-                    onChange={(e) => handleFormChange('wage_basis_id', e.target.value)}
-                  >
-                    <option value="">Select wage basis</option>
-                    {wageBases.map((wb) => (
-                      <option key={wb.id} value={wb.id}>
-                        {wb.wage_basis_name || wb.name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(value) => handleFormChange('wage_basis_id', value)}
+                    options={[
+                      { value: '', label: 'Select wage basis' },
+                      ...wageBases.map((wb) => ({ value: String(wb.id), label: wb.wage_basis_name || wb.basis_name || wb.name || wb.id }))
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Default Wage Rate (₹)" error={errors.default_wage_rate}>
@@ -443,11 +437,12 @@ export function LabourCategoriesPage() {
                 <FormField label="Active Status" error={errors.is_active}>
                   <Select
                     value={form.is_active}
-                    onChange={(e) => handleFormChange('is_active', e.target.value)}
-                  >
-                    <option value="1">Active</option>
-                    <option value="0">Inactive</option>
-                  </Select>
+                    onChange={(value) => handleFormChange('is_active', value)}
+                    options={[
+                      { value: '1', label: 'Active' },
+                      { value: '0', label: 'Inactive' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Description" className="md:col-span-2" error={errors.description}>

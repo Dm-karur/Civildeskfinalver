@@ -19,6 +19,7 @@ import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { Badge } from '../../../components/ui/Badge';
 import { toast } from '../../../components/composite/Toast';
+import { useNavigate } from 'react-router-dom';
 import { labourApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
@@ -45,6 +46,7 @@ const statusVariant = (s) => {
 
 export function LabourRegisterPage() {
   const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -183,6 +185,65 @@ export function LabourRegisterPage() {
       />
 
       <div className="flex flex-col gap-3 sm:gap-4 w-full">
+        {/* Quick Actions Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
+          <div
+            className="bg-surface border border-border rounded-lg p-3 shadow-xs cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center text-center gap-2"
+            onClick={openAdd}
+          >
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+              <Plus className="w-4 h-4" />
+            </div>
+            <span className="text-[12px] font-semibold text-text-primary">New Employee</span>
+          </div>
+          
+          <div
+            className="bg-surface border border-border rounded-lg p-3 shadow-xs cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center text-center gap-2"
+            onClick={() => navigate('/masters/labour-categories')}
+          >
+            <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+              <Plus className="w-4 h-4" />
+            </div>
+            <span className="text-[12px] font-semibold text-text-primary">Add Category</span>
+          </div>
+
+          <div
+            className="bg-surface border border-border rounded-lg p-3 shadow-xs cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center text-center gap-2"
+            onClick={() => navigate('/masters/labour-categories')}
+          >
+            <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600">
+              <Edit className="w-4 h-4" />
+            </div>
+            <span className="text-[12px] font-semibold text-text-primary">Edit Category</span>
+          </div>
+
+          <div
+            className="bg-surface border border-border rounded-lg p-3 shadow-xs cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center text-center gap-2"
+            onClick={() => {
+              if (!hasPermission('superadmin') && !hasPermission('labour.delete')) {
+                toast.error('Only Superadmin can remove labour categories.');
+                return;
+              }
+              navigate('/masters/labour-categories');
+            }}
+          >
+            <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-600">
+              <Trash2 className="w-4 h-4" />
+            </div>
+            <span className="text-[12px] font-semibold text-text-primary">Remove Category</span>
+          </div>
+
+          <div
+            className="bg-surface border border-border rounded-lg p-3 shadow-xs cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center text-center gap-2"
+            onClick={() => navigate('/masters/wage-rates')}
+          >
+            <div className="w-8 h-8 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-600">
+              <IndianRupee className="w-4 h-4" />
+            </div>
+            <span className="text-[12px] font-semibold text-text-primary">Change Salary</span>
+          </div>
+        </div>
+
         {/* KPIs Summary Ribbon */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard

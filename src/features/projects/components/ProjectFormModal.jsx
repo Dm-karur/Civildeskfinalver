@@ -110,8 +110,17 @@ export function ProjectFormModal({ isOpen, project = null, onClose, onSaveSucces
         tax_percentage: Number(form.tax_percentage || 0),
         progress_percentage: 0,
       };
-      if (isEditing) await projectsApi.update(project.id, payload);
-      else await projectsApi.create(payload);
+      if (isEditing) {
+        await projectsApi.update(project.id, payload);
+        if (String(project.project_status_id) !== String(form.project_status_id)) {
+          await projectsApi.changeStatus(project.id, {
+            project_status_id: Number(form.project_status_id),
+            change_reason: 'Status changed during project details edit.'
+          });
+        }
+      } else {
+        await projectsApi.create(payload);
+      }
       toast.success(isEditing ? 'Project updated successfully.' : 'Project created successfully.');
       onSaveSuccess?.();
       onClose?.();

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Eye, Edit, MoreVertical, PlayCircle, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
@@ -23,6 +24,7 @@ function extractProjectsList(response) {
 }
 
 export function ProjectsTable({ searchQuery = '', refreshKey = 0, onEdit, filters }) {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -116,10 +118,10 @@ export function ProjectsTable({ searchQuery = '', refreshKey = 0, onEdit, filter
               const clientsList = Array.isArray(project.clients) ? project.clients : (project.client_names ? project.client_names : []);
               const clientCount = clientsList.length > 0 ? clientsList.length : (project.client_count || 1);
               const clientDisplay = clientsList.length > 0 ? clientsList.map(c => c.name || c.client_name || c).join(', ') : clientName;
-              const type = project.project_type || project.type || '—';
-              const status = project.status_name || project.status || 'Active';
-              const startDate = project.start_date ? project.start_date.split(' ')[0] : '—';
-              const endDate = project.end_date ? project.end_date.split(' ')[0] : '—';
+              const type = project.project_type_name || project.project_type || project.type || '—';
+              const status = project.project_status_name || project.status_name || project.status || 'Active';
+              const startDate = project.start_date || project.planned_start_date ? (project.start_date || project.planned_start_date).split(' ')[0] : '—';
+              const endDate = project.end_date || project.expected_completion_date ? (project.end_date || project.expected_completion_date).split(' ')[0] : '—';
               const budget = project.contract_value || project.estimated_cost || project.budget;
               const formattedBudget = budget !== undefined && budget !== null ? Number(budget).toLocaleString('en-IN') : '0.00';
 
@@ -157,7 +159,7 @@ export function ProjectsTable({ searchQuery = '', refreshKey = 0, onEdit, filter
                   </td>
                   <td className="px-2 py-1">
                     <div className="flex items-center justify-center gap-0.5">
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="View">
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="View" onClick={() => navigate(`/projects/overview?id=${project.id}`)}>
                         <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                       </Button>
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Edit" onClick={() => onEdit?.(project)}>
