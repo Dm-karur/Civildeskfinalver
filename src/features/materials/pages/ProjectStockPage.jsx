@@ -15,12 +15,15 @@ import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, materialManagementApi, materialsApi, sitesApi } from '../../../api/apiservice';
 
 
 
 export function ProjectStockPage() {
   const [projects, setProjects] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [uoms, setUoms] = useState([]);
+  const [materials, setMaterials] = useState([]);
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -34,13 +37,91 @@ export function ProjectStockPage() {
   // Modals
   const [viewingItem, setViewingItem] = useState(null);
 
-  // Load Projects
+  // Load Projects and Masters
   useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
+    setLoading(true);
+    Promise.all([
+      projectsApi.list(),
+      sitesApi.list(),
+      materialsApi.masters(),
+      materialsApi.catalogue.list()
+    ]).then(([resProj, resSites, resMasters, resCat]) => {
+      const pList = resProj?.data?.projects ?? resProj?.projects ?? [];
+      const parsedProjects = Array.isArray(pList) ? pList : [];
+      setProjects(parsedProjects);
+
+      const sList = resSites?.data?.sites ?? resSites?.sites ?? (Array.isArray(resSites) ? resSites : []);
+      setSites(Array.isArray(sList) ? sList : []);
+
+      const uList = resMasters?.data?.masters?.units ?? resMasters?.masters?.units ?? [];
+      setUoms(Array.isArray(uList) ? uList : []);
+
+      const mList = resCat?.data?.materials ?? resCat?.materials ?? (Array.isArray(resCat) ? resCat : []);
+      setMaterials(Array.isArray(mList) ? mList : []);
+    }).catch(err => {
+      console.error(err);
+      toast.error('Failed to load initial data');
+    }).finally(() => setLoading(false));
   }, []);
+
+  // Load Stock Data when project changes
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    setLoading(true);
+    
+    const fetchStockPromise = selectedProjectId === 'all'
+      ? Promise.all(projects.map(p => materialManagementApi.stock({ project_id: p.id }).catch(() => ({ data: { material_stock: [] } }))))
+          .then(responses => {
+            const allStock = [];
+            responses.forEach(res => {
+              const list = res?.data?.material_stock ?? res?.data?.stock ?? res?.data?.data ?? [];
+              if (Array.isArray(list)) {
+                allStock.push(...list);
+              }
+            });
+            return { data: { material_stock: allStock } };
+          })
+      : materialManagementApi.stock({ project_id: selectedProjectId });
+
+    fetchStockPromise
+      .then(res => {
+        const list = res?.data?.material_stock ?? res?.data?.stock ?? res?.data?.data ?? [];
+        if (Array.isArray(list)) {
+          const mapped = list.map(item => {
+            const mat = materials.find(m => String(m.id) === String(item.material_id));
+            const uom = uoms.find(u => String(u.id) === String(item.base_uom_id));
+            const site = sites.find(s => String(s.id) === String(item.site_id));
+            const proj = projects.find(p => String(p.id) === String(item.project_id));
+            
+            const available = Number(item.available_qty || 0);
+            const minQty = Number(item.minimum_stock_qty || 0);
+
+            let health = 'Adequate Stock';
+            if (available <= minQty) {
+              health = 'Critical Deficit';
+            }
+
+            return {
+              ...item,
+              category_name: mat?.category_name || 'Uncategorized',
+              uom_name: uom?.unit_name || uom?.unit_code || '',
+              site_name: site?.site_name || 'Unknown Site',
+              project_name: proj?.project_name || 'Unknown Project',
+              status: health,
+              site_stock_value: 0
+            };
+          });
+          setStocks(mapped);
+        } else {
+          setStocks([]);
+        }
+      })
+      .catch(() => {
+        toast.error('Failed to load stock data');
+        setStocks([]);
+      })
+      .finally(() => setLoading(false));
+  }, [selectedProjectId, materials, uoms, sites, projects]);
 
   const handlePrint = () => {
     window.print();
@@ -128,7 +209,7 @@ export function ProjectStockPage() {
               <Select
                 options={[
                   { value: 'all', label: 'All Projects' },
-                  ...projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))
+                  ...projects.map(p => ({ value: String(p.id), label: p.project_name }))
                 ]}
                 value={selectedProjectId}
                 onChange={setSelectedProjectId}
@@ -246,10 +327,10 @@ export function ProjectStockPage() {
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
-                        {s.available_qty} <span className="text-text-muted font-normal text-[10px]">{s.uom}</span>
+                        {s.available_qty} <span className="text-text-muted font-normal text-[10px]">{s.uom_name || s.uom}</span>
                       </td>
                       <td className="px-3 py-2 text-right hidden lg:table-cell font-mono text-[11px] text-text-secondary">
-                        {s.min_safety_qty} {s.uom}
+                        {s.minimum_stock_qty} <span className="font-normal">{s.uom_name || s.uom}</span>
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
                         ₹{Number(s.site_stock_value).toLocaleString('en-IN')}

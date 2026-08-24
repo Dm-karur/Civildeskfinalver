@@ -19,25 +19,22 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, materialManagementApi } from '../../../api/apiservice';
+import { projectsApi, materialManagementApi, sitesApi, mastersApi, materialsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
 
 const EMPTY_FORM = {
   project_id: '',
-  site_name: '',
+  site_id: '',
   request_no: '',
   request_date: '',
   required_by_date: '',
-  priority: 'Normal',
-  material_code: 'MAT-CEM-001',
-  material_name: 'OPC 53 Grade Cement',
+  priority_id: '',
+  material_id: '',
+  uom_id: '',
   requested_qty: '100',
-  uom: 'Bags',
   purpose: '',
-  requested_by: 'Site Engineer',
-  status_name: 'Submitted',
 };
 
 export function MaterialRequestsPage() {
@@ -63,18 +60,57 @@ export function MaterialRequestsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  const [sites, setSites] = useState([]);
+  const [priorities, setPriorities] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [uoms, setUoms] = useState([]);
+
   // Load Projects & API Data
   useEffect(() => {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
+      sitesApi.list().catch(() => ({ data: [] })),
+      materialsApi.catalogue.list().catch(() => ({ data: [] })),
+      materialsApi.masters().catch(() => ({ data: {} })),
       materialManagementApi.requests.list().catch(() => ({ data: [] }))
-    ]).then(([projRes, reqRes]) => {
+    ]).then(([projRes, sitesRes, catRes, mastersMatRes, reqRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
-      setProjects(Array.isArray(pList) ? pList : []);
-      const rList = reqRes?.data?.material_requests ?? reqRes?.data?.data ?? [];
-      if (Array.isArray(rList) && rList.length > 0) {
-        setRequests(rList);
+      const parsedProjects = Array.isArray(pList) ? pList : [];
+      setProjects(parsedProjects);
+      
+      const sList = sitesRes?.data?.sites ?? sitesRes?.sites ?? (Array.isArray(sitesRes) ? sitesRes : []);
+      setSites(Array.isArray(sList) ? sList : []);
+
+      const mList = catRes?.data?.materials ?? catRes?.materials ?? (Array.isArray(catRes) ? catRes : []);
+      setMaterials(Array.isArray(mList) ? mList : []);
+
+      const mastersData = mastersMatRes?.data?.masters ?? mastersMatRes?.masters ?? {};
+      const uList = mastersData?.units ?? [];
+      setUoms(Array.isArray(uList) ? uList : []);
+
+      const prioList = mastersData?.request_priorities ?? [];
+      setPriorities(Array.isArray(prioList) ? prioList : []);
+
+      const rList = reqRes?.data?.material_requests ?? reqRes?.data?.data ?? reqRes?.data ?? [];
+      if (Array.isArray(rList)) {
+        // Map the IDs to human readable names for the UI
+        const mapped = rList.map(r => {
+          const site = sList.find(s => String(s.id) === String(r.site_id));
+          const proj = parsedProjects.find(p => String(p.id) === String(r.project_id));
+          const prio = prioList.find(p => String(p.id) === String(r.priority_id));
+          
+          return {
+            ...r,
+            site_name: site?.site_name || '',
+            project_name: proj?.project_name || '',
+            priority_name: prio?.priority_name || 'Normal',
+            status_name: r.status_name || r.status_code || r.status || 'Draft'
+          };
+        });
+        setRequests(mapped);
+      } else {
+        setRequests([]);
       }
     }).finally(() => setLoading(false));
   }, []);
@@ -83,12 +119,11 @@ export function MaterialRequestsPage() {
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
     const defaultRequired = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
 
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
-      request_no: `MRN-2026-08${requests.length + 1}`,
       request_date: today,
       required_by_date: defaultRequired,
     });
@@ -98,19 +133,16 @@ export function MaterialRequestsPage() {
 
   const handleOpenEdit = (item) => {
     setForm({
-      project_id: String(item.project_id || '1'),
-      site_name: item.site_name || '',
+      project_id: String(item.project_id || ''),
+      site_id: String(item.site_id || ''),
       request_no: item.request_no || '',
       request_date: item.request_date || '',
       required_by_date: item.required_by_date || '',
-      priority: item.priority || 'Normal',
-      material_code: item.material_code || '',
-      material_name: item.material_name || '',
+      priority_id: String(item.priority_id || ''),
+      material_id: String(item.material_id || ''),
+      uom_id: String(item.uom_id || ''),
       requested_qty: String(item.requested_qty || '100'),
-      uom: item.uom || 'Nos',
       purpose: item.purpose || '',
-      requested_by: item.requested_by || 'Site Engineer',
-      status_name: item.status_name || 'Submitted',
     });
     setErrors({});
     setEditingItem(item);
@@ -125,7 +157,9 @@ export function MaterialRequestsPage() {
     e.preventDefault();
     const errs = {};
     if (!form.request_no.trim()) errs.request_no = 'Request No is required';
-    if (!form.material_name.trim()) errs.material_name = 'Material item is required';
+    if (!form.site_id) errs.site_id = 'Site location is required';
+    if (!form.priority_id) errs.priority_id = 'Priority is required';
+    if (!form.material_id) errs.material_id = 'Material item is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -134,42 +168,68 @@ export function MaterialRequestsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-
-      const newRequest = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        site_name: form.site_name || 'Site Yard',
-        request_no: form.request_no,
-        request_date: form.request_date,
-        required_by_date: form.required_by_date,
-        priority: form.priority,
-        material_code: form.material_code,
-        material_name: form.material_name,
-        requested_qty: Number(form.requested_qty || 0),
-        uom: form.uom,
-        purpose: form.purpose,
-        requested_by: form.requested_by,
-        status: form.status_name === 'Submitted' ? 'Pending Approval' : form.status_name,
-        status_name: form.status_name,
-      };
-
       if (editingItem?.id) {
-        setRequests(prev => prev.map(r => r.id === editingItem.id ? newRequest : r));
+        await materialManagementApi.requests.update(editingItem.id, {
+          project_id: Number(form.project_id),
+          site_id: Number(form.site_id),
+          request_no: form.request_no,
+          request_date: form.request_date,
+          required_by_date: form.required_by_date,
+          priority_id: Number(form.priority_id),
+          purpose: form.purpose
+        });
         toast.success('Material request updated.');
       } else {
-        setRequests(prev => [newRequest, ...prev]);
+        const headerRes = await materialManagementApi.requests.create({
+          project_id: Number(form.project_id),
+          site_id: Number(form.site_id),
+          request_no: form.request_no,
+          request_date: form.request_date,
+          required_by_date: form.required_by_date,
+          priority_id: Number(form.priority_id),
+          purpose: form.purpose
+        });
+
+        const requestId = headerRes?.data?.request?.id ?? headerRes?.request?.id;
+        if (requestId) {
+          await materialManagementApi.requests.addItem(requestId, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            requested_qty: Number(form.requested_qty),
+            estimated_rate: 0
+          });
+        }
         toast.success('Material request indent submitted.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
+
+      // Reload list from server
+      setLoading(true);
+      const reqRes = await materialManagementApi.requests.list();
+      const rList = reqRes?.data?.material_requests ?? reqRes?.data?.data ?? [];
+      if (Array.isArray(rList)) {
+        const mapped = rList.map(r => {
+          const site = sites.find(s => String(s.id) === String(r.site_id));
+          const proj = projects.find(p => String(p.id) === String(r.project_id));
+          const prio = priorities.find(p => String(p.id) === String(r.priority_id));
+          
+          return {
+            ...r,
+            site_name: site?.site_name || '',
+            project_name: proj?.project_name || '',
+            priority_name: prio?.priority_name || 'Normal',
+            status_name: r.status_name || r.status_code || r.status || 'Draft'
+          };
+        });
+        setRequests(mapped);
+      }
     } catch {
       toast.error('Failed to save material request.');
     } finally {
       setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -194,15 +254,15 @@ export function MaterialRequestsPage() {
   const filtered = useMemo(() => {
     return requests.filter(r => {
       if (selectedProjectId !== 'all' && String(r.project_id) !== String(selectedProjectId)) return false;
-      if (priorityFilter !== 'all' && r.priority !== priorityFilter) return false;
-      if (statusFilter !== 'all' && r.status_name !== statusFilter) return false;
+      if (priorityFilter !== 'all' && r.priority_name !== priorityFilter) return false;
+      if (statusFilter !== 'all' && String(r.status_name).toUpperCase() !== String(statusFilter).toUpperCase()) return false;
       if (search) {
         const q = search.toLowerCase();
         const no = (r.request_no || '').toLowerCase();
-        const mat = (r.material_name || '').toLowerCase();
         const purp = (r.purpose || '').toLowerCase();
         const req = (r.requested_by || '').toLowerCase();
-        if (!no.includes(q) && !mat.includes(q) && !purp.includes(q) && !req.includes(q)) return false;
+        const site = (r.site_name || '').toLowerCase();
+        if (!no.includes(q) && !purp.includes(q) && !req.includes(q) && !site.includes(q)) return false;
       }
       return true;
     });
@@ -212,20 +272,33 @@ export function MaterialRequestsPage() {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const pendingCount = useMemo(() => requests.filter(r => r.status_name === 'Submitted' || r.status === 'Pending Approval').length, [requests]);
-  const approvedCount = useMemo(() => requests.filter(r => r.status_name === 'Approved').length, [requests]);
-  const criticalCount = useMemo(() => requests.filter(r => r.priority === 'Critical' || r.priority === 'Urgent').length, [requests]);
+  const pendingCount = useMemo(() => requests.filter(r => {
+    const s = String(r.status_name).toUpperCase();
+    return s === 'SUBMITTED' || s === 'PENDING APPROVAL';
+  }).length, [requests]);
+  
+  const approvedCount = useMemo(() => requests.filter(r => {
+    const s = String(r.status_name).toUpperCase();
+    return s === 'APPROVED' || s === 'ORDERED' || s === 'PARTIALLY ORDERED';
+  }).length, [requests]);
+  
+  const criticalCount = useMemo(() => requests.filter(r => {
+    const p = String(r.priority_name).toUpperCase();
+    return p === 'CRITICAL' || p === 'URGENT';
+  }).length, [requests]);
 
   const getStatusVariant = (status) => {
-    if (status === 'Approved') return 'success';
-    if (status === 'Submitted' || status === 'Pending Approval') return 'warning';
-    if (status === 'Rejected') return 'error';
+    const s = String(status).toUpperCase();
+    if (s.includes('APPROV') || s.includes('ORDER')) return 'success';
+    if (s.includes('SUBMIT') || s.includes('PENDING')) return 'warning';
+    if (s.includes('REJECT') || s.includes('CANCEL')) return 'error';
     return 'neutral';
   };
 
   const getPriorityVariant = (priority) => {
-    if (priority === 'Critical') return 'error';
-    if (priority === 'Urgent') return 'warning';
+    const p = String(priority).toUpperCase();
+    if (p === 'CRITICAL' || p === 'HIGH') return 'error';
+    if (p === 'URGENT') return 'warning';
     return 'neutral';
   };
 
@@ -306,6 +379,7 @@ export function MaterialRequestsPage() {
                   { value: 'all', label: 'All Status' },
                   { value: 'Submitted', label: 'Pending Approval' },
                   { value: 'Approved', label: 'Approved' },
+                  { value: 'Ordered', label: 'Ordered' },
                   { value: 'Rejected', label: 'Rejected' },
                 ]}
                 value={statusFilter}
@@ -354,10 +428,9 @@ export function MaterialRequestsPage() {
               <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
                   <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2 w-28">Indent Ref</th>
-                  <th className="px-3 py-2">Material Item & Scope</th>
-                  <th className="px-3 py-2 w-32 hidden md:table-cell">Site Location</th>
-                  <th className="px-3 py-2 text-right w-24">Req Qty</th>
+                  <th className="px-3 py-2 w-32">Indent Ref</th>
+                  <th className="px-3 py-2">Indent Purpose / Scope</th>
+                  <th className="px-3 py-2 w-40 hidden md:table-cell">Site Location</th>
                   <th className="px-3 py-2 text-center w-28 hidden lg:table-cell">Required By</th>
                   <th className="px-3 py-2 text-center w-24">Priority</th>
                   <th className="px-3 py-2 text-center w-28">Status</th>
@@ -390,39 +463,35 @@ export function MaterialRequestsPage() {
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={r.material_name}>
-                            {r.material_name}
-                          </span>
-                          <span className="text-[10px] text-text-muted truncate" title={r.purpose}>
-                            {r.purpose}
+                          <span className="font-semibold text-text-primary text-[12px] truncate" title={r.purpose}>
+                            {r.purpose || 'Material Indent'}
                           </span>
                         </div>
                       </td>
                       <td className="px-3 py-2 hidden md:table-cell">
-                        <span className="text-[11px] text-text-secondary truncate block" title={r.site_name}>
-                          {r.site_name}
-                        </span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[11px] text-text-secondary truncate block" title={r.site_name}>
+                            {r.site_name || 'Unassigned Site'}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
-                        {r.requested_qty} {r.uom}
-                      </td>
-                      <td className="px-3 py-2 text-center hidden lg:table-cell font-mono text-[10px]">
+                      <td className="px-3 py-2 text-center hidden lg:table-cell font-mono text-[11px]">
                         <span className="text-text-primary font-medium">{r.required_by_date}</span>
                       </td>
                       <td className="px-3 py-2 text-center">
                         <Badge
-                          variant={getPriorityVariant(r.priority)}
-                          className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
+                          variant={getPriorityVariant(r.priority_name)}
+                          className="text-[9px] font-bold uppercase tracking-wider h-5 px-2 inline-flex items-center leading-none rounded-full"
                         >
-                          {r.priority}
+                          {r.priority_name}
                         </Badge>
                       </td>
                       <td className="px-3 py-2 text-center">
                         <Badge
-                          variant={getStatusVariant(r.status_name || r.status)}
-                          className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
+                          variant={getStatusVariant(r.status_name)}
+                          className="text-[9px] font-bold uppercase tracking-wider h-5 px-2 inline-flex items-center leading-none rounded-full"
                         >
-                          {r.status_name || r.status}
+                          {r.status_name}
                         </Badge>
                       </td>
                       <td className="px-3 py-2">
@@ -615,11 +684,12 @@ export function MaterialRequestsPage() {
                   />
                 </FormField>
 
-                <FormField label="Site Location / Grid Zone" required className="md:col-span-2">
-                  <Input
-                    value={form.site_name}
-                    onChange={(e) => handleFormChange('site_name', e.target.value)}
-                    placeholder="e.g. Tower A Core - Level 2 / Foundation Sump"
+                <FormField label="Site Location / Grid Zone" required error={errors.site_id} className="md:col-span-2">
+                  <Select
+                    options={sites.filter(s => String(s.project_id) === String(form.project_id)).map(s => ({ value: String(s.id), label: s.site_name }))}
+                    value={form.site_id}
+                    onChange={(v) => handleFormChange('site_id', v)}
+                    placeholder="Select Yard/Site Location"
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -627,11 +697,18 @@ export function MaterialRequestsPage() {
 
             <EntityEditModal.Section title="Material Requirement & Urgency">
               <EntityEditModal.Grid>
-                <FormField label="Material Item" required error={errors.material_name}>
-                  <Input
-                    value={form.material_name}
-                    onChange={(e) => handleFormChange('material_name', e.target.value)}
-                    placeholder="e.g. OPC 53 Grade Cement"
+                <FormField label="Material Item" required error={errors.material_id}>
+                  <Select
+                    options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
+                    value={form.material_id}
+                    onChange={(v) => {
+                      const selectedMat = materials.find(mat => String(mat.id) === String(v));
+                      handleFormChange('material_id', v);
+                      if (selectedMat?.base_uom_id) {
+                        handleFormChange('uom_id', String(selectedMat.base_uom_id));
+                      }
+                    }}
+                    placeholder="Select Material"
                   />
                 </FormField>
 
@@ -643,15 +720,12 @@ export function MaterialRequestsPage() {
                   />
                 </FormField>
 
-                <FormField label="Priority Level">
+                <FormField label="Priority Level" required error={errors.priority_id}>
                   <Select
-                    options={[
-                      { value: 'Normal', label: 'Normal (Standard Delivery)' },
-                      { value: 'Urgent', label: 'Urgent (Within 48 Hours)' },
-                      { value: 'Critical', label: 'Critical (Immediate Pour Hold)' },
-                    ]}
-                    value={form.priority}
-                    onChange={(v) => handleFormChange('priority', v)}
+                    options={priorities.map(p => ({ value: String(p.id), label: p.priority_name }))}
+                    value={form.priority_id}
+                    onChange={(v) => handleFormChange('priority_id', v)}
+                    placeholder="Select Priority"
                   />
                 </FormField>
 

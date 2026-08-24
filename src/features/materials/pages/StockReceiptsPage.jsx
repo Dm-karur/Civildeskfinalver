@@ -19,29 +19,25 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, materialManagementApi } from '../../../api/apiservice';
+import { projectsApi, materialManagementApi, sitesApi, materialsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
 
 const EMPTY_FORM = {
   project_id: '',
-  site_name: '',
+  site_id: '',
   receipt_no: '',
   receipt_date: '',
-  supplier_name: '',
+  supplier_id: '',
   supplier_challan_no: '',
   invoice_no: '',
   vehicle_no: '',
-  material_code: 'MAT-CEM-001',
-  material_name: 'OPC 53 Grade Cement',
+  material_id: '',
+  uom_id: '',
   received_qty: '100',
-  uom: 'Bags',
   unit_rate: '385',
-  total_amount: '38500',
-  quality_status: 'Accepted (QC Passed)',
-  status_name: 'Received & Stored',
-  inspected_by: 'QC Engineer',
+  quality_status: '',
   notes: '',
 };
 
@@ -67,40 +63,72 @@ export function StockReceiptsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  const [sites, setSites] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [uoms, setUoms] = useState([]);
+  const [qualityStatuses, setQualityStatuses] = useState([]);
+
   // Load Projects & API Data safely
   useEffect(() => {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
+      sitesApi.list().catch(() => ({ data: [] })),
+      materialsApi.suppliers.list().catch(() => ({ data: [] })),
+      materialsApi.catalogue.list().catch(() => ({ data: [] })),
+      materialsApi.masters().catch(() => ({ data: {} })),
       materialManagementApi.receipts?.list ? materialManagementApi.receipts.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([projRes, recRes]) => {
+    ]).then(([projRes, sitesRes, suppRes, catRes, mastersRes, recRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
-      setProjects(Array.isArray(pList) ? pList : []);
+      const parsedProjects = Array.isArray(pList) ? pList : [];
+      setProjects(parsedProjects);
+
+      const sList = sitesRes?.data?.sites ?? sitesRes?.sites ?? (Array.isArray(sitesRes) ? sitesRes : []);
+      setSites(Array.isArray(sList) ? sList : []);
+
+      const supList = suppRes?.data?.material_suppliers ?? suppRes?.material_suppliers ?? (Array.isArray(suppRes) ? suppRes : []);
+      setSuppliers(Array.isArray(supList) ? supList : []);
+
+      const mList = catRes?.data?.materials ?? catRes?.materials ?? (Array.isArray(catRes) ? catRes : []);
+      setMaterials(Array.isArray(mList) ? mList : []);
+
+      const mastersData = mastersRes?.data?.masters ?? mastersRes?.masters ?? {};
+      const uList = mastersData?.units ?? [];
+      setUoms(Array.isArray(uList) ? uList : []);
+
+      const qList = mastersData?.quality_statuses ?? [];
+      setQualityStatuses(Array.isArray(qList) ? qList : []);
+
       const rList = recRes?.data?.material_receipts ?? recRes?.data?.receipts ?? recRes?.data?.data ?? [];
-      if (Array.isArray(rList) && rList.length > 0) {
-        const normalized = rList.map((r, idx) => ({
-          id: r.id || idx + 1,
-          project_id: r.project_id || 1,
-          project_code: r.project_code || 'PRJ-2026-001',
-          project_name: r.project_name || 'Civil Project',
-          site_name: r.site_name || 'Main Central Yard',
-          receipt_no: r.receipt_no || `GRN-2026-${String(idx + 1).padStart(3, '0')}`,
-          receipt_date: r.receipt_date || new Date().toISOString().split('T')[0],
-          supplier_name: r.supplier_name || 'Supplier Partner',
-          supplier_challan_no: r.supplier_challan_no || '—',
-          invoice_no: r.invoice_no || '—',
-          vehicle_no: r.vehicle_no || '—',
-          material_code: r.material_code || 'MAT-GEN-001',
-          material_name: r.material_name || 'Construction Material',
-          received_qty: Number(r.received_qty || r.quantity || 0),
-          uom: r.uom || r.unit_name || 'Nos',
-          unit_rate: Number(r.unit_rate || 0),
-          total_amount: Number(r.total_amount || (Number(r.received_qty || r.quantity || 0) * Number(r.unit_rate || 0))),
-          quality_status: r.quality_status || r.status_name || 'Accepted (QC Passed)',
-          status_name: r.status_name || 'Received & Stored',
-          inspected_by: r.inspected_by || 'QC Engineer',
-          notes: r.notes || '',
-        }));
+      if (Array.isArray(rList)) {
+        const normalized = rList.map((r, idx) => {
+          const project = parsedProjects.find(p => String(p.id) === String(r.project_id));
+          const site = sList.find(s => String(s.id) === String(r.site_id));
+          const supplier = supList.find(s => String(s.id) === String(r.supplier_id));
+
+          return {
+            ...r,
+            id: r.id || idx + 1,
+            project_code: project?.project_code || 'PRJ-2026-001',
+            project_name: project?.project_name || 'Civil Project',
+            site_name: site?.site_name || 'Main Central Yard',
+            supplier_name: supplier?.supplier_name || 'Supplier Partner',
+            supplier_challan_no: r.supplier_challan_no || '—',
+            invoice_no: r.invoice_no || '—',
+            vehicle_no: r.vehicle_no || '—',
+            material_code: r.material_code || 'MAT-GEN-001',
+            material_name: r.material_name || 'Construction Material',
+            received_qty: Number(r.received_qty || r.quantity || 0),
+            uom: r.uom || r.unit_name || 'Nos',
+            unit_rate: Number(r.unit_rate || 0),
+            total_amount: 0, // due to valuation constraint
+            quality_status: r.status_name || 'Accepted (QC Passed)',
+            status_name: r.status_name || 'Received & Stored',
+            inspected_by: r.inspected_by || 'QC Engineer',
+            notes: r.notes || '',
+          };
+        });
         setReceipts(normalized);
       }
     }).catch(() => {
@@ -111,41 +139,47 @@ export function StockReceiptsPage() {
   // Form Handlers
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
 
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
-      receipt_no: `GRN-2026-08${receipts.length + 1}`,
       receipt_date: today,
     });
     setErrors({});
     setIsAddOpen(true);
   };
 
-  const handleOpenEdit = (item) => {
-    setForm({
-      project_id: String(item.project_id || '1'),
-      site_name: item.site_name || '',
-      receipt_no: item.receipt_no || '',
-      receipt_date: item.receipt_date || '',
-      supplier_name: item.supplier_name || '',
-      supplier_challan_no: item.supplier_challan_no || '',
-      invoice_no: item.invoice_no || '',
-      vehicle_no: item.vehicle_no || '',
-      material_code: item.material_code || '',
-      material_name: item.material_name || '',
-      received_qty: String(item.received_qty || '100'),
-      uom: item.uom || 'Nos',
-      unit_rate: String(item.unit_rate || '385'),
-      total_amount: String(item.total_amount || '38500'),
-      quality_status: item.quality_status || 'Accepted (QC Passed)',
-      status_name: item.status_name || 'Received & Stored',
-      inspected_by: item.inspected_by || 'QC Engineer',
-      notes: item.notes || '',
-    });
-    setErrors({});
-    setEditingItem(item);
+  const handleOpenEdit = async (item) => {
+    setLoading(true);
+    try {
+      const res = await materialManagementApi.receipts.get(item.id);
+      const fullReceipt = res?.data?.receipt ?? res?.receipt ?? {};
+      const firstItem = fullReceipt.items?.[0] ?? {};
+
+      setForm({
+        project_id: String(fullReceipt.project_id || ''),
+        site_id: String(fullReceipt.site_id || ''),
+        receipt_no: fullReceipt.receipt_no || '',
+        receipt_date: fullReceipt.receipt_date || '',
+        supplier_id: String(fullReceipt.supplier_id || ''),
+        supplier_challan_no: fullReceipt.supplier_challan_no || '',
+        invoice_no: fullReceipt.invoice_no || '',
+        vehicle_no: fullReceipt.vehicle_no || '',
+        material_id: String(firstItem.material_id || ''),
+        uom_id: String(firstItem.uom_id || ''),
+        received_qty: String(firstItem.received_qty || '100'),
+        unit_rate: String(firstItem.unit_rate || '385'),
+        quality_status: String(firstItem.quality_status_id || ''),
+        notes: fullReceipt.remarks || '',
+      });
+      setErrors({});
+      setEditingItem(fullReceipt);
+    } catch {
+      toast.error('Failed to load goods receipt details.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFormChange = (field, value) => {
@@ -165,8 +199,9 @@ export function StockReceiptsPage() {
     e.preventDefault();
     const errs = {};
     if (!form.receipt_no.trim()) errs.receipt_no = 'GRN No is required';
-    if (!form.supplier_name.trim()) errs.supplier_name = 'Supplier is required';
-    if (!form.material_name.trim()) errs.material_name = 'Material item is required';
+    if (!form.supplier_id) errs.supplier_id = 'Supplier is required';
+    if (!form.site_id) errs.site_id = 'Site location is required';
+    if (!form.material_id) errs.material_id = 'Material item is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -175,48 +210,100 @@ export function StockReceiptsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const qty = Number(form.received_qty || 0);
-      const rate = Number(form.unit_rate || 0);
-
-      const newReceipt = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        site_name: form.site_name || 'Central Yard',
-        receipt_no: form.receipt_no,
-        receipt_date: form.receipt_date,
-        supplier_name: form.supplier_name,
-        supplier_challan_no: form.supplier_challan_no,
-        invoice_no: form.invoice_no,
-        vehicle_no: form.vehicle_no,
-        material_code: form.material_code,
-        material_name: form.material_name,
-        received_qty: qty,
-        uom: form.uom,
-        unit_rate: rate,
-        total_amount: Number(form.total_amount || qty * rate),
-        quality_status: form.quality_status,
-        status_name: form.status_name,
-        inspected_by: form.inspected_by,
-        notes: form.notes,
-      };
-
       if (editingItem?.id) {
-        setReceipts(prev => prev.map(r => r.id === editingItem.id ? newReceipt : r));
+        await materialManagementApi.receipts.update(editingItem.id, {
+          project_id: Number(form.project_id),
+          site_id: Number(form.site_id),
+          supplier_id: Number(form.supplier_id),
+          receipt_no: form.receipt_no,
+          receipt_date: form.receipt_date,
+          supplier_challan_no: form.supplier_challan_no,
+          invoice_no: form.invoice_no,
+          vehicle_no: form.vehicle_no,
+          remarks: form.notes
+        });
+        
+        const firstItem = editingItem.items?.[0];
+        if (firstItem?.id) {
+          await materialManagementApi.receipts.updateItem(editingItem.id, firstItem.id, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            received_qty: Number(form.received_qty),
+            unit_rate: Number(form.unit_rate),
+            accepted_qty: Number(form.received_qty),
+            quality_status_id: form.quality_status ? Number(form.quality_status) : null
+          });
+        }
         toast.success('Goods receipt updated.');
       } else {
-        setReceipts(prev => [newReceipt, ...prev]);
+        const headerRes = await materialManagementApi.receipts.create({
+          project_id: Number(form.project_id),
+          site_id: Number(form.site_id),
+          supplier_id: Number(form.supplier_id),
+          receipt_no: form.receipt_no,
+          receipt_date: form.receipt_date,
+          supplier_challan_no: form.supplier_challan_no,
+          invoice_no: form.invoice_no,
+          vehicle_no: form.vehicle_no,
+          remarks: form.notes
+        });
+
+        const receiptId = headerRes?.data?.receipt?.id ?? headerRes?.receipt?.id;
+        if (receiptId) {
+          await materialManagementApi.receipts.addItem(receiptId, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            received_qty: Number(form.received_qty),
+            unit_rate: Number(form.unit_rate),
+            accepted_qty: Number(form.received_qty),
+            quality_status_id: form.quality_status ? Number(form.quality_status) : null
+          });
+        }
         toast.success('Goods received note (GRN) logged into inventory.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
+
+      // Reload receipts to fetch the updated database entries
+      setLoading(true);
+      const recRes = await materialManagementApi.receipts.list();
+      const rList = recRes?.data?.material_receipts ?? recRes?.data?.receipts ?? recRes?.data?.data ?? [];
+      if (Array.isArray(rList)) {
+        const normalized = rList.map((r, idx) => {
+          const project = projects.find(p => String(p.id) === String(r.project_id));
+          const site = sites.find(s => String(s.id) === String(r.site_id));
+          const supplier = suppliers.find(s => String(s.id) === String(r.supplier_id));
+
+          return {
+            ...r,
+            id: r.id || idx + 1,
+            project_code: project?.project_code || 'PRJ-2026-001',
+            project_name: project?.project_name || 'Civil Project',
+            site_name: site?.site_name || 'Main Central Yard',
+            supplier_name: supplier?.supplier_name || 'Supplier Partner',
+            supplier_challan_no: r.supplier_challan_no || '—',
+            invoice_no: r.invoice_no || '—',
+            vehicle_no: r.vehicle_no || '—',
+            material_code: r.material_code || 'MAT-GEN-001',
+            material_name: r.material_name || 'Construction Material',
+            received_qty: Number(r.received_qty || r.quantity || 0),
+            uom: r.uom || r.unit_name || 'Nos',
+            unit_rate: Number(r.unit_rate || 0),
+            total_amount: 0,
+            quality_status: r.status_name || 'Accepted (QC Passed)',
+            status_name: r.status_name || 'Received & Stored',
+            inspected_by: r.inspected_by || 'QC Engineer',
+            notes: r.notes || '',
+          };
+        });
+        setReceipts(normalized);
+      }
     } catch {
       toast.error('Failed to save goods receipt.');
     } finally {
       setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -235,7 +322,7 @@ export function StockReceiptsPage() {
   const filtered = useMemo(() => {
     return receipts.filter(r => {
       if (selectedProjectId !== 'all' && String(r.project_id) !== String(selectedProjectId)) return false;
-      if (statusFilter !== 'all' && String(r.quality_status || '') !== statusFilter) return false;
+      if (statusFilter !== 'all' && String(r.quality_status || '').toUpperCase() !== String(statusFilter).toUpperCase()) return false;
       if (search) {
         const q = search.toLowerCase();
         const no = String(r.receipt_no || '').toLowerCase();
@@ -260,10 +347,10 @@ export function StockReceiptsPage() {
   }).length, [receipts]);
 
   const getQualityVariant = (status) => {
-    const s = String(status || '').toLowerCase();
-    if (s.includes('accept') || s.includes('pass')) return 'success';
-    if (s.includes('inspect') || s.includes('pending')) return 'warning';
-    if (s.includes('reject') || s.includes('defect')) return 'error';
+    const s = String(status || '').toUpperCase();
+    if (s.includes('ACCEPT') || s === 'POSTED') return 'success';
+    if (s.includes('INSPECT') || s === 'DRAFT' || s === 'SUBMITTED') return 'warning';
+    if (s.includes('REJECT') || s.includes('CANCEL')) return 'error';
     return 'neutral';
   };
 
@@ -328,9 +415,11 @@ export function StockReceiptsPage() {
               <Select
                 options={[
                   { value: 'all', label: 'All Quality Status' },
-                  { value: 'Accepted (QC Passed)', label: 'Accepted (QC Passed)' },
-                  { value: 'Under Inspection', label: 'Under Inspection' },
-                  { value: 'Rejected', label: 'Rejected (Defective)' },
+                  { value: 'POSTED', label: 'Posted' },
+                  { value: 'DRAFT', label: 'Draft' },
+                  { value: 'ACCEPTED', label: 'Accepted' },
+                  { value: 'PARTIALLY_ACCEPTED', label: 'Partially Accepted' },
+                  { value: 'REJECTED', label: 'Rejected' },
                 ]}
                 value={statusFilter}
                 onChange={setStatusFilter}
@@ -628,11 +717,12 @@ export function StockReceiptsPage() {
                   />
                 </FormField>
 
-                <FormField label="Supplier Name" required error={errors.supplier_name} className="md:col-span-2">
-                  <Input
-                    value={form.supplier_name}
-                    onChange={(e) => handleFormChange('supplier_name', e.target.value)}
-                    placeholder="e.g. UltraTech Cement Distributors Ltd"
+                 <FormField label="Supplier" required error={errors.supplier_id} className="md:col-span-2">
+                  <Select
+                    options={suppliers.map(s => ({ value: String(s.id), label: s.supplier_name }))}
+                    value={form.supplier_id}
+                    onChange={(v) => handleFormChange('supplier_id', v)}
+                    placeholder="Select Supplier"
                   />
                 </FormField>
 
@@ -656,11 +746,18 @@ export function StockReceiptsPage() {
 
             <EntityEditModal.Section title="Material Inward & QC Inspection">
               <EntityEditModal.Grid>
-                <FormField label="Material Item" required error={errors.material_name}>
-                  <Input
-                    value={form.material_name}
-                    onChange={(e) => handleFormChange('material_name', e.target.value)}
-                    placeholder="e.g. OPC 53 Grade Cement"
+                <FormField label="Material Item" required error={errors.material_id}>
+                  <Select
+                    options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
+                    value={form.material_id}
+                    onChange={(v) => {
+                      const selectedMat = materials.find(mat => String(mat.id) === String(v));
+                      handleFormChange('material_id', v);
+                      if (selectedMat?.base_uom_id) {
+                        handleFormChange('uom_id', String(selectedMat.base_uom_id));
+                      }
+                    }}
+                    placeholder="Select Material"
                   />
                 </FormField>
 
@@ -682,21 +779,19 @@ export function StockReceiptsPage() {
 
                 <FormField label="Quality Inspection Status">
                   <Select
-                    options={[
-                      { value: 'Accepted (QC Passed)', label: 'Accepted (QC Passed)' },
-                      { value: 'Under Inspection', label: 'Under Inspection (Sample Taken)' },
-                      { value: 'Rejected', label: 'Rejected (Defective Batch)' },
-                    ]}
+                    options={qualityStatuses.map(q => ({ value: String(q.id), label: q.quality_status_name }))}
                     value={form.quality_status}
                     onChange={(v) => handleFormChange('quality_status', v)}
+                    placeholder="Select Quality Status"
                   />
                 </FormField>
 
-                <FormField label="Storage Bay Location" className="md:col-span-2">
-                  <Input
-                    value={form.site_name}
-                    onChange={(e) => handleFormChange('site_name', e.target.value)}
-                    placeholder="e.g. Central Yard Bay 1 / Steel Stacking Bunker"
+                <FormField label="Storage Bay Location" required error={errors.site_id} className="md:col-span-2">
+                  <Select
+                    options={sites.filter(s => String(s.project_id) === String(form.project_id)).map(s => ({ value: String(s.id), label: s.site_name }))}
+                    value={form.site_id}
+                    onChange={(v) => handleFormChange('site_id', v)}
+                    placeholder="Select Yard/Site Location"
                   />
                 </FormField>
 

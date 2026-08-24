@@ -75,7 +75,7 @@ export function MaterialCataloguePage() {
       const catList = resCategories?.data?.material_categories ?? resCategories?.material_categories ?? [];
       setCategories(Array.isArray(catList) ? catList : []);
 
-      const uomList = resMasters?.data?.units ?? resMasters?.units ?? [];
+      const uomList = resMasters?.data?.masters?.units ?? resMasters?.masters?.units ?? [];
       setUoms(Array.isArray(uomList) ? uomList : []);
     } catch (err) {
       toast.error('Failed to load material catalogue data.');
@@ -252,15 +252,12 @@ export function MaterialCataloguePage() {
             <div className="w-full sm:w-48">
               <Select
                 value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-              >
-                <option value="all">All Categories</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.category_name}
-                  </option>
-                ))}
-              </Select>
+                onChange={setCategoryFilter}
+                options={[
+                  { value: 'all', label: 'All Categories' },
+                  ...categories.map((c) => ({ value: String(c.id), label: `${c.category_name} (${c.category_code})` }))
+                ]}
+              />
             </div>
           </div>
           <div className="flex items-center gap-2 justify-end">
@@ -433,29 +430,23 @@ export function MaterialCataloguePage() {
                 <FormField label="Category" required error={errors.material_category_id}>
                   <Select
                     value={form.material_category_id}
-                    onChange={(e) => handleFormChange('material_category_id', e.target.value)}
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.category_name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(val) => handleFormChange('material_category_id', val)}
+                    options={[
+                      { value: '', label: 'Select a category' },
+                      ...categories.map((c) => ({ value: String(c.id), label: `${c.category_name} (${c.category_code})` }))
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Base Unit of Measurement" required error={errors.base_uom_id}>
                   <Select
                     value={form.base_uom_id}
-                    onChange={(e) => handleFormChange('base_uom_id', e.target.value)}
-                  >
-                    <option value="">Select a unit</option>
-                    {uoms.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.unit_name} ({u.unit_code})
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(val) => handleFormChange('base_uom_id', val)}
+                    options={[
+                      { value: '', label: 'Select a unit' },
+                      ...uoms.map((u) => ({ value: String(u.id), label: `${u.unit_name} (${u.unit_code})` }))
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Standard Purchase Rate (₹)" error={errors.standard_rate}>
@@ -472,14 +463,15 @@ export function MaterialCataloguePage() {
                 <FormField label="GST Rate (%)" error={errors.gst_rate}>
                   <Select
                     value={form.gst_rate}
-                    onChange={(e) => handleFormChange('gst_rate', e.target.value)}
-                  >
-                    <option value="0">0%</option>
-                    <option value="5">5%</option>
-                    <option value="12">12%</option>
-                    <option value="18">18%</option>
-                    <option value="28">28%</option>
-                  </Select>
+                    onChange={(val) => handleFormChange('gst_rate', val)}
+                    options={[
+                      { value: '0', label: '0%' },
+                      { value: '5', label: '5%' },
+                      { value: '12', label: '12%' },
+                      { value: '18', label: '18%' },
+                      { value: '28', label: '28%' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="HSN Code" error={errors.hsn_code}>
@@ -521,21 +513,23 @@ export function MaterialCataloguePage() {
                 <FormField label="Quality Check Intake" error={errors.quality_check_required}>
                   <Select
                     value={form.quality_check_required}
-                    onChange={(e) => handleFormChange('quality_check_required', e.target.value)}
-                  >
-                    <option value="0">Not Required</option>
-                    <option value="1">Inspection Required</option>
-                  </Select>
+                    onChange={(val) => handleFormChange('quality_check_required', val)}
+                    options={[
+                      { value: '0', label: 'Not Required' },
+                      { value: '1', label: 'Inspection Required' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Batch Tracking" error={errors.batch_tracking_required}>
                   <Select
                     value={form.batch_tracking_required}
-                    onChange={(e) => handleFormChange('batch_tracking_required', e.target.value)}
-                  >
-                    <option value="0">Disabled</option>
-                    <option value="1">Enabled</option>
-                  </Select>
+                    onChange={(val) => handleFormChange('batch_tracking_required', val)}
+                    options={[
+                      { value: '0', label: 'Disabled' },
+                      { value: '1', label: 'Enabled' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Storage Hint (Location)" error={errors.storage_location_hint}>
@@ -549,11 +543,12 @@ export function MaterialCataloguePage() {
                 <FormField label="Active Status" error={errors.is_active}>
                   <Select
                     value={form.is_active}
-                    onChange={(e) => handleFormChange('is_active', e.target.value)}
-                  >
-                    <option value="1">Active</option>
-                    <option value="0">Inactive</option>
-                  </Select>
+                    onChange={(val) => handleFormChange('is_active', val)}
+                    options={[
+                      { value: '1', label: 'Active' },
+                      { value: '0', label: 'Inactive' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Specifications / Notes" className="md:col-span-2" error={errors.notes}>

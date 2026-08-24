@@ -15,15 +15,19 @@ import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
-import { materialManagementApi } from '../../../api/apiservice';
+import { materialManagementApi, materialsApi, projectsApi } from '../../../api/apiservice';
 
 
 
 export function StockOverviewPage() {
   const [stock, setStock] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [uoms, setUoms] = useState([]);
+  const [materials, setMaterials] = useState([]);
 
   // Filters
+  const [selectedProjectId, setSelectedProjectId] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [healthFilter, setHealthFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -33,19 +37,86 @@ export function StockOverviewPage() {
   // Modals
   const [viewingItem, setViewingItem] = useState(null);
 
-  // Load API Data if available
+  // Load Projects and Masters
   useEffect(() => {
     setLoading(true);
-    materialManagementApi.stock()
+    Promise.all([
+      projectsApi.list(),
+      materialsApi.masters(),
+      materialsApi.catalogue.list()
+    ]).then(([resProj, resMasters, resCat]) => {
+      const pList = resProj?.data?.projects ?? resProj?.projects ?? [];
+      const parsedProjects = Array.isArray(pList) ? pList : [];
+      setProjects(parsedProjects);
+
+      const uList = resMasters?.data?.masters?.units ?? resMasters?.masters?.units ?? [];
+      setUoms(Array.isArray(uList) ? uList : []);
+
+      const mList = resCat?.data?.materials ?? resCat?.materials ?? (Array.isArray(resCat) ? resCat : []);
+      setMaterials(Array.isArray(mList) ? mList : []);
+    }).catch(err => {
+      console.error(err);
+      toast.error('Failed to load initial data');
+    }).finally(() => setLoading(false));
+  }, []);
+
+  // Load Stock Data when project changes
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    setLoading(true);
+    
+    const fetchStockPromise = selectedProjectId === 'all'
+      ? Promise.all(projects.map(p => materialManagementApi.stock({ project_id: p.id }).catch(() => ({ data: { material_stock: [] } }))))
+          .then(responses => {
+            const allStock = [];
+            responses.forEach(res => {
+              const list = res?.data?.material_stock ?? res?.data?.stock ?? res?.data?.data ?? [];
+              if (Array.isArray(list)) {
+                allStock.push(...list);
+              }
+            });
+            return { data: { material_stock: allStock } };
+          })
+      : materialManagementApi.stock({ project_id: selectedProjectId });
+
+    fetchStockPromise
       .then(res => {
         const list = res?.data?.material_stock ?? res?.data?.stock ?? res?.data?.data ?? [];
-        if (Array.isArray(list) && list.length > 0) {
-          setStock(list);
+        if (Array.isArray(list)) {
+          const mapped = list.map(item => {
+            const mat = materials.find(m => String(m.id) === String(item.material_id));
+            const uom = uoms.find(u => String(u.id) === String(item.base_uom_id));
+            
+            const available = Number(item.available_qty || 0);
+            const minQty = Number(item.minimum_stock_qty || 0);
+            const reorderQty = Number(item.reorder_qty || 0);
+
+            let health = 'In Stock';
+            if (available <= minQty) {
+              health = 'Low Stock';
+            } else if (available <= reorderQty) {
+              health = 'Reorder Required';
+            }
+
+            return {
+              ...item,
+              category_name: mat?.category_name || 'Uncategorized',
+              uom_name: uom?.unit_name || uom?.unit_code || '',
+              status: health,
+              stock_value: 0
+            };
+          });
+          setStock(mapped);
+        } else {
+          setStock([]);
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        toast.error('Failed to load stock data');
+        setStock([]);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedProjectId, materials, uoms]);
 
   const handlePrint = () => {
     window.print();
@@ -135,7 +206,19 @@ export function StockOverviewPage() {
         {/* Filter and Search Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
           <div className="flex flex-wrap items-center gap-2 flex-1">
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:w-44">
+              <Select
+                options={[
+                  { value: 'all', label: 'All Projects' },
+                  ...projects.map(p => ({ value: String(p.id), label: p.project_name }))
+                ]}
+                value={selectedProjectId}
+                onChange={setSelectedProjectId}
+                className="text-xs h-8"
+              />
+            </div>
+            
+            <div className="w-full sm:w-40">
               <Select
                 options={[
                   { value: 'all', label: 'All Categories' },
@@ -147,7 +230,7 @@ export function StockOverviewPage() {
               />
             </div>
 
-            <div className="w-full sm:w-44">
+            <div className="w-full sm:w-40">
               <Select
                 options={[
                   { value: 'all', label: 'All Stock Health' },
@@ -161,7 +244,7 @@ export function StockOverviewPage() {
               />
             </div>
 
-            <div className="w-full sm:w-56">
+            <div className="w-full sm:w-48">
               <SearchField
                 placeholder="Search SKU code, material, store..."
                 value={search}
@@ -242,18 +325,18 @@ export function StockOverviewPage() {
                             {s.material_name}
                           </span>
                           <span className="text-[10px] text-text-muted truncate">
-                            {s.category_name} • {s.primary_store}
+                            {s.category_name} {s.primary_store ? `• ${s.primary_store}` : ''}
                           </span>
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
-                        {s.available_qty} <span className="text-text-muted font-normal text-[10px]">{s.uom}</span>
+                        {s.available_qty} <span className="text-text-muted font-normal text-[10px]">{s.uom_name || s.uom}</span>
                       </td>
                       <td className="px-3 py-2 text-right hidden md:table-cell font-mono text-[11px] text-text-secondary">
-                        {s.minimum_stock_qty} {s.uom}
+                        {s.minimum_stock_qty} <span className="font-normal">{s.uom_name || s.uom}</span>
                       </td>
                       <td className="px-3 py-2 text-right hidden md:table-cell font-mono text-[11px] text-text-secondary">
-                        {s.reorder_qty} {s.uom}
+                        {s.reorder_qty} <span className="font-normal">{s.uom_name || s.uom}</span>
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
                         ₹{Number(s.stock_value).toLocaleString('en-IN')}
