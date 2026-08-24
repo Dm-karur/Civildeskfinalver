@@ -64,6 +64,7 @@ export function DailyAttendancePage() {
     check_out_time: '17:00:00',
     regular_hours: '8',
     overtime_hours: '0',
+    work_description: '',
     remarks: '',
   });
   const [availableAssignments, setAvailableAssignments] = useState([]);
@@ -103,17 +104,21 @@ export function DailyAttendancePage() {
       return;
     }
 
-    sitesApi.list({ project_id: selectedProjectId })
+    sitesApi.list() // Fetch all sites and filter on frontend to avoid backend parameter issues
       .then((res) => {
-        const siteList = res?.data?.sites ?? res?.sites ?? (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
-        setSites(Array.isArray(siteList) ? siteList : []);
-        if (siteList.length > 0) {
-          setSelectedSiteId(String(siteList[0].id));
+        const allSites = res?.data?.sites ?? res?.sites ?? (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
+        // Safely filter sites that belong to the currently selected project
+        const filteredSites = allSites.filter(s => String(s.project_id) === String(selectedProjectId));
+        
+        setSites(filteredSites);
+        if (filteredSites.length > 0) {
+          setSelectedSiteId(String(filteredSites[0].id));
         } else {
           setSelectedSiteId('');
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Failed to fetch sites:", err);
         setSites([]);
         setSelectedSiteId('');
       });
@@ -180,6 +185,7 @@ export function DailyAttendancePage() {
         check_out_time: '17:00:00',
         regular_hours: '8',
         overtime_hours: '0',
+        work_description: '',
         remarks: '',
       });
     } catch (err) {
@@ -252,7 +258,12 @@ export function DailyAttendancePage() {
       toast.success('Daily attendance muster initialized successfully.');
       fetchBatch(selectedProjectId, selectedSiteId, selectedDate, selectedShift);
     } catch (err) {
-      toast.error(err?.message || 'Failed to initialize daily muster.');
+      console.error("Initialize batch error:", err);
+      let errorMsg = err?.message || 'Failed to initialize daily muster.';
+      if (err?.errors && Object.keys(err.errors).length > 0) {
+        errorMsg = Object.values(err.errors)[0];
+      }
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -306,6 +317,7 @@ export function DailyAttendancePage() {
         check_out_time: manualForm.check_out_time || null,
         regular_hours: Number(manualForm.regular_hours || 0),
         overtime_hours: Number(manualForm.overtime_hours || 0),
+        work_description: manualForm.work_description || null,
         remarks: manualForm.remarks,
       };
 
@@ -823,6 +835,15 @@ export function DailyAttendancePage() {
                     placeholder="HH:MM:SS"
                     value={manualForm.check_out_time}
                     onChange={(e) => setManualForm(prev => ({ ...prev, check_out_time: e.target.value }))}
+                  />
+                </FormField>
+
+                <FormField label="Work Description" className="md:col-span-2">
+                  <Textarea
+                    placeholder="Describe the work performed..."
+                    value={manualForm.work_description}
+                    onChange={(e) => setManualForm(prev => ({ ...prev, work_description: e.target.value }))}
+                    rows={2}
                   />
                 </FormField>
 

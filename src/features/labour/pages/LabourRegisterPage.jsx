@@ -79,10 +79,16 @@ export function LabourRegisterPage() {
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   useEffect(() => {
-    labourApi.masters().then((res) => {
-      const d = res?.data?.masters ?? res?.data ?? {};
+    Promise.all([
+      labourApi.masters().catch(() => ({})),
+      labourApi.categories.list().catch(() => ({ data: [] })),
+      labourApi.contractors.list().catch(() => ({ data: [] })),
+    ]).then(([resMasters, resCategories, resContractors]) => {
+      const d = resMasters?.data?.masters ?? resMasters?.data ?? resMasters ?? {};
+      d.categories = resCategories?.data?.labour_categories ?? resCategories?.data ?? resCategories ?? [];
+      d.contractors = resContractors?.data?.labour_contractors ?? resContractors?.data ?? resContractors ?? [];
       setMasters(d);
-    }).catch(() => {});
+    });
   }, []);
 
   const openAdd = () => { setForm(EMPTY_FORM); setErrors({}); setIsAddOpen(true); };
@@ -96,7 +102,7 @@ export function LabourRegisterPage() {
   const submit = async (e) => {
     e.preventDefault();
     const errs = {};
-    ['worker_code', 'worker_name', 'labour_category_id', 'date_joined', 'status_id'].forEach((f) => {
+    ['worker_code', 'worker_name', 'labour_category_id', 'date_joined', 'status_id', 'employment_source_id', 'gender_id', 'id_type_id', 'wage_basis_id'].forEach(f => {
       if (!String(form[f] || '').trim()) errs[f] = 'Required';
     });
     if (Object.keys(errs).length) { setErrors(errs); return; }
@@ -105,11 +111,15 @@ export function LabourRegisterPage() {
       const payload = { ...form };
       ['labour_category_id', 'contractor_id', 'employment_source_id', 'gender_id', 'id_type_id', 'wage_basis_id', 'status_id'].forEach((f) => {
         if (payload[f]) payload[f] = Number(payload[f]);
+        else payload[f] = null;
       });
       ['base_wage_rate', 'overtime_rate_per_hour'].forEach((f) => {
         if (payload[f]) payload[f] = Number(payload[f]);
+        else payload[f] = 0;
       });
-      Object.keys(payload).forEach((k) => { if (payload[k] === '') payload[k] = null; });
+      Object.keys(payload).forEach((k) => { 
+        if (typeof payload[k] === 'string') payload[k] = payload[k].trim(); 
+      });
       if (editItem?.id) await labourApi.workers.update(editItem.id, payload);
       else await labourApi.workers.create(payload);
       toast.success(`Worker ${editItem ? 'updated' : 'created'} successfully.`);
@@ -150,7 +160,16 @@ export function LabourRegisterPage() {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
   const isModalOpen = isAddOpen || Boolean(editItem);
 
-  const masterOpts = (key) => (Array.isArray(masters[key]) ? masters[key] : []).map((m) => ({ value: String(m.id), label: m.status_name || m.source_name || m.gender_name || m.type_name || m.basis_name || m.name || m.id }));
+  const masterOpts = (key) => {
+    const apiKeys = {
+      'employment_sources': 'employment-sources',
+      'id_types': 'worker-id-types',
+      'wage_bases': 'worker-wage-bases',
+      'statuses': 'worker-statuses',
+    };
+    const targetKey = apiKeys[key] || key;
+    return (Array.isArray(masters[targetKey]) ? masters[targetKey] : []).map((m) => ({ value: String(m.id), label: m.employment_source_name || m.category_name || m.contractor_name || m.id_type_name || m.status_name || m.source_name || m.gender_name || m.type_name || m.basis_name || m.name || m.id }));
+  };
 
   // Metrics
   const activeCount = useMemo(() => items.filter((i) => String(i.status_name || '').toLowerCase().includes('active')).length, [items]);
@@ -611,7 +630,7 @@ export function LabourRegisterPage() {
                 <FormField label="Contractor" error={errors.contractor_id}>
                   <Select options={[{ value: '', label: 'None' }, ...masterOpts('contractors')]} value={form.contractor_id} onChange={(v) => change('contractor_id', v)} />
                 </FormField>
-                <FormField label="Gender" error={errors.gender_id}>
+                <FormField label="Gender" required error={errors.gender_id}>
                   <Select options={[{ value: '', label: 'Select' }, ...masterOpts('genders')]} value={form.gender_id} onChange={(v) => change('gender_id', v)} />
                 </FormField>
                 <FormField label="Date of Birth" error={errors.date_of_birth}>
@@ -620,7 +639,7 @@ export function LabourRegisterPage() {
                 <FormField label="Phone" error={errors.phone}>
                   <Input value={form.phone} onChange={(e) => change('phone', e.target.value)} placeholder="9876543210" />
                 </FormField>
-                <FormField label="Employment Source" error={errors.employment_source_id}>
+                <FormField label="Employment Source" required error={errors.employment_source_id}>
                   <Select options={[{ value: '', label: 'Select' }, ...masterOpts('employment_sources')]} value={form.employment_source_id} onChange={(v) => change('employment_source_id', v)} />
                 </FormField>
               </EntityEditModal.Grid>
@@ -628,7 +647,7 @@ export function LabourRegisterPage() {
 
             <EntityEditModal.Section title="Identity & Address">
               <EntityEditModal.Grid>
-                <FormField label="ID Type" error={errors.id_type_id}>
+                <FormField label="ID Type" required error={errors.id_type_id}>
                   <Select options={[{ value: '', label: 'Select' }, ...masterOpts('id_types')]} value={form.id_type_id} onChange={(v) => change('id_type_id', v)} />
                 </FormField>
                 <FormField label="ID Number" error={errors.id_number_masked}>
@@ -665,7 +684,7 @@ export function LabourRegisterPage() {
                 <FormField label="Date Left" error={errors.date_left}>
                   <Input type="date" value={form.date_left} onChange={(e) => change('date_left', e.target.value)} />
                 </FormField>
-                <FormField label="Wage Basis" error={errors.wage_basis_id}>
+                <FormField label="Wage Basis" required error={errors.wage_basis_id}>
                   <Select options={[{ value: '', label: 'Select' }, ...masterOpts('wage_bases')]} value={form.wage_basis_id} onChange={(v) => change('wage_basis_id', v)} />
                 </FormField>
                 <FormField label="Base Wage Rate (₹)" error={errors.base_wage_rate}>
