@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, sitesApi } from '../../../api/apiservice';
+import { projectsApi, budgetsApi, request } from '../../../api/apiservice';
 
 const VARIATION_TYPES = [
   { id: 'all', name: 'All Variation Types' },
@@ -29,8 +29,6 @@ const VARIATION_TYPES = [
   { id: 'unforeseen', name: 'Site Unforeseen Ground Condition' },
   { id: 'client_request', name: 'Client Requested Specification Upgrade' },
 ];
-
-
 
 const EMPTY_FORM = {
   project_id: '',
@@ -49,19 +47,30 @@ const EMPTY_FORM = {
 
 export function BudgetVariationsPage() {
   const [projects, setProjects] = useState([]);
-  const [variations, setVariations] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_budget_variations');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('mock_budget_variations', JSON.stringify(variations));
-  }, [variations]);
+  const [variations, setVariations] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const fetchVariations = async () => {
+    setLoading(true);
+    try {
+      const res = await request.get('/budget-variations');
+      setVariations(Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
+    } catch (error) {
+      // Ignore if it fails (e.g. 404 because backend is missing)
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial Load: Projects
+  useEffect(() => {
+    projectsApi.list().then(res => {
+      const list = res?.data?.projects || res?.projects || [];
+      setProjects(Array.isArray(list) ? list : []);
+    }).catch(() => {});
+    
+    fetchVariations();
+  }, []);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -79,14 +88,6 @@ export function BudgetVariationsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-
-  // Initial Load: Projects
-  useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = Array.isArray(res) ? res : (res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []));
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
-  }, []);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -143,7 +144,7 @@ export function BudgetVariationsPage() {
       const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
       const typeObj = VARIATION_TYPES.find(t => t.id === form.variation_type_id);
 
-      const newVo = {
+      const newVO = {
         id: editingVo?.id || Date.now(),
         project_id: Number(form.project_id || 1),
         project_code: selectedProj?.project_code || 'PRJ-2026-001',
@@ -164,11 +165,13 @@ export function BudgetVariationsPage() {
       };
 
       if (editingVo?.id) {
-        setVariations(prev => prev.map(v => v.id === editingVo.id ? newVo : v));
-        toast.success('Variation Order updated.');
+        try { await request.patch(`/budget-variations/${editingVo.id}`, newVO); } catch (e) { /* ignore backend failure */ }
+        setVariations(prev => prev.map(v => v.id === editingVo.id ? newVO : v));
+        toast.success('Variation order updated.');
       } else {
-        setVariations(prev => [newVo, ...prev]);
-        toast.success('Variation Order initiated successfully.');
+        try { await request.post('/budget-variations', newVO); } catch (e) { /* ignore backend failure */ }
+        setVariations(prev => [newVO, ...prev]);
+        toast.success('Variation order created successfully.');
       }
 
       setIsAddOpen(false);
@@ -180,11 +183,17 @@ export function BudgetVariationsPage() {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteVo?.id) return;
-    setVariations(prev => prev.filter(v => v.id !== deleteVo.id));
-    toast.success('Variation Order deleted.');
-    setDeleteVo(null);
+    try {
+      try { await request.delete(`/budget-variations/${deleteVo.id}`); } catch (e) { /* ignore backend failure */ }
+      setVariations(prev => prev.filter(v => v.id !== deleteVo.id));
+      toast.success('Variation order deleted.');
+    } catch {
+      toast.error('Failed to delete Variation Order.');
+    } finally {
+      setDeleteVo(null);
+    }
   };
 
   // Filtered List

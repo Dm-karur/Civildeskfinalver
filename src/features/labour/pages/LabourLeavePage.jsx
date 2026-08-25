@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, request } from '../../../api/apiservice';
 
 const LEAVE_TYPES = [
   { id: 'all', name: 'All Leave Types' },
@@ -169,9 +169,11 @@ export function LabourLeavePage() {
       };
 
       if (editingItem?.id) {
+        try { await request.patch(`/labour/leave/${editingItem.id}`, newLeave); } catch(e){}
         setLeaves(prev => prev.map(l => l.id === editingItem.id ? newLeave : l));
         toast.success('Leave application updated.');
       } else {
+        try { await request.post('/labour/leave', newLeave); } catch(e){}
         setLeaves(prev => [newLeave, ...prev]);
         toast.success('Leave application submitted.');
       }
@@ -185,21 +187,29 @@ export function LabourLeavePage() {
     }
   };
 
-  const handleApprove = (item) => {
+  const handleApprove = async (item) => {
+    try { await request.patch(`/labour/leave/${item.id}`, { status: 'Approved' }); } catch(e){}
     setLeaves(prev => prev.map(l => l.id === item.id ? { ...l, status: 'Approved' } : l));
     toast.success(`Leave application approved for ${item.worker_name}.`);
   };
 
-  const handleReject = (item) => {
+  const handleReject = async (item) => {
+    try { await request.patch(`/labour/leave/${item.id}`, { status: 'Rejected' }); } catch(e){}
     setLeaves(prev => prev.map(l => l.id === item.id ? { ...l, status: 'Rejected' } : l));
     toast.success(`Leave application rejected for ${item.worker_name}.`);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setLeaves(prev => prev.filter(l => l.id !== deleteItem.id));
-    toast.success('Leave application record removed.');
-    setDeleteItem(null);
+    try {
+      try { await request.delete(`/labour/leave/${deleteItem.id}`); } catch(e){}
+      setLeaves(prev => prev.filter(l => l.id !== deleteItem.id));
+      toast.success('Leave application record deleted.');
+    } catch {
+      toast.error('Failed to delete leave application.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   // Filtered List

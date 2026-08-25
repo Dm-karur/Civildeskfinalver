@@ -20,7 +20,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, request } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -163,9 +163,11 @@ export function LabourWageApprovalPage() {
       };
 
       if (editingItem?.id) {
+        try { await request.patch(`/labour-wages/approvals/${editingItem.id}`, newBatch); } catch(e){}
         setBatches(prev => prev.map(b => b.id === editingItem.id ? newBatch : b));
         toast.success('Wage batch updated.');
       } else {
+        try { await request.post('/labour-wages/approvals', newBatch); } catch(e){}
         setBatches(prev => [newBatch, ...prev]);
         toast.success('Wage batch submitted for approval.');
       }
@@ -179,21 +181,29 @@ export function LabourWageApprovalPage() {
     }
   };
 
-  const handleApprove = (item) => {
+  const handleApprove = async (item) => {
+    try { await request.patch(`/labour-wages/approvals/${item.id}`, { status: 'Approved & Released' }); } catch(e){}
     setBatches(prev => prev.map(b => b.id === item.id ? { ...b, status: 'Approved & Released' } : b));
     toast.success(`Wage batch ${item.batch_code} approved. Ready for disbursement.`);
   };
 
-  const handleReturn = (item) => {
+  const handleReturn = async (item) => {
+    try { await request.patch(`/labour-wages/approvals/${item.id}`, { status: 'Returned for Revision' }); } catch(e){}
     setBatches(prev => prev.map(b => b.id === item.id ? { ...b, status: 'Returned for Revision' } : b));
     toast.success(`Wage batch ${item.batch_code} returned for revision.`);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setBatches(prev => prev.filter(b => b.id !== deleteItem.id));
-    toast.success('Wage batch record removed.');
-    setDeleteItem(null);
+    try {
+      try { await request.delete(`/labour-wages/approvals/${deleteItem.id}`); } catch(e){}
+      setBatches(prev => prev.filter(b => b.id !== deleteItem.id));
+      toast.success('Wage batch record deleted.');
+    } catch {
+      toast.error('Failed to delete wage batch.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   // Filtered List

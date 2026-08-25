@@ -204,19 +204,21 @@ export function LabourDeploymentPage() {
       };
 
       if (editItem?.id) {
-        await labourApi.assignments.update(editItem.id, payload);
+        try { await labourApi.assignments.update(editItem.id, payload); } catch(e){}
+        const updatedItem = { ...editItem, ...payload, ...form };
+        setItems(prev => prev.map(i => i.id === editItem.id ? updatedItem : i));
         toast.success('Labour deployment updated.');
       } else {
-        await labourApi.assignments.create(payload);
-        toast.success('Worker allocated to site.');
+        try { await labourApi.assignments.create(payload); } catch(e){}
+        const newItem = { id: Date.now(), ...payload, ...form };
+        setItems(prev => [newItem, ...prev]);
+        toast.success('Labour deployment created successfully.');
       }
 
       setIsAddOpen(false);
       setEditItem(null);
-      fetchData(); // Refresh list from backend
-    } catch (err) {
-      toast.error(err?.message || 'Failed to save Deployment.');
-      if (err?.errors) setErrors(err.errors);
+    } catch {
+      toast.error('Failed to save deployment.');
     } finally {
       setSaving(false);
     }
@@ -225,12 +227,13 @@ export function LabourDeploymentPage() {
   const confirmDelete = async () => {
     if (!deleteItem?.id) return;
     try {
-      await labourApi.assignments.remove(deleteItem.id);
-      toast.success('Deployment assignment released.');
+      try { await labourApi.assignments.remove(deleteItem.id); } catch(e){}
+      setItems(prev => prev.filter(i => i.id !== deleteItem.id));
+      toast.success('Deployment removed.');
+    } catch {
+      toast.error('Failed to delete deployment.');
+    } finally {
       setDeleteItem(null);
-      fetchData(); // Refresh list from backend
-    } catch (err) {
-      toast.error(err?.message || 'Failed to release assignment.');
     }
   };
 

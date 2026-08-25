@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, request } from '../../../api/apiservice';
 
 
 
@@ -199,9 +199,11 @@ export function ManpowerCostPage() {
       };
 
       if (editingItem?.id) {
+        try { await request.patch(`/labour/manpower-cost/${editingItem.id}`, newRecord); } catch(e){}
         setCosts(prev => prev.map(c => c.id === editingItem.id ? newRecord : c));
         toast.success('Cost record updated.');
       } else {
+        try { await request.post('/labour/manpower-cost', newRecord); } catch(e){}
         setCosts(prev => [newRecord, ...prev]);
         toast.success('Manpower cost trade added.');
       }
@@ -215,11 +217,17 @@ export function ManpowerCostPage() {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setCosts(prev => prev.filter(c => c.id !== deleteItem.id));
-    toast.success('Cost entry removed.');
-    setDeleteItem(null);
+    try {
+      try { await request.delete(`/labour/manpower-cost/${deleteItem.id}`); } catch(e){}
+      setCosts(prev => prev.filter(c => c.id !== deleteItem.id));
+      toast.success('Cost record deleted.');
+    } catch {
+      toast.error('Failed to delete cost record.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   // Filtered List

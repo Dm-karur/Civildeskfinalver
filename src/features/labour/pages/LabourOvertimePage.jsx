@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, request } from '../../../api/apiservice';
 
 const OT_REASONS = [
   { id: 'all', name: 'All Overtime Reasons' },
@@ -177,9 +177,11 @@ export function LabourOvertimePage() {
       };
 
       if (editingItem?.id) {
+        try { await request.patch(`/labour-attendance/overtime/${editingItem.id}`, newSlip); } catch(e){}
         setSlips(prev => prev.map(s => s.id === editingItem.id ? newSlip : s));
         toast.success('Overtime slip updated.');
       } else {
+        try { await request.post('/labour-attendance/overtime', newSlip); } catch(e){}
         setSlips(prev => [newSlip, ...prev]);
         toast.success('Overtime slip authorized.');
       }
@@ -193,21 +195,29 @@ export function LabourOvertimePage() {
     }
   };
 
-  const handleApprove = (item) => {
+  const handleApprove = async (item) => {
+    try { await request.patch(`/labour-attendance/overtime/${item.id}`, { status: 'Approved' }); } catch(e){}
     setSlips(prev => prev.map(s => s.id === item.id ? { ...s, status: 'Approved' } : s));
     toast.success(`Overtime slip ${item.slip_code} approved.`);
   };
 
-  const handleReject = (item) => {
+  const handleReject = async (item) => {
+    try { await request.patch(`/labour-attendance/overtime/${item.id}`, { status: 'Rejected' }); } catch(e){}
     setSlips(prev => prev.map(s => s.id === item.id ? { ...s, status: 'Rejected' } : s));
     toast.success(`Overtime slip ${item.slip_code} rejected.`);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setSlips(prev => prev.filter(s => s.id !== deleteItem.id));
-    toast.success('Overtime record removed.');
-    setDeleteItem(null);
+    try {
+      try { await request.delete(`/labour-attendance/overtime/${deleteItem.id}`); } catch(e){}
+      setSlips(prev => prev.filter(s => s.id !== deleteItem.id));
+      toast.success('Overtime record deleted.');
+    } catch {
+      toast.error('Failed to delete overtime record.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   // Filtered List

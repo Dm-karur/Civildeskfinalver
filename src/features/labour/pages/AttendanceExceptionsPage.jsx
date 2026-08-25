@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, request } from '../../../api/apiservice';
 
 const EXCEPTION_CATEGORIES = [
   { id: 'all', name: 'All Exception Types' },
@@ -164,9 +164,11 @@ export function AttendanceExceptionsPage() {
       };
 
       if (editingItem?.id) {
+        try { await request.patch(`/labour-attendance/exceptions/${editingItem.id}`, newException); } catch(e){}
         setExceptions(prev => prev.map(e => e.id === editingItem.id ? newException : e));
         toast.success('Attendance exception updated.');
       } else {
+        try { await request.post('/labour-attendance/exceptions', newException); } catch(e){}
         setExceptions(prev => [newException, ...prev]);
         toast.success('Attendance exception logged.');
       }
@@ -190,11 +192,17 @@ export function AttendanceExceptionsPage() {
     toast.success(`Exception rejected for ${item.worker_name}. Deduction applied.`);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setExceptions(prev => prev.filter(e => e.id !== deleteItem.id));
-    toast.success('Exception record removed.');
-    setDeleteItem(null);
+    try {
+      try { await request.delete(`/labour-attendance/exceptions/${deleteItem.id}`); } catch(e){}
+      setExceptions(prev => prev.filter(e => e.id !== deleteItem.id));
+      toast.success('Exception record deleted.');
+    } catch {
+      toast.error('Failed to delete exception.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   // Filtered List

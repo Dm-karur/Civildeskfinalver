@@ -115,7 +115,7 @@ export function BoqItemsPage() {
         const params = {};
         if (selectedSectionId !== 'all') params.section_id = selectedSectionId;
         const res = await boqApi.items.list(Number(selectedBoqId), params);
-        const list = res?.data?.boq_items ?? res?.data?.items ?? res?.data?.data ?? res?.items ?? [];
+        const list = Array.isArray(res) ? res : (res?.data?.boq_items ?? res?.boq_items ?? res?.data?.items ?? res?.items ?? res?.data?.data ?? []);
         setItems(Array.isArray(list) ? list : []);
       } else {
         const boqsToFetch = boqs.filter(b => selectedProjectId === 'all' || String(b.project_id) === String(selectedProjectId));
@@ -127,7 +127,7 @@ export function BoqItemsPage() {
           let allItems = [];
           results.forEach(res => {
             if (res) {
-              const list = res?.data?.boq_items ?? res?.data?.items ?? res?.data?.data ?? res?.items ?? [];
+              const list = Array.isArray(res) ? res : (res?.data?.boq_items ?? res?.boq_items ?? res?.data?.items ?? res?.items ?? res?.data?.data ?? []);
               if (Array.isArray(list)) allItems = [...allItems, ...list];
             }
           });
@@ -279,12 +279,13 @@ export function BoqItemsPage() {
     if (!deleteItem?.id) return;
     try {
       await boqApi.items.remove(deleteItem.boq_id, deleteItem.id);
-    } catch {
-      // Local fallback
+      setItems(prev => prev.filter(i => i.id !== deleteItem.id));
+      toast.success('BOQ item deleted.');
+    } catch (error) {
+      toast.error('Failed to delete BOQ item.');
+    } finally {
+      setDeleteItem(null);
     }
-    setItems(prev => prev.filter(i => i.id !== deleteItem.id));
-    toast.success('BOQ item deleted.');
-    setDeleteItem(null);
   };
 
   // Filtered List

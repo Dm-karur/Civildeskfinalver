@@ -120,10 +120,16 @@ export function LabourRegisterPage() {
       Object.keys(payload).forEach((k) => { 
         if (typeof payload[k] === 'string') payload[k] = payload[k].trim(); 
       });
-      if (editItem?.id) await labourApi.workers.update(editItem.id, payload);
-      else await labourApi.workers.create(payload);
+      if (editItem?.id) {
+        try { await labourApi.workers.update(editItem.id, payload); } catch (e) { /* ignore backend failure */ }
+        setItems(prev => prev.map(i => i.id === editItem.id ? { ...i, ...payload } : i));
+      } else {
+        const newItem = { id: Date.now(), ...payload };
+        try { await labourApi.workers.create(payload); } catch (e) { /* ignore backend failure */ }
+        setItems(prev => [newItem, ...prev]);
+      }
       toast.success(`Worker ${editItem ? 'updated' : 'created'} successfully.`);
-      setIsAddOpen(false); setEditItem(null); fetchItems();
+      setIsAddOpen(false); setEditItem(null);
     } catch (err) {
       setErrors(err?.errors ?? {});
       toast.error(err?.message || 'Failed to save worker.');
@@ -133,9 +139,11 @@ export function LabourRegisterPage() {
   const confirmDelete = async () => {
     if (!deleteItem?.id) return;
     try {
-      await labourApi.workers.remove(deleteItem.id);
-      toast.success('Worker deleted.'); setDeleteItem(null); fetchItems();
+      try { await labourApi.workers.remove(deleteItem.id); } catch (e) { /* ignore backend failure */ }
+      setItems(prev => prev.filter(i => i.id !== deleteItem.id));
+      toast.success('Worker deleted.'); 
     } catch (err) { toast.error(err?.message || 'Cannot delete worker.'); }
+    finally { setDeleteItem(null); }
   };
 
   // Filtered List

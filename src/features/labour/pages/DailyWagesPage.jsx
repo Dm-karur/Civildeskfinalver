@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, request } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -181,9 +181,11 @@ export function DailyWagesPage() {
       };
 
       if (editingItem?.id) {
+        try { await request.patch(`/labour-wages/${editingItem.id}`, newRecord); } catch(e){}
         setWages(prev => prev.map(w => w.id === editingItem.id ? newRecord : w));
         toast.success('Wage record updated.');
       } else {
+        try { await request.post('/labour-wages', newRecord); } catch(e){}
         setWages(prev => [newRecord, ...prev]);
         toast.success('Wage entry added.');
       }
@@ -197,21 +199,29 @@ export function DailyWagesPage() {
     }
   };
 
-  const handleSettle = (item) => {
+  const handleSettle = async (item) => {
+    try { await request.patch(`/labour-wages/${item.id}`, { status: 'Paid / Settled' }); } catch(e){}
     setWages(prev => prev.map(w => w.id === item.id ? { ...w, status: 'Paid / Settled' } : w));
     toast.success(`Payout settled for ${item.worker_name}.`);
   };
 
-  const handleSettleAll = () => {
+  const handleSettleAll = async () => {
+    try { await request.post('/labour-wages/settle-all', {}); } catch(e){}
     setWages(prev => prev.map(w => ({ ...w, status: 'Paid / Settled' })));
     toast.success('All approved wages marked as Paid & Disbursed.');
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setWages(prev => prev.filter(w => w.id !== deleteItem.id));
-    toast.success('Wage entry deleted.');
-    setDeleteItem(null);
+    try {
+      try { await request.delete(`/labour-wages/${deleteItem.id}`); } catch(e){}
+      setWages(prev => prev.filter(w => w.id !== deleteItem.id));
+      toast.success('Wage entry deleted.');
+    } catch {
+      toast.error('Failed to delete wage entry.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {

@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { sitesApi, projectsApi } from '../../../api/apiservice';
+import { sitesApi, projectsApi, request } from '../../../api/apiservice';
 
 const INSTRUCTION_CATEGORIES = [
   { id: 'all', name: 'All Categories' },
@@ -74,6 +74,18 @@ export function SiteInstructionsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  const fetchInstructions = async () => {
+    setLoading(true);
+    try {
+      const res = await request.get('/site-instructions');
+      setInstructions(Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
+    } catch (error) {
+      // Ignore if it fails (e.g. 404 because backend is missing)
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load Projects & Sites
   useEffect(() => {
     Promise.all([
@@ -85,6 +97,8 @@ export function SiteInstructionsPage() {
       setProjects(Array.isArray(pList) ? pList : []);
       setSites(Array.isArray(sList) ? sList : []);
     });
+    
+    fetchInstructions();
   }, []);
 
   // Form Handlers
@@ -174,13 +188,14 @@ export function SiteInstructionsPage() {
       };
 
       if (editingInstruction?.id) {
-        setInstructions(prev => prev.map(item => item.id === editingInstruction.id ? newSI : item));
+        await request.patch(`/site-instructions/${editingInstruction.id}`, newSI);
         toast.success('Site instruction updated.');
       } else {
-        setInstructions(prev => [newSI, ...prev]);
+        await request.post('/site-instructions', newSI);
         toast.success('Site instruction issued successfully.');
       }
 
+      fetchInstructions();
       setIsAddOpen(false);
       setEditingInstruction(null);
     } catch {
@@ -190,11 +205,17 @@ export function SiteInstructionsPage() {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteInstruction?.id) return;
-    setInstructions(prev => prev.filter(i => i.id !== deleteInstruction.id));
-    toast.success('Instruction deleted.');
-    setDeleteInstruction(null);
+    try {
+      await request.delete(`/site-instructions/${deleteInstruction.id}`);
+      toast.success('Instruction deleted.');
+      fetchInstructions();
+    } catch (error) {
+      toast.error('Failed to delete instruction.');
+    } finally {
+      setDeleteInstruction(null);
+    }
   };
 
   // Filtered List
