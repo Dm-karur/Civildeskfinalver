@@ -19,22 +19,21 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, sitesApi, materialsApi, materialManagementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
 
 const EMPTY_FORM = {
   project_id: '',
-  site_name: '',
+  site_id: '',
   issue_no: '',
   issue_date: '',
   contractor_name: 'Sri Murugan Labour Services',
   work_activity: '',
-  material_code: 'MAT-CEM-001',
-  material_name: 'OPC 53 Grade Cement',
+  material_id: '',
+  uom_id: '',
   issued_qty: '50',
-  uom: 'Bags',
   unit_rate: '385',
   total_value: '19250',
   issued_by: 'Store Incharge',
@@ -43,7 +42,7 @@ const EMPTY_FORM = {
 };
 
 export function StockIssuesPage() {
-  const { hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -63,12 +62,92 @@ export function StockIssuesPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  const [sites, setSites] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [uoms, setUoms] = useState([]);
+  const [transactionStatuses, setTransactionStatuses] = useState([]);
+
+  const fetchIssuesList = async (pList = projects, sList = sites) => {
+    setLoading(true);
+    try {
+      const txRes = await materialManagementApi.transactions.list({ transaction_type_id: 1 });
+      const tList = txRes?.data?.material_transactions ?? txRes?.data?.data ?? [];
+      if (Array.isArray(tList)) {
+        const normalized = tList.map((t, idx) => {
+          const project = pList.find(p => String(p.id) === String(t.project_id));
+          const site = sList.find(s => String(s.id) === String(t.from_site_id));
+          
+          let issued_by = 'Store Incharge';
+          let received_by = 'Site Foreman';
+          let actualRemarks = t.remarks || '';
+          try {
+            const parsed = JSON.parse(t.remarks);
+            if (parsed && typeof parsed === 'object') {
+              issued_by = parsed.issued_by_name || 'Store Incharge';
+              received_by = parsed.received_by_name || 'Site Foreman';
+              actualRemarks = parsed.remarks || '';
+            }
+          } catch {
+            // Not JSON
+          }
+          
+          return {
+            ...t,
+            id: t.id || idx + 1,
+            project_code: project?.project_code || 'PRJ-2026-001',
+            project_name: project?.project_name || 'Civil Project',
+            site_name: site?.site_name || 'Site Yard',
+            issue_no: t.transaction_no,
+            issue_date: t.transaction_date,
+            contractor_name: t.work_description || 'Sri Murugan Labour Services',
+            work_activity: t.purpose || 'Tower A Column Concreting',
+            material_name: t.material_name || 'Construction Material',
+            issued_qty: Number(t.quantity || t.issued_qty || 0),
+            unit_rate: Number(t.unit_rate || 0),
+            total_value: Number(t.line_value || (t.quantity * t.unit_rate) || 0),
+            status: t.status_name || 'Issued & Debited',
+            issued_by: issued_by,
+            received_by: received_by,
+            notes: actualRemarks,
+          };
+        });
+        setIssues(normalized);
+      }
+    } catch {
+      // Keep empty array
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects & API Data safely
   useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
+    setLoading(true);
+    Promise.all([
+      projectsApi.list().catch(() => ({ data: [] })),
+      sitesApi.list().catch(() => ({ data: [] })),
+      materialsApi.catalogue.list().catch(() => ({ data: [] })),
+      materialsApi.masters().catch(() => ({ data: {} })),
+    ]).then(([projRes, sitesRes, catRes, mastersRes]) => {
+      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+      const parsedProjects = Array.isArray(pList) ? pList : [];
+      setProjects(parsedProjects);
+
+      const sList = sitesRes?.data?.sites ?? sitesRes?.sites ?? (Array.isArray(sitesRes) ? sitesRes : []);
+      setSites(Array.isArray(sList) ? sList : []);
+
+      const mList = catRes?.data?.materials ?? catRes?.materials ?? (Array.isArray(catRes) ? catRes : []);
+      setMaterials(Array.isArray(mList) ? mList : []);
+
+      const mastersData = mastersRes?.data?.masters ?? mastersRes?.masters ?? {};
+      const uList = mastersData?.units ?? [];
+      setUoms(Array.isArray(uList) ? uList : []);
+
+      const sStatuses = mastersData?.transaction_statuses ?? [];
+      setTransactionStatuses(Array.isArray(sStatuses) ? sStatuses : []);
+
+      fetchIssuesList(parsedProjects, sList);
+    }).catch(() => setLoading(false));
   }, []);
 
   
@@ -110,26 +189,50 @@ export function StockIssuesPage() {
     setIsAddOpen(true);
   };
 
-  const handleOpenEdit = (item) => {
-    setForm({
-      project_id: String(item.project_id || '1'),
-      site_name: item.site_name || '',
-      issue_no: item.issue_no || '',
-      issue_date: item.issue_date || '',
-      contractor_name: item.contractor_name || '',
-      work_activity: item.work_activity || '',
-      material_code: item.material_code || '',
-      material_name: item.material_name || '',
-      issued_qty: String(item.issued_qty || '50'),
-      uom: item.uom || 'Nos',
-      unit_rate: String(item.unit_rate || '385'),
-      total_value: String(item.total_value || '19250'),
-      issued_by: item.issued_by || 'Store Incharge',
-      received_by: item.received_by || 'Site Foreman',
-      notes: item.notes || '',
-    });
-    setErrors({});
-    setEditingItem(item);
+  const handleOpenEdit = async (item) => {
+    setLoading(true);
+    try {
+      const res = await materialManagementApi.transactions.get(item.id);
+      const fullTx = res?.data?.transaction ?? res?.transaction ?? {};
+      const firstItem = fullTx.items?.[0] ?? {};
+
+      let issued_by = 'Store Incharge';
+      let received_by = 'Site Foreman';
+      let actualRemarks = fullTx.remarks || '';
+      try {
+        const parsed = JSON.parse(fullTx.remarks);
+        if (parsed && typeof parsed === 'object') {
+          issued_by = parsed.issued_by_name || 'Store Incharge';
+          received_by = parsed.received_by_name || 'Site Foreman';
+          actualRemarks = parsed.remarks || '';
+        }
+      } catch {
+        // Not JSON
+      }
+
+      setForm({
+        project_id: String(fullTx.project_id || ''),
+        site_id: String(fullTx.from_site_id || ''),
+        issue_no: fullTx.transaction_no || '',
+        issue_date: fullTx.transaction_date || '',
+        contractor_name: firstItem.work_description || '',
+        work_activity: fullTx.purpose || '',
+        material_id: String(firstItem.material_id || ''),
+        uom_id: String(firstItem.uom_id || ''),
+        issued_qty: String(firstItem.quantity || '50'),
+        unit_rate: String(firstItem.unit_rate || '385'),
+        total_value: String(firstItem.line_value || Math.round(Number(firstItem.quantity || 0) * Number(firstItem.unit_rate || 0))),
+        issued_by: issued_by,
+        received_by: received_by,
+        notes: actualRemarks,
+      });
+      setErrors({});
+      setEditingItem(fullTx);
+    } catch {
+      toast.error('Failed to load transaction details.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFormChange = (field, value) => {
@@ -149,7 +252,8 @@ export function StockIssuesPage() {
     e.preventDefault();
     const errs = {};
     if (!form.issue_no.trim()) errs.issue_no = 'Issue No is required';
-    if (!form.material_name.trim()) errs.material_name = 'Material item is required';
+    if (!form.material_id) errs.material_id = 'Material item is required';
+    if (!form.site_id) errs.site_id = 'Site location is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -158,42 +262,70 @@ export function StockIssuesPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const qty = Number(form.issued_qty || 0);
-      const rate = Number(form.unit_rate || 0);
-
-      const newIssue = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        site_name: form.site_name || 'Site Yard',
-        issue_no: form.issue_no,
-        issue_date: form.issue_date,
-        contractor_name: form.contractor_name,
-        work_activity: form.work_activity,
-        material_code: form.material_code,
-        material_name: form.material_name,
-        issued_qty: qty,
-        uom: form.uom,
-        unit_rate: rate,
-        total_value: Number(form.total_value || qty * rate),
-        issued_by: form.issued_by,
-        received_by: form.received_by,
-        status: 'Issued & Debited',
-        notes: form.notes,
-      };
-
       if (editingItem?.id) {
-        setIssues(prev => prev.map(i => i.id === editingItem.id ? newIssue : i));
+        const remarksPayload = JSON.stringify({
+          issued_by_name: form.issued_by,
+          received_by_name: form.received_by,
+          remarks: form.notes
+        });
+
+        await materialManagementApi.transactions.update(editingItem.id, {
+          project_id: Number(form.project_id),
+          transaction_no: form.issue_no,
+          transaction_date: form.issue_date,
+          from_site_id: Number(form.site_id),
+          purpose: form.work_activity,
+          issued_by: user?.id ? Number(user.id) : null,
+          received_by: null,
+          remarks: remarksPayload
+        });
+
+        const firstItem = editingItem.items?.[0];
+        if (firstItem?.id) {
+          await materialManagementApi.transactions.updateItem(editingItem.id, firstItem.id, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            quantity: Number(form.issued_qty),
+            unit_rate: Number(form.unit_rate),
+            work_description: form.contractor_name
+          });
+        }
         toast.success('Material issue updated.');
       } else {
-        setIssues(prev => [newIssue, ...prev]);
+        const remarksPayload = JSON.stringify({
+          issued_by_name: form.issued_by,
+          received_by_name: form.received_by,
+          remarks: form.notes
+        });
+
+        const headerRes = await materialManagementApi.transactions.create({
+          project_id: Number(form.project_id),
+          transaction_no: form.issue_no,
+          transaction_date: form.issue_date,
+          transaction_type_id: 1, // ISSUE
+          from_site_id: Number(form.site_id),
+          purpose: form.work_activity,
+          issued_by: user?.id ? Number(user.id) : null,
+          received_by: null,
+          remarks: remarksPayload
+        });
+
+        const txId = headerRes?.data?.transaction?.id ?? headerRes?.transaction?.id;
+        if (txId) {
+          await materialManagementApi.transactions.addItem(txId, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            quantity: Number(form.issued_qty),
+            unit_rate: Number(form.unit_rate),
+            work_description: form.contractor_name
+          });
+        }
         toast.success('Material issue note (MIN) recorded.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
+      fetchIssuesList();
     } catch {
       toast.error('Failed to save material issue.');
     } finally {
@@ -201,11 +333,19 @@ export function StockIssuesPage() {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setIssues(prev => prev.filter(i => i.id !== deleteItem.id));
-    toast.success('Material issue removed.');
-    setDeleteItem(null);
+    setSaving(true);
+    try {
+      await materialManagementApi.transactions.delete(deleteItem.id);
+      toast.success('Material issue removed.');
+      fetchIssuesList();
+    } catch {
+      toast.error('Failed to delete material issue.');
+    } finally {
+      setSaving(false);
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -421,15 +561,17 @@ export function StockIssuesPage() {
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Edit"
-                            onClick={() => handleOpenEdit(i)}
-                          >
-                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
+                          {(i.status_code || i.status || '').toUpperCase().includes('DRAFT') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="Edit"
+                              onClick={() => handleOpenEdit(i)}
+                            >
+                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -589,11 +731,18 @@ export function StockIssuesPage() {
 
             <EntityEditModal.Section title="Material Issue Quantities">
               <EntityEditModal.Grid>
-                <FormField label="Material Item" required error={errors.material_name}>
-                  <Input
-                    value={form.material_name}
-                    onChange={(e) => handleFormChange('material_name', e.target.value)}
-                    placeholder="e.g. OPC 53 Grade Cement"
+                <FormField label="Material Item" required error={errors.material_id}>
+                  <Select
+                    options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
+                    value={form.material_id}
+                    onChange={(v) => {
+                      const selectedMat = materials.find(mat => String(mat.id) === String(v));
+                      handleFormChange('material_id', v);
+                      if (selectedMat?.base_uom_id) {
+                        handleFormChange('uom_id', String(selectedMat.base_uom_id));
+                      }
+                    }}
+                    placeholder="Select Material"
                   />
                 </FormField>
 
@@ -629,11 +778,12 @@ export function StockIssuesPage() {
                   />
                 </FormField>
 
-                <FormField label="Site Location">
-                  <Input
-                    value={form.site_name}
-                    onChange={(e) => handleFormChange('site_name', e.target.value)}
-                    placeholder="e.g. Tower A Core - Level 2"
+                <FormField label="Site Location" required error={errors.site_id}>
+                  <Select
+                    options={sites.filter(s => String(s.project_id) === String(form.project_id)).map(s => ({ value: String(s.id), label: s.site_name }))}
+                    value={form.site_id}
+                    onChange={(v) => handleFormChange('site_id', v)}
+                    placeholder="Select Yard/Site Location"
                   />
                 </FormField>
               </EntityEditModal.Grid>

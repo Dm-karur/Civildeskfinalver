@@ -108,7 +108,7 @@ export function ProjectStockPage() {
               site_name: site?.site_name || 'Unknown Site',
               project_name: proj?.project_name || 'Unknown Project',
               status: health,
-              site_stock_value: 0
+              site_stock_value: Math.round(available * Number(mat?.standard_rate || 0))
             };
           });
           setStocks(mapped);

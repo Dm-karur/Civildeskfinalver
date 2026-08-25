@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, sitesApi, materialsApi, materialManagementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -28,13 +28,12 @@ const EMPTY_FORM = {
   project_id: '',
   transfer_no: '',
   transfer_date: '',
-  from_site_name: 'Central Godown Bay 1',
-  to_site_name: 'Site Yard',
+  from_site_id: '',
+  to_site_id: '',
   vehicle_no: '',
-  material_code: 'MAT-CEM-001',
-  material_name: 'OPC 53 Grade Cement',
+  material_id: '',
+  uom_id: '',
   transfer_qty: '50',
-  uom: 'Bags',
   unit_rate: '385',
   transfer_value: '19250',
   status: 'In-Transit',
@@ -43,7 +42,7 @@ const EMPTY_FORM = {
 };
 
 export function StockTransfersPage() {
-  const { hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -64,12 +63,92 @@ export function StockTransfersPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  const [sites, setSites] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [uoms, setUoms] = useState([]);
+  const [transactionStatuses, setTransactionStatuses] = useState([]);
+
+  const fetchTransfersList = async (pList = projects, sList = sites) => {
+    setLoading(true);
+    try {
+      const txRes = await materialManagementApi.transactions.list({ transaction_type_id: 3 });
+      const tList = txRes?.data?.material_transactions ?? txRes?.data?.data ?? [];
+      if (Array.isArray(tList)) {
+        const normalized = tList.map((t, idx) => {
+          const project = pList.find(p => String(p.id) === String(t.project_id));
+          const fromSite = sList.find(s => String(s.id) === String(t.from_site_id));
+          const toSite = sList.find(s => String(s.id) === String(t.to_site_id));
+          
+          let vehicle_no = '';
+          let dispatched_by = 'Store Incharge';
+          let actualRemarks = t.remarks || '';
+          try {
+            const parsed = JSON.parse(t.remarks);
+            if (parsed && typeof parsed === 'object') {
+              vehicle_no = parsed.vehicle_no || '';
+              dispatched_by = parsed.dispatched_by_name || 'Store Incharge';
+              actualRemarks = parsed.remarks || '';
+            }
+          } catch {
+            // Not JSON
+          }
+
+          return {
+            ...t,
+            id: t.id || idx + 1,
+            project_code: project?.project_code || 'PRJ-2026-001',
+            project_name: project?.project_name || 'Civil Project',
+            from_site_name: fromSite?.site_name || 'Central Godown',
+            to_site_name: toSite?.site_name || 'Site Yard',
+            transfer_no: t.transaction_no,
+            transfer_date: t.transaction_date,
+            vehicle_no: vehicle_no,
+            material_name: t.material_name || 'Construction Material',
+            transfer_qty: Number(t.quantity || t.transfer_qty || 0),
+            unit_rate: Number(t.unit_rate || 0),
+            transfer_value: Number(t.line_value || (t.quantity * t.unit_rate) || 0),
+            status: t.status_name || 'In-Transit',
+            dispatched_by: dispatched_by,
+            purpose: actualRemarks,
+          };
+        });
+        setTransfers(normalized);
+      }
+    } catch {
+      // Keep empty
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects & API Data safely
   useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
+    setLoading(true);
+    Promise.all([
+      projectsApi.list().catch(() => ({ data: [] })),
+      sitesApi.list().catch(() => ({ data: [] })),
+      materialsApi.catalogue.list().catch(() => ({ data: [] })),
+      materialsApi.masters().catch(() => ({ data: {} })),
+    ]).then(([projRes, sitesRes, catRes, mastersRes]) => {
+      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+      const parsedProjects = Array.isArray(pList) ? pList : [];
+      setProjects(parsedProjects);
+
+      const sList = sitesRes?.data?.sites ?? sitesRes?.sites ?? (Array.isArray(sitesRes) ? sitesRes : []);
+      setSites(Array.isArray(sList) ? sList : []);
+
+      const mList = catRes?.data?.materials ?? catRes?.materials ?? (Array.isArray(catRes) ? catRes : []);
+      setMaterials(Array.isArray(mList) ? mList : []);
+
+      const mastersData = mastersRes?.data?.masters ?? mastersRes?.masters ?? {};
+      const uList = mastersData?.units ?? [];
+      setUoms(Array.isArray(uList) ? uList : []);
+
+      const sStatuses = mastersData?.transaction_statuses ?? [];
+      setTransactionStatuses(Array.isArray(sStatuses) ? sStatuses : []);
+
+      fetchTransfersList(parsedProjects, sList);
+    }).catch(() => setLoading(false));
   }, []);
 
   
@@ -111,26 +190,50 @@ export function StockTransfersPage() {
     setIsAddOpen(true);
   };
 
-  const handleOpenEdit = (item) => {
-    setForm({
-      project_id: String(item.project_id || '1'),
-      transfer_no: item.transfer_no || '',
-      transfer_date: item.transfer_date || '',
-      from_site_name: item.from_site_name || '',
-      to_site_name: item.to_site_name || '',
-      vehicle_no: item.vehicle_no || '',
-      material_code: item.material_code || '',
-      material_name: item.material_name || '',
-      transfer_qty: String(item.transfer_qty || '50'),
-      uom: item.uom || 'Nos',
-      unit_rate: String(item.unit_rate || '385'),
-      transfer_value: String(item.transfer_value || '19250'),
-      status: item.status || 'In-Transit',
-      dispatched_by: item.dispatched_by || 'Store Incharge',
-      purpose: item.purpose || '',
-    });
-    setErrors({});
-    setEditingItem(item);
+  const handleOpenEdit = async (item) => {
+    setLoading(true);
+    try {
+      const res = await materialManagementApi.transactions.get(item.id);
+      const fullTx = res?.data?.transaction ?? res?.transaction ?? {};
+      const firstItem = fullTx.items?.[0] ?? {};
+
+      let vehicle_no = '';
+      let dispatched_by = 'Store Incharge';
+      let actualRemarks = fullTx.remarks || '';
+      try {
+        const parsed = JSON.parse(fullTx.remarks);
+        if (parsed && typeof parsed === 'object') {
+          vehicle_no = parsed.vehicle_no || '';
+          dispatched_by = parsed.dispatched_by_name || 'Store Incharge';
+          actualRemarks = parsed.remarks || '';
+        }
+      } catch {
+        // Not JSON
+      }
+
+      setForm({
+        project_id: String(fullTx.project_id || ''),
+        transfer_no: fullTx.transaction_no || '',
+        transfer_date: fullTx.transaction_date || '',
+        from_site_id: String(fullTx.from_site_id || ''),
+        to_site_id: String(fullTx.to_site_id || ''),
+        vehicle_no: vehicle_no,
+        material_id: String(firstItem.material_id || ''),
+        uom_id: String(firstItem.uom_id || ''),
+        transfer_qty: String(firstItem.quantity || '50'),
+        unit_rate: String(firstItem.unit_rate || '385'),
+        transfer_value: String(firstItem.line_value || Math.round(Number(firstItem.quantity || 0) * Number(firstItem.unit_rate || 0))),
+        status: fullTx.status_name || 'In-Transit',
+        dispatched_by: dispatched_by,
+        purpose: actualRemarks,
+      });
+      setErrors({});
+      setEditingItem(fullTx);
+    } catch {
+      toast.error('Failed to load transaction details.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFormChange = (field, value) => {
@@ -150,7 +253,9 @@ export function StockTransfersPage() {
     e.preventDefault();
     const errs = {};
     if (!form.transfer_no.trim()) errs.transfer_no = 'Transfer No is required';
-    if (!form.material_name.trim()) errs.material_name = 'Material item is required';
+    if (!form.material_id) errs.material_id = 'Material item is required';
+    if (!form.from_site_id) errs.from_site_id = 'Source location is required';
+    if (!form.to_site_id) errs.to_site_id = 'Destination location is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -159,41 +264,62 @@ export function StockTransfersPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const qty = Number(form.transfer_qty || 0);
-      const rate = Number(form.unit_rate || 0);
-
-      const newTransfer = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        transfer_no: form.transfer_no,
-        transfer_date: form.transfer_date,
-        from_site_name: form.from_site_name,
-        to_site_name: form.to_site_name,
+      const remarksPayload = JSON.stringify({
         vehicle_no: form.vehicle_no,
-        material_code: form.material_code,
-        material_name: form.material_name,
-        transfer_qty: qty,
-        uom: form.uom,
-        unit_rate: rate,
-        transfer_value: Number(form.transfer_value || qty * rate),
-        status: form.status,
-        dispatched_by: form.dispatched_by,
-        purpose: form.purpose,
-      };
+        dispatched_by_name: form.dispatched_by,
+        remarks: form.purpose
+      });
 
       if (editingItem?.id) {
-        setTransfers(prev => prev.map(t => t.id === editingItem.id ? newTransfer : t));
+        await materialManagementApi.transactions.update(editingItem.id, {
+          project_id: Number(form.project_id),
+          transaction_no: form.transfer_no,
+          transaction_date: form.transfer_date,
+          from_site_id: Number(form.from_site_id),
+          to_site_id: Number(form.to_site_id),
+          purpose: 'Stock Transfer Note',
+          issued_by: user?.id ? Number(user.id) : null,
+          remarks: remarksPayload
+        });
+
+        const firstItem = editingItem.items?.[0];
+        if (firstItem?.id) {
+          await materialManagementApi.transactions.updateItem(editingItem.id, firstItem.id, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            quantity: Number(form.transfer_qty),
+            unit_rate: Number(form.unit_rate)
+          });
+        }
         toast.success('Stock transfer updated.');
       } else {
-        setTransfers(prev => [newTransfer, ...prev]);
+        const headerRes = await materialManagementApi.transactions.create({
+          project_id: Number(form.project_id),
+          transaction_no: form.transfer_no,
+          transaction_date: form.transfer_date,
+          transaction_type_id: 3, // TRANSFER
+          from_site_id: Number(form.from_site_id),
+          to_site_id: Number(form.to_site_id),
+          purpose: 'Stock Transfer Note',
+          issued_by: user?.id ? Number(user.id) : null,
+          remarks: remarksPayload
+        });
+
+        const txId = headerRes?.data?.transaction?.id ?? headerRes?.transaction?.id;
+        if (txId) {
+          await materialManagementApi.transactions.addItem(txId, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            quantity: Number(form.transfer_qty),
+            unit_rate: Number(form.unit_rate)
+          });
+        }
         toast.success('Inter-site stock transfer note (STN) created.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
+      fetchTransfersList();
     } catch {
       toast.error('Failed to save stock transfer.');
     } finally {
@@ -201,16 +327,29 @@ export function StockTransfersPage() {
     }
   };
 
-  const handleAcknowledge = (item) => {
-    setTransfers(prev => prev.map(t => t.id === item.id ? { ...t, status: 'Received & Accepted' } : t));
-    toast.success(`Transfer ${item.transfer_no} marked as received at destination site.`);
+  const handleAcknowledge = async (item) => {
+    try {
+      await materialManagementApi.transactions.post(item.id);
+      toast.success(`Transfer ${item.transfer_no} marked as received at destination site.`);
+      fetchTransfersList();
+    } catch {
+      toast.error('Failed to acknowledge transfer.');
+    }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setTransfers(prev => prev.filter(t => t.id !== deleteItem.id));
-    toast.success('Stock transfer removed.');
-    setDeleteItem(null);
+    setSaving(true);
+    try {
+      await materialManagementApi.transactions.delete(deleteItem.id);
+      toast.success('Stock transfer removed.');
+      fetchTransfersList();
+    } catch {
+      toast.error('Failed to delete stock transfer.');
+    } finally {
+      setSaving(false);
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -457,15 +596,17 @@ export function StockTransfersPage() {
                               <Check className="w-3 h-3 mr-0.5" /> Receive
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Edit"
-                            onClick={() => handleOpenEdit(t)}
-                          >
-                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
+                          {(t.status_code || t.status || '').toUpperCase().includes('DRAFT') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="Edit"
+                              onClick={() => handleOpenEdit(t)}
+                            >
+                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -608,19 +749,21 @@ export function StockTransfersPage() {
                   />
                 </FormField>
 
-                <FormField label="From (Origin Store)" required>
-                  <Input
-                    value={form.from_site_name}
-                    onChange={(e) => handleFormChange('from_site_name', e.target.value)}
-                    placeholder="e.g. Central Godown Bay 1"
+                <FormField label="From (Origin Store)" required error={errors.from_site_id}>
+                  <Select
+                    options={sites.filter(s => String(s.project_id) === String(form.project_id)).map(s => ({ value: String(s.id), label: s.site_name }))}
+                    value={form.from_site_id}
+                    onChange={(v) => handleFormChange('from_site_id', v)}
+                    placeholder="Select Origin Store"
                   />
                 </FormField>
 
-                <FormField label="To (Destination Site)" required>
-                  <Input
-                    value={form.to_site_name}
-                    onChange={(e) => handleFormChange('to_site_name', e.target.value)}
-                    placeholder="e.g. Tower A Core - Level 2 Yard"
+                <FormField label="To (Destination Site)" required error={errors.to_site_id}>
+                  <Select
+                    options={sites.filter(s => String(s.project_id) === String(form.project_id)).map(s => ({ value: String(s.id), label: s.site_name }))}
+                    value={form.to_site_id}
+                    onChange={(v) => handleFormChange('to_site_id', v)}
+                    placeholder="Select Destination Site"
                   />
                 </FormField>
 
@@ -636,11 +779,18 @@ export function StockTransfersPage() {
 
             <EntityEditModal.Section title="Material Transfer Quantities">
               <EntityEditModal.Grid>
-                <FormField label="Material Item" required error={errors.material_name}>
-                  <Input
-                    value={form.material_name}
-                    onChange={(e) => handleFormChange('material_name', e.target.value)}
-                    placeholder="e.g. OPC 53 Grade Cement"
+                <FormField label="Material Item" required error={errors.material_id}>
+                  <Select
+                    options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
+                    value={form.material_id}
+                    onChange={(v) => {
+                      const selectedMat = materials.find(mat => String(mat.id) === String(v));
+                      handleFormChange('material_id', v);
+                      if (selectedMat?.base_uom_id) {
+                        handleFormChange('uom_id', String(selectedMat.base_uom_id));
+                      }
+                    }}
+                    placeholder="Select Material"
                   />
                 </FormField>
 

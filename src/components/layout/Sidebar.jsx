@@ -237,7 +237,10 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
       '/sites/instructions',
       '/sites/documents',
       '/planning',
-      '/procurement'
+      '/procurement',
+      '/materials/delivery-challans',
+      '/materials/consumption',
+      '/materials/ledger'
     ];
 
     const filterHidden = (items) => {

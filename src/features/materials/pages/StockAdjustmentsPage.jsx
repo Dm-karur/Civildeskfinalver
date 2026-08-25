@@ -19,19 +19,18 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, sitesApi, materialsApi, materialManagementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
 
 const EMPTY_FORM = {
   project_id: '',
+  site_id: '',
   adjustment_no: '',
   adjustment_date: '',
-  site_name: 'Main Central Godown Bay 1',
-  material_code: 'MAT-CEM-001',
-  material_name: 'OPC 53 Grade Cement',
-  uom: 'Bags',
+  material_id: '',
+  uom_id: '',
   book_qty: '100',
   physical_qty: '98',
   variance_qty: '-2',
@@ -43,7 +42,7 @@ const EMPTY_FORM = {
 };
 
 export function StockAdjustmentsPage() {
-  const { hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
   const [adjustments, setAdjustments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -63,12 +62,105 @@ export function StockAdjustmentsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  const [sites, setSites] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [uoms, setUoms] = useState([]);
+  const [transactionStatuses, setTransactionStatuses] = useState([]);
+
+  const fetchAdjustmentsList = async (pList = projects, sList = sites) => {
+    setLoading(true);
+    try {
+      const [inRes, outRes] = await Promise.all([
+        materialManagementApi.transactions.list({ transaction_type_id: 4 }).catch(() => ({ data: [] })),
+        materialManagementApi.transactions.list({ transaction_type_id: 5 }).catch(() => ({ data: [] }))
+      ]);
+      const inList = inRes?.data?.material_transactions ?? inRes?.data?.data ?? [];
+      const outList = outRes?.data?.material_transactions ?? outRes?.data?.data ?? [];
+      const tList = [...inList, ...outList];
+
+      if (Array.isArray(tList)) {
+        const normalized = tList.map((t, idx) => {
+          const project = pList.find(p => String(p.id) === String(t.project_id));
+          const site = sList.find(s => String(s.id) === String(t.from_site_id || t.to_site_id));
+          
+          let book_qty = 100;
+          let physical_qty = 98;
+          let adjustment_type = 'Handling Loss';
+          let auditor_name = 'Audit Lead';
+          let actualRemarks = t.remarks || '';
+          try {
+            const parsed = JSON.parse(t.remarks);
+            if (parsed && typeof parsed === 'object') {
+              book_qty = parsed.book_qty !== undefined ? Number(parsed.book_qty) : 100;
+              physical_qty = parsed.physical_qty !== undefined ? Number(parsed.physical_qty) : 98;
+              adjustment_type = parsed.adjustment_type || 'Handling Loss';
+              auditor_name = parsed.auditor_name || 'Audit Lead';
+              actualRemarks = parsed.remarks || '';
+            }
+          } catch {
+            // Not JSON
+          }
+
+          const diff = Number((physical_qty - book_qty).toFixed(2));
+          const totalVal = Math.round(diff * Number(t.unit_rate || 0));
+
+          return {
+            ...t,
+            id: t.id || idx + 1,
+            project_code: project?.project_code || 'PRJ-2026-001',
+            project_name: project?.project_name || 'Civil Project',
+            site_name: site?.site_name || 'Site Yard',
+            adjustment_no: t.transaction_no,
+            adjustment_date: t.transaction_date,
+            material_name: t.material_name || 'Construction Material',
+            book_qty: book_qty,
+            physical_qty: physical_qty,
+            variance_qty: diff,
+            unit_rate: Number(t.unit_rate || 0),
+            variance_value: totalVal,
+            adjustment_type: adjustment_type,
+            auditor_name: auditor_name,
+            status: t.status_name || 'Approved & Reconciled',
+            reason: actualRemarks,
+          };
+        });
+        setAdjustments(normalized);
+      }
+    } catch {
+      // Keep empty
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects & API Data safely
   useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
+    setLoading(true);
+    Promise.all([
+      projectsApi.list().catch(() => ({ data: [] })),
+      sitesApi.list().catch(() => ({ data: [] })),
+      materialsApi.catalogue.list().catch(() => ({ data: [] })),
+      materialsApi.masters().catch(() => ({ data: {} })),
+    ]).then(([projRes, sitesRes, catRes, mastersRes]) => {
+      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+      const parsedProjects = Array.isArray(pList) ? pList : [];
+      setProjects(parsedProjects);
+
+      const sList = sitesRes?.data?.sites ?? sitesRes?.sites ?? (Array.isArray(sitesRes) ? sitesRes : []);
+      setSites(Array.isArray(sList) ? sList : []);
+
+      const mList = catRes?.data?.materials ?? catRes?.materials ?? (Array.isArray(catRes) ? catRes : []);
+      setMaterials(Array.isArray(mList) ? mList : []);
+
+      const mastersData = mastersRes?.data?.masters ?? mastersRes?.masters ?? {};
+      const uList = mastersData?.units ?? [];
+      setUoms(Array.isArray(uList) ? uList : []);
+
+      const sStatuses = mastersData?.transaction_statuses ?? [];
+      setTransactionStatuses(Array.isArray(sStatuses) ? sStatuses : []);
+
+      fetchAdjustmentsList(parsedProjects, sList);
+    }).catch(() => setLoading(false));
   }, []);
 
   
@@ -110,26 +202,56 @@ export function StockAdjustmentsPage() {
     setIsAddOpen(true);
   };
 
-  const handleOpenEdit = (item) => {
-    setForm({
-      project_id: String(item.project_id || '1'),
-      adjustment_no: item.adjustment_no || '',
-      adjustment_date: item.adjustment_date || '',
-      site_name: item.site_name || '',
-      material_code: item.material_code || '',
-      material_name: item.material_name || '',
-      uom: item.uom || 'Nos',
-      book_qty: String(item.book_qty || '100'),
-      physical_qty: String(item.physical_qty || '98'),
-      variance_qty: String(item.variance_qty || '-2'),
-      unit_rate: String(item.unit_rate || '385'),
-      variance_value: String(item.variance_value || '-770'),
-      adjustment_type: item.adjustment_type || 'Handling Loss',
-      auditor_name: item.auditor_name || 'Audit Lead',
-      reason: item.reason || '',
-    });
-    setErrors({});
-    setEditingItem(item);
+  const handleOpenEdit = async (item) => {
+    setLoading(true);
+    try {
+      const res = await materialManagementApi.transactions.get(item.id);
+      const fullTx = res?.data?.transaction ?? res?.transaction ?? {};
+      const firstItem = fullTx.items?.[0] ?? {};
+
+      let book_qty = 100;
+      let physical_qty = 98;
+      let adjustment_type = 'Handling Loss';
+      let auditor_name = 'Audit Lead';
+      let actualRemarks = fullTx.remarks || '';
+      try {
+        const parsed = JSON.parse(fullTx.remarks);
+        if (parsed && typeof parsed === 'object') {
+          book_qty = parsed.book_qty !== undefined ? Number(parsed.book_qty) : 100;
+          physical_qty = parsed.physical_qty !== undefined ? Number(parsed.physical_qty) : 98;
+          adjustment_type = parsed.adjustment_type || 'Handling Loss';
+          auditor_name = parsed.auditor_name || 'Audit Lead';
+          actualRemarks = parsed.remarks || '';
+        }
+      } catch {
+        // Not JSON
+      }
+
+      const diff = Number((physical_qty - book_qty).toFixed(2));
+
+      setForm({
+        project_id: String(fullTx.project_id || ''),
+        site_id: String(fullTx.from_site_id || fullTx.to_site_id || ''),
+        adjustment_no: fullTx.transaction_no || '',
+        adjustment_date: fullTx.transaction_date || '',
+        material_id: String(firstItem.material_id || ''),
+        uom_id: String(firstItem.uom_id || ''),
+        book_qty: String(book_qty),
+        physical_qty: String(physical_qty),
+        variance_qty: String(diff),
+        unit_rate: String(firstItem.unit_rate || '385'),
+        variance_value: String(Math.round(diff * Number(firstItem.unit_rate || 385))),
+        adjustment_type: adjustment_type,
+        auditor_name: auditor_name,
+        reason: actualRemarks,
+      });
+      setErrors({});
+      setEditingItem(fullTx);
+    } catch {
+      toast.error('Failed to load transaction details.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFormChange = (field, value) => {
@@ -152,7 +274,8 @@ export function StockAdjustmentsPage() {
     e.preventDefault();
     const errs = {};
     if (!form.adjustment_no.trim()) errs.adjustment_no = 'SAN No is required';
-    if (!form.material_name.trim()) errs.material_name = 'Material item is required';
+    if (!form.material_id) errs.material_id = 'Material item is required';
+    if (!form.site_id) errs.site_id = 'Site location is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -161,44 +284,69 @@ export function StockAdjustmentsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
       const book = Number(form.book_qty || 0);
       const phys = Number(form.physical_qty || 0);
       const rate = Number(form.unit_rate || 0);
       const diff = Number((phys - book).toFixed(2));
 
-      const newAdj = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        adjustment_no: form.adjustment_no,
-        adjustment_date: form.adjustment_date,
-        site_name: form.site_name,
-        material_code: form.material_code,
-        material_name: form.material_name,
-        uom: form.uom,
-        book_qty: book,
-        physical_qty: phys,
-        variance_qty: diff,
-        unit_rate: rate,
-        variance_value: Math.round(diff * rate),
+      const isNegative = diff < 0;
+      const typeId = isNegative ? 5 : 4; // 5 = ADJUSTMENT_OUT, 4 = ADJUSTMENT_IN
+
+      const remarksPayload = JSON.stringify({
+        book_qty: form.book_qty,
+        physical_qty: form.physical_qty,
         adjustment_type: form.adjustment_type,
         auditor_name: form.auditor_name,
-        status: 'Approved & Reconciled',
-        reason: form.reason,
+        remarks: form.reason
+      });
+
+      const headerPayload = {
+        project_id: Number(form.project_id),
+        transaction_no: form.adjustment_no,
+        transaction_date: form.adjustment_date,
+        transaction_type_id: typeId,
+        purpose: 'Inventory Reconciliation Audit',
+        issued_by: user?.id ? Number(user.id) : null,
+        remarks: remarksPayload
       };
 
+      if (isNegative) {
+        headerPayload.from_site_id = Number(form.site_id);
+      } else {
+        headerPayload.to_site_id = Number(form.site_id);
+      }
+
       if (editingItem?.id) {
-        setAdjustments(prev => prev.map(a => a.id === editingItem.id ? newAdj : a));
+        await materialManagementApi.transactions.update(editingItem.id, headerPayload);
+
+        const firstItem = editingItem.items?.[0];
+        if (firstItem?.id) {
+          await materialManagementApi.transactions.updateItem(editingItem.id, firstItem.id, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            quantity: Math.abs(diff),
+            unit_rate: rate
+          });
+        }
         toast.success('Stock adjustment updated.');
       } else {
-        setAdjustments(prev => [newAdj, ...prev]);
+        const headerRes = await materialManagementApi.transactions.create(headerPayload);
+
+        const txId = headerRes?.data?.transaction?.id ?? headerRes?.transaction?.id;
+        if (txId) {
+          await materialManagementApi.transactions.addItem(txId, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            quantity: Math.abs(diff),
+            unit_rate: rate
+          });
+        }
         toast.success('Stock adjustment note (SAN) reconciled.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
+      fetchAdjustmentsList();
     } catch {
       toast.error('Failed to save stock adjustment.');
     } finally {
@@ -206,11 +354,19 @@ export function StockAdjustmentsPage() {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setAdjustments(prev => prev.filter(a => a.id !== deleteItem.id));
-    toast.success('Stock adjustment removed.');
-    setDeleteItem(null);
+    setSaving(true);
+    try {
+      await materialManagementApi.transactions.delete(deleteItem.id);
+      toast.success('Stock adjustment removed.');
+      fetchAdjustmentsList();
+    } catch {
+      toast.error('Failed to delete stock adjustment.');
+    } finally {
+      setSaving(false);
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -421,15 +577,17 @@ export function StockAdjustmentsPage() {
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Edit"
-                            onClick={() => handleOpenEdit(a)}
-                          >
-                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
+                          {(a.status_code || a.status || '').toUpperCase().includes('DRAFT') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="Edit"
+                              onClick={() => handleOpenEdit(a)}
+                            >
+                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -570,19 +728,27 @@ export function StockAdjustmentsPage() {
                   />
                 </FormField>
 
-                <FormField label="Material Item" required error={errors.material_name} className="md:col-span-2">
-                  <Input
-                    value={form.material_name}
-                    onChange={(e) => handleFormChange('material_name', e.target.value)}
-                    placeholder="e.g. OPC 53 Grade Cement"
+                <FormField label="Material Item" required error={errors.material_id} className="md:col-span-2">
+                  <Select
+                    options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
+                    value={form.material_id}
+                    onChange={(v) => {
+                      const selectedMat = materials.find(mat => String(mat.id) === String(v));
+                      handleFormChange('material_id', v);
+                      if (selectedMat?.base_uom_id) {
+                        handleFormChange('uom_id', String(selectedMat.base_uom_id));
+                      }
+                    }}
+                    placeholder="Select Material"
                   />
                 </FormField>
 
-                <FormField label="Storage Bay" className="md:col-span-2">
-                  <Input
-                    value={form.site_name}
-                    onChange={(e) => handleFormChange('site_name', e.target.value)}
-                    placeholder="e.g. Main Central Godown Bay 1"
+                <FormField label="Storage Site Yard" required error={errors.site_id} className="md:col-span-2">
+                  <Select
+                    options={sites.filter(s => String(s.project_id) === String(form.project_id)).map(s => ({ value: String(s.id), label: s.site_name }))}
+                    value={form.site_id}
+                    onChange={(v) => handleFormChange('site_id', v)}
+                    placeholder="Select Storage Site Yard"
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -610,7 +776,7 @@ export function StockAdjustmentsPage() {
                   <Input
                     readOnly
                     className="font-mono font-bold bg-surface-muted"
-                    value={`${form.variance_qty} ${form.uom}`}
+                    value={form.variance_qty}
                   />
                 </FormField>
 

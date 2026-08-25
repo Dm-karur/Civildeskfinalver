@@ -19,23 +19,23 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, sitesApi, materialsApi, materialManagementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
 
 const EMPTY_FORM = {
   project_id: '',
+  site_id: '',
   challan_no: '',
   challan_date: '',
   consignee_name: '',
   transporter_name: '',
   vehicle_no: '',
   driver_name: '',
-  material_code: 'MAT-CEM-001',
-  material_name: 'OPC 53 Grade Cement',
+  material_id: '',
+  uom_id: '',
   dispatched_qty: '50',
-  uom: 'Bags',
   gate_pass_no: '',
   status: 'Gate Outward Stamped',
   prepared_by: 'Dispatch Incharge',
@@ -64,12 +64,102 @@ export function DeliveryChallansPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  const [sites, setSites] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [uoms, setUoms] = useState([]);
+  const [transactionStatuses, setTransactionStatuses] = useState([]);
+
+  const fetchChallansList = async (pList = projects, sList = sites) => {
+    setLoading(true);
+    try {
+      const txRes = await materialManagementApi.transactions.list({ transaction_type_id: 3 });
+      const tList = txRes?.data?.material_transactions ?? txRes?.data?.data ?? [];
+      if (Array.isArray(tList)) {
+        const normalized = [];
+        tList.forEach((t, idx) => {
+          let isDc = false;
+          let gate_pass_no = '';
+          let transporter_name = '';
+          let vehicle_no = '';
+          let driver_name = '';
+          let notes = t.remarks || '';
+          
+          try {
+            const parsed = JSON.parse(t.remarks);
+            if (parsed && typeof parsed === 'object') {
+              isDc = parsed.is_delivery_challan === true;
+              gate_pass_no = parsed.gate_pass_no || '';
+              transporter_name = parsed.transporter_name || '';
+              vehicle_no = parsed.vehicle_no || '';
+              driver_name = parsed.driver_name || '';
+              notes = parsed.remarks || '';
+            }
+          } catch {
+            // Not JSON
+          }
+
+          if (isDc) {
+            const project = pList.find(p => String(p.id) === String(t.project_id));
+            const site = sList.find(s => String(s.id) === String(t.from_site_id));
+
+            normalized.push({
+              ...t,
+              id: t.id || idx + 1,
+              project_code: project?.project_code || 'PRJ-2026-001',
+              project_name: project?.project_name || 'Civil Project',
+              site_name: site?.site_name || 'Dispatch store',
+              challan_no: t.transaction_no,
+              challan_date: t.transaction_date,
+              consignee_name: t.received_by || 'Destination Site',
+              transporter_name: transporter_name,
+              vehicle_no: vehicle_no,
+              driver_name: driver_name,
+              material_name: t.material_name || 'Construction Material',
+              dispatched_qty: Number(t.quantity || 0),
+              gate_pass_no: gate_pass_no,
+              status: t.status_name || 'Gate Outward Stamped',
+              prepared_by: t.issued_by || 'Dispatch Incharge',
+              notes: notes,
+            });
+          }
+        });
+        setChallans(normalized);
+      }
+    } catch {
+      // Keep empty
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects & API Data safely
   useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
+    setLoading(true);
+    Promise.all([
+      projectsApi.list().catch(() => ({ data: [] })),
+      sitesApi.list().catch(() => ({ data: [] })),
+      materialsApi.catalogue.list().catch(() => ({ data: [] })),
+      materialsApi.masters().catch(() => ({ data: {} })),
+    ]).then(([projRes, sitesRes, catRes, mastersRes]) => {
+      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+      const parsedProjects = Array.isArray(pList) ? pList : [];
+      setProjects(parsedProjects);
+
+      const sList = sitesRes?.data?.sites ?? sitesRes?.sites ?? (Array.isArray(sitesRes) ? sitesRes : []);
+      setSites(Array.isArray(sList) ? sList : []);
+
+      const mList = catRes?.data?.materials ?? catRes?.materials ?? (Array.isArray(catRes) ? catRes : []);
+      setMaterials(Array.isArray(mList) ? mList : []);
+
+      const mastersData = mastersRes?.data?.masters ?? mastersRes?.masters ?? {};
+      const uList = mastersData?.units ?? [];
+      setUoms(Array.isArray(uList) ? uList : []);
+
+      const sStatuses = mastersData?.transaction_statuses ?? [];
+      setTransactionStatuses(Array.isArray(sStatuses) ? sStatuses : []);
+
+      fetchChallansList(parsedProjects, sList);
+    }).catch(() => setLoading(false));
   }, []);
 
   
@@ -112,26 +202,56 @@ export function DeliveryChallansPage() {
     setIsAddOpen(true);
   };
 
-  const handleOpenEdit = (item) => {
-    setForm({
-      project_id: String(item.project_id || '1'),
-      challan_no: item.challan_no || '',
-      challan_date: item.challan_date || '',
-      consignee_name: item.consignee_name || '',
-      transporter_name: item.transporter_name || '',
-      vehicle_no: item.vehicle_no || '',
-      driver_name: item.driver_name || '',
-      material_code: item.material_code || '',
-      material_name: item.material_name || '',
-      dispatched_qty: String(item.dispatched_qty || '50'),
-      uom: item.uom || 'Nos',
-      gate_pass_no: item.gate_pass_no || '',
-      status: item.status || 'Gate Outward Stamped',
-      prepared_by: item.prepared_by || 'Dispatch Incharge',
-      notes: item.notes || '',
-    });
-    setErrors({});
-    setEditingItem(item);
+  const handleOpenEdit = async (item) => {
+    setLoading(true);
+    try {
+      const res = await materialManagementApi.transactions.get(item.id);
+      const fullTx = res?.data?.transaction ?? res?.transaction ?? {};
+      const firstItem = fullTx.items?.[0] ?? {};
+
+      let gate_pass_no = '';
+      let transporter_name = '';
+      let vehicle_no = '';
+      let driver_name = '';
+      let notes = fullTx.remarks || '';
+      
+      try {
+        const parsed = JSON.parse(fullTx.remarks);
+        if (parsed && typeof parsed === 'object') {
+          gate_pass_no = parsed.gate_pass_no || '';
+          transporter_name = parsed.transporter_name || '';
+          vehicle_no = parsed.vehicle_no || '';
+          driver_name = parsed.driver_name || '';
+          notes = parsed.remarks || '';
+        }
+      } catch {
+        // Not JSON
+      }
+
+      setForm({
+        project_id: String(fullTx.project_id || ''),
+        site_id: String(fullTx.from_site_id || ''),
+        challan_no: fullTx.transaction_no || '',
+        challan_date: fullTx.transaction_date || '',
+        consignee_name: fullTx.received_by || '',
+        transporter_name: transporter_name,
+        vehicle_no: vehicle_no,
+        driver_name: driver_name,
+        material_id: String(firstItem.material_id || ''),
+        uom_id: String(firstItem.uom_id || ''),
+        dispatched_qty: String(firstItem.quantity || '50'),
+        gate_pass_no: gate_pass_no,
+        status: fullTx.status_name || 'Gate Outward Stamped',
+        prepared_by: fullTx.issued_by || 'Dispatch Incharge',
+        notes: notes,
+      });
+      setErrors({});
+      setEditingItem(fullTx);
+    } catch {
+      toast.error('Failed to load challan details.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFormChange = (field, value) => {
@@ -143,7 +263,8 @@ export function DeliveryChallansPage() {
     e.preventDefault();
     const errs = {};
     if (!form.challan_no.trim()) errs.challan_no = 'Challan No is required';
-    if (!form.material_name.trim()) errs.material_name = 'Material item is required';
+    if (!form.material_id) errs.material_id = 'Material item is required';
+    if (!form.site_id) errs.site_id = 'Dispatch site store is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -152,39 +273,65 @@ export function DeliveryChallansPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-
-      const newChallan = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        challan_no: form.challan_no,
-        challan_date: form.challan_date,
-        consignee_name: form.consignee_name,
+      const remarksPayload = JSON.stringify({
+        is_delivery_challan: true,
+        gate_pass_no: form.gate_pass_no,
         transporter_name: form.transporter_name,
         vehicle_no: form.vehicle_no,
         driver_name: form.driver_name,
-        material_code: form.material_code,
-        material_name: form.material_name,
-        dispatched_qty: Number(form.dispatched_qty || 0),
-        uom: form.uom,
-        gate_pass_no: form.gate_pass_no,
-        status: form.status,
-        prepared_by: form.prepared_by,
-        notes: form.notes,
-      };
+        remarks: form.notes
+      });
 
       if (editingItem?.id) {
-        setChallans(prev => prev.map(c => c.id === editingItem.id ? newChallan : c));
+        await materialManagementApi.transactions.update(editingItem.id, {
+          project_id: Number(form.project_id),
+          transaction_no: form.challan_no,
+          transaction_date: form.challan_date,
+          from_site_id: Number(form.site_id),
+          purpose: 'Outbound Delivery Challan Dispatch',
+          issued_by: form.prepared_by,
+          received_by: form.consignee_name,
+          remarks: remarksPayload
+        });
+
+        const firstItem = editingItem.items?.[0];
+        if (firstItem?.id) {
+          await materialManagementApi.transactions.updateItem(editingItem.id, firstItem.id, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            quantity: Number(form.dispatched_qty),
+            unit_rate: 0 // challans do not mandate direct financial value
+          });
+        }
         toast.success('Delivery challan updated.');
       } else {
-        setChallans(prev => [newChallan, ...prev]);
-        toast.success('Delivery challan generated and gate pass issued.');
+        const headerRes = await materialManagementApi.transactions.create({
+          project_id: Number(form.project_id),
+          transaction_no: form.challan_no,
+          transaction_date: form.challan_date,
+          transaction_type_id: 3, // TRANSFER
+          from_site_id: Number(form.site_id),
+          purpose: 'Outbound Delivery Challan Dispatch',
+          issued_by: form.prepared_by,
+          received_by: form.consignee_name,
+          remarks: remarksPayload
+        });
+
+        const txId = headerRes?.data?.transaction?.id ?? headerRes?.transaction?.id;
+        if (txId) {
+          await materialManagementApi.transactions.addItem(txId, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            quantity: Number(form.dispatched_qty),
+            unit_rate: 0
+          });
+        }
+        toast.success('Delivery challan note generated.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
+      fetchChallansList();
     } catch {
       toast.error('Failed to save delivery challan.');
     } finally {
@@ -192,11 +339,19 @@ export function DeliveryChallansPage() {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setChallans(prev => prev.filter(c => c.id !== deleteItem.id));
-    toast.success('Delivery challan removed.');
-    setDeleteItem(null);
+    setSaving(true);
+    try {
+      await materialManagementApi.transactions.delete(deleteItem.id);
+      toast.success('Delivery challan removed.');
+      fetchChallansList();
+    } catch {
+      toast.error('Failed to delete delivery challan.');
+    } finally {
+      setSaving(false);
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -583,6 +738,15 @@ export function DeliveryChallansPage() {
                   />
                 </FormField>
 
+                 <FormField label="From Dispatch Site Store" required error={errors.site_id}>
+                  <Select
+                    options={sites.filter(s => String(s.project_id) === String(form.project_id)).map(s => ({ value: String(s.id), label: s.site_name }))}
+                    value={form.site_id}
+                    onChange={(v) => handleFormChange('site_id', v)}
+                    placeholder="Select Dispatch Store"
+                  />
+                </FormField>
+
                 <FormField label="Transporter Name">
                   <Input
                     value={form.transporter_name}
@@ -590,24 +754,31 @@ export function DeliveryChallansPage() {
                     placeholder="e.g. City Fast Freight Lines"
                   />
                 </FormField>
-
-                <FormField label="Vehicle Number">
-                  <Input
-                    value={form.vehicle_no}
-                    onChange={(e) => handleFormChange('vehicle_no', e.target.value)}
-                    placeholder="TN-45-AZ-9901"
-                  />
-                </FormField>
-              </EntityEditModal.Grid>
-            </EntityEditModal.Section>
-
-            <EntityEditModal.Section title="Material Dispatch Quantities">
-              <EntityEditModal.Grid>
-                <FormField label="Material Item" required error={errors.material_name}>
-                  <Input
-                    value={form.material_name}
-                    onChange={(e) => handleFormChange('material_name', e.target.value)}
-                    placeholder="e.g. OPC 53 Grade Cement"
+ 
+                 <FormField label="Vehicle Number">
+                   <Input
+                     value={form.vehicle_no}
+                     onChange={(e) => handleFormChange('vehicle_no', e.target.value)}
+                     placeholder="TN-45-AZ-9901"
+                   />
+                 </FormField>
+               </EntityEditModal.Grid>
+             </EntityEditModal.Section>
+ 
+             <EntityEditModal.Section title="Material Dispatch Quantities">
+               <EntityEditModal.Grid>
+                <FormField label="Material Item" required error={errors.material_id}>
+                  <Select
+                    options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
+                    value={form.material_id}
+                    onChange={(v) => {
+                      const selectedMat = materials.find(mat => String(mat.id) === String(v));
+                      handleFormChange('material_id', v);
+                      if (selectedMat?.base_uom_id) {
+                        handleFormChange('uom_id', String(selectedMat.base_uom_id));
+                      }
+                    }}
+                    placeholder="Select Material"
                   />
                 </FormField>
 

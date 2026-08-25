@@ -103,7 +103,7 @@ export function StockOverviewPage() {
               category_name: mat?.category_name || 'Uncategorized',
               uom_name: uom?.unit_name || uom?.unit_code || '',
               status: health,
-              stock_value: 0
+              stock_value: Math.round(available * Number(mat?.standard_rate || 0))
             };
           });
           setStock(mapped);

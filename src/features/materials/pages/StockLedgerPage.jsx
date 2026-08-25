@@ -15,7 +15,7 @@ import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, materialManagementApi } from '../../../api/apiservice';
+import { projectsApi, sitesApi, materialsApi, materialManagementApi } from '../../../api/apiservice';
 
 
 
@@ -25,30 +25,111 @@ export function StockLedgerPage() {
   const [loading, setLoading] = useState(false);
 
   // Filters
-  const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedMaterialId, setSelectedMaterialId] = useState('');
   const [movementFilter, setMovementFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const perPage = 10;
 
+  const [materials, setMaterials] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [uoms, setUoms] = useState([]);
+
   // Modals
   const [viewingItem, setViewingItem] = useState(null);
 
-  // Load Projects & API Data
+  // Load Projects & Materials on mount
   useEffect(() => {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
-      materialManagementApi.ledger().catch(() => ({ data: [] }))
-    ]).then(([projRes, ledRes]) => {
+      materialsApi.catalogue.list().catch(() => ({ data: [] })),
+      sitesApi.list().catch(() => ({ data: [] })),
+      materialsApi.masters().catch(() => ({ data: {} }))
+    ]).then(([projRes, matRes, sitesRes, mastersRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
-      setProjects(Array.isArray(pList) ? pList : []);
-      const lList = ledRes?.data?.material_ledger ?? ledRes?.data?.data ?? [];
-      if (Array.isArray(lList) && lList.length > 0) {
-        setEntries(lList);
+      const parsedProjects = Array.isArray(pList) ? pList : [];
+      setProjects(parsedProjects);
+
+      const mList = matRes?.data?.materials ?? matRes?.materials ?? (Array.isArray(matRes) ? matRes : []);
+      const parsedMaterials = Array.isArray(mList) ? mList : [];
+      setMaterials(parsedMaterials);
+
+      const sList = sitesRes?.data?.sites ?? sitesRes?.sites ?? (Array.isArray(sitesRes) ? sitesRes : []);
+      setSites(Array.isArray(sList) ? sList : []);
+
+      const mastersData = mastersRes?.data?.masters ?? mastersRes?.masters ?? {};
+      const uList = mastersData?.units ?? [];
+      setUoms(Array.isArray(uList) ? uList : []);
+
+      if (parsedProjects.length > 0) {
+        setSelectedProjectId(String(parsedProjects[0].id));
+      }
+      if (parsedMaterials.length > 0) {
+        setSelectedMaterialId(String(parsedMaterials[0].id));
       }
     }).finally(() => setLoading(false));
   }, []);
+
+  // Fetch Ledger when project or material selection changes
+  useEffect(() => {
+    if (!selectedProjectId || !selectedMaterialId) return;
+
+    setLoading(true);
+    materialManagementApi.ledger({
+      project_id: Number(selectedProjectId),
+      material_id: Number(selectedMaterialId)
+    }).then(res => {
+      const lList = res?.data?.material_ledger ?? res?.data?.data ?? res?.ledger ?? [];
+      if (Array.isArray(lList)) {
+        let runningBalance = 0;
+        const normalized = lList.map((x, idx) => {
+          const siteId = x.to_site_id || x.from_site_id;
+          const siteObj = sites.find(s => String(s.id) === String(siteId));
+          const matObj = materials.find(m => String(m.id) === String(selectedMaterialId));
+          const uomObj = uoms.find(u => String(u.id) === String(matObj?.base_uom_id));
+
+          const qty = Number(x.quantity || 0);
+          let inward_qty = 0;
+          let outward_qty = 0;
+
+          if (['RECEIPT', 'RETURN', 'ADJUSTMENT_IN'].includes(x.movement_type)) {
+            inward_qty = qty;
+            runningBalance += qty;
+          } else if (['ISSUE', 'ADJUSTMENT_OUT'].includes(x.movement_type)) {
+            outward_qty = qty;
+            runningBalance -= qty;
+          } else if (x.movement_type === 'TRANSFER') {
+            inward_qty = qty;
+            runningBalance += qty;
+          }
+
+          return {
+            ...x,
+            id: idx + 1,
+            movement_type: x.movement_type === 'RECEIPT' ? 'Inward Receipt (GRN)' :
+                           x.movement_type === 'ISSUE' ? 'Outward Issue (MIN)' :
+                           x.movement_type === 'RETURN' ? 'Surplus Return (MRN)' :
+                           x.movement_type === 'TRANSFER' ? 'Inter-Site Transfer' :
+                           x.movement_type === 'ADJUSTMENT_IN' ? 'Audit Adjustment In' : 'Audit Adjustment Out',
+            party: x.movement_type === 'RECEIPT' ? 'Material Supplier' : 'Subcontractor / Site Foreman',
+            material_name: matObj?.material_name || 'Construction Material',
+            site_name: siteObj?.site_name || 'Project Site',
+            inward_qty: inward_qty,
+            outward_qty: outward_qty,
+            balance_qty: runningBalance,
+            uom: uomObj?.uom_name || 'Units',
+          };
+        });
+        setEntries(normalized);
+      } else {
+        setEntries([]);
+      }
+    }).catch(() => {
+      setEntries([]);
+    }).finally(() => setLoading(false));
+  }, [selectedProjectId, selectedMaterialId, sites, materials, uoms]);
 
   const handlePrint = () => {
     window.print();
@@ -61,7 +142,7 @@ export function StockLedgerPage() {
   // Filtered List
   const filtered = useMemo(() => {
     return entries.filter(e => {
-      if (selectedProjectId !== 'all' && String(e.project_id) !== String(selectedProjectId)) return false;
+      if (selectedProjectId && String(e.project_id) !== String(selectedProjectId)) return false;
       if (movementFilter !== 'all' && !e.movement_type.includes(movementFilter)) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -145,13 +226,21 @@ export function StockLedgerPage() {
           <div className="flex flex-wrap items-center gap-2 flex-1">
             <div className="w-full sm:w-48">
               <Select
-                options={[
-                  { value: 'all', label: 'All Projects' },
-                  ...projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))
-                ]}
+                options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
                 value={selectedProjectId}
                 onChange={setSelectedProjectId}
                 className="text-xs h-8"
+                placeholder="Select Project"
+              />
+            </div>
+
+            <div className="w-full sm:w-48">
+              <Select
+                options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
+                value={selectedMaterialId}
+                onChange={setSelectedMaterialId}
+                className="text-xs h-8"
+                placeholder="Select Material"
               />
             </div>
 

@@ -155,21 +155,62 @@ export function MaterialRequestsPage() {
     setIsAddOpen(true);
   };
 
-  const handleOpenEdit = (item) => {
-    setForm({
-      project_id: String(item.project_id || ''),
-      site_id: String(item.site_id || ''),
-      request_no: item.request_no || '',
-      request_date: item.request_date || '',
-      required_by_date: item.required_by_date || '',
-      priority_id: String(item.priority_id || ''),
-      material_id: String(item.material_id || ''),
-      uom_id: String(item.uom_id || ''),
-      requested_qty: String(item.requested_qty || '100'),
-      purpose: item.purpose || '',
-    });
-    setErrors({});
-    setEditingItem(item);
+  const handleOpenEdit = async (item) => {
+    setLoading(true);
+    try {
+      const res = await materialManagementApi.requests.get(item.id);
+      const fullReq = res?.data?.material_request ?? res?.material_request ?? {};
+      const firstItem = fullReq.items?.[0] ?? {};
+
+      setForm({
+        project_id: String(fullReq.project_id || ''),
+        site_id: String(fullReq.site_id || ''),
+        request_no: fullReq.request_no || '',
+        request_date: fullReq.request_date || '',
+        required_by_date: fullReq.required_by_date || '',
+        priority_id: String(fullReq.priority_id || ''),
+        material_id: String(firstItem.material_id || ''),
+        uom_id: String(firstItem.uom_id || ''),
+        requested_qty: String(firstItem.requested_qty || '100'),
+        purpose: fullReq.purpose || '',
+      });
+      setErrors({});
+      setEditingItem(fullReq);
+    } catch {
+      toast.error('Failed to load request details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenView = async (item) => {
+    setLoading(true);
+    try {
+      const res = await materialManagementApi.requests.get(item.id);
+      const fullReq = res?.data?.material_request ?? res?.material_request ?? {};
+      const firstItem = fullReq.items?.[0] ?? {};
+
+      const site = sites.find(s => String(s.id) === String(fullReq.site_id));
+      const proj = projects.find(p => String(p.id) === String(fullReq.project_id));
+      const prio = priorities.find(p => String(p.id) === String(fullReq.priority_id));
+      const mat = materials.find(m => String(m.id) === String(firstItem.material_id));
+      const uomObj = uoms.find(u => String(u.id) === String(firstItem.uom_id));
+
+      setViewingItem({
+        ...fullReq,
+        material_name: mat?.material_name || 'Construction Material',
+        requested_qty: firstItem.requested_qty || '0',
+        uom: uomObj?.unit_name || uomObj?.unit_code || 'Units',
+        site_name: site?.site_name || '',
+        project_name: proj?.project_name || '',
+        priority_name: prio?.priority_name || 'Normal',
+        status_name: fullReq.status_name || 'Draft'
+      });
+    } catch {
+      toast.error('Failed to load indent details.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFormChange = (field, value) => {
@@ -202,6 +243,23 @@ export function MaterialRequestsPage() {
           priority_id: Number(form.priority_id),
           purpose: form.purpose
         });
+
+        const firstItem = editingItem.items?.[0];
+        if (firstItem?.id) {
+          await materialManagementApi.requests.updateItem(editingItem.id, firstItem.id, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            requested_qty: Number(form.requested_qty),
+            estimated_rate: Number(firstItem.estimated_rate || 0)
+          });
+        } else {
+          await materialManagementApi.requests.addItem(editingItem.id, {
+            material_id: Number(form.material_id),
+            uom_id: Number(form.uom_id),
+            requested_qty: Number(form.requested_qty),
+            estimated_rate: 0
+          });
+        }
         toast.success('Material request updated.');
       } else {
         const headerRes = await materialManagementApi.requests.create({
@@ -214,7 +272,7 @@ export function MaterialRequestsPage() {
           purpose: form.purpose
         });
 
-        const requestId = headerRes?.data?.request?.id ?? headerRes?.request?.id;
+        const requestId = headerRes?.data?.material_request?.id ?? headerRes?.material_request?.id;
         if (requestId) {
           await materialManagementApi.requests.addItem(requestId, {
             material_id: Number(form.material_id),
@@ -525,7 +583,7 @@ export function MaterialRequestsPage() {
                             size="sm"
                             className="h-6 w-6 p-0"
                             title="View Indent 360"
-                            onClick={() => setViewingItem(r)}
+                            onClick={() => handleOpenView(r)}
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
@@ -551,15 +609,17 @@ export function MaterialRequestsPage() {
                               </Button>
                             </>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Edit"
-                            onClick={() => handleOpenEdit(r)}
-                          >
-                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
+                          {(r.status_code || r.status_name || '').toUpperCase().includes('DRAFT') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="Edit"
+                              onClick={() => handleOpenEdit(r)}
+                            >
+                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -608,9 +668,14 @@ export function MaterialRequestsPage() {
               </div>
 
               <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
-                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(r)}>
+                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenView(r)}>
                   <Eye className="w-3 h-3 mr-1" /> View
                 </Button>
+                {(r.status_code || r.status_name || '').toUpperCase().includes('DRAFT') && (
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(r)}>
+                    <Edit className="w-3 h-3 mr-1" /> Edit
+                  </Button>
+                )}
                 {(r.status_name === 'Submitted' || r.status === 'Pending Approval') && (
                   <Button variant="primary" size="sm" className="h-7 text-[11px] px-2 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApprove(r)}>
                     <Check className="w-3 h-3 mr-1" /> Approve
@@ -654,7 +719,7 @@ export function MaterialRequestsPage() {
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Requested Quantity</span> <span className="font-bold text-primary font-mono text-sm">{viewingItem.requested_qty} {viewingItem.uom}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Priority Level</span> <span className="font-semibold text-red-600">{viewingItem.priority}</span></div>
+                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Priority Level</span> <span className="font-semibold text-red-600">{viewingItem.priority_name || viewingItem.priority}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Request Date</span> <span className="font-mono">{viewingItem.request_date}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Required On Site By</span> <span className="font-mono font-bold text-text-primary">{viewingItem.required_by_date}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Status</span> <span className="font-semibold text-emerald-600">{viewingItem.status_name || viewingItem.status}</span></div>
