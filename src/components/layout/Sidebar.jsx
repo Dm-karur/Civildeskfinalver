@@ -282,6 +282,12 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
       '/masters/banks',
       '/masters/accounts',
       '/masters/cost-heads',
+      '/receivables',
+      '/boq/sections',
+      '/takeoff',
+      '/budgets/revisions',
+      '/budgets/variations',
+      '/budgets/approvals'
     ];
 
     const filterHidden = (items) => {
@@ -296,7 +302,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
             return false;
           }
           // Hide specific parent menus by name
-          if (item.item_name && ['Project Planning', 'Procurement', 'Communication', 'Client Portal'].includes(item.item_name.trim())) {
+          if (item.item_name && ['Project Planning', 'Procurement', 'Client Billing & Receivables', 'Communication', 'Client Portal'].includes(item.item_name.trim())) {
             return false;
           }
           // Hide parent menus that have no visible children after filtering
@@ -344,6 +350,18 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
                 });
                 
                 newItem.children = filteredChildren;
+              }
+
+              if (newItem.item_code === 'BOQ_BUDGET' || (newItem.item_name && newItem.item_name.includes('BOQ & Project Budget'))) {
+                 const hasQuantities = newItem.children.find(c => c.route_path && c.route_path.includes('planned-quantities'));
+                 if (!hasQuantities) {
+                   const boqItemsIndex = newItem.children.findIndex(c => c.route_path && c.route_path === '/boq/items');
+                   const insertIdx = boqItemsIndex >= 0 ? boqItemsIndex + 1 : newItem.children.length;
+                   newItem.children.splice(insertIdx, 0, 
+                     { item_code: 'PLANNED_QUANTITIES', item_name: 'Planned Quantities', route_path: '/boq/items/planned-quantities', icon_key: 'layers' },
+                     { item_code: 'PLANNED_RATES', item_name: 'Planned Rates', route_path: '/boq/items/planned-rates', icon_key: 'file-text' }
+                   );
+                 }
               }
               return newItem;
             });

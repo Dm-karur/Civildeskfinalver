@@ -22,7 +22,14 @@ import { useAuth } from '../../auth/context/AuthContext';
 export function AdvanceApprovalPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [advances, setAdvances] = useState([]);
+  const [advances, setAdvances] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_receivables_ClientAdvancesPage');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -42,6 +49,10 @@ export function AdvanceApprovalPage() {
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('mock_receivables_ClientAdvancesPage', JSON.stringify(advances));
+  }, [advances]);
 
   const handleApprove = (item) => {
     setAdvances(prev => prev.map(a => a.id === item.id ? { ...a, status: 'Authorized & Dispatched to Client' } : a));

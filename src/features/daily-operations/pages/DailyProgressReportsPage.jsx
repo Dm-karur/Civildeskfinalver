@@ -62,63 +62,32 @@ export function DailyProgressReportsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects & API Data safely with LocalStorage Mock Persistence
-  useEffect(() => {
+  // Load Projects & API Data
+  const loadData = () => {
     setLoading(true);
     projectsApi.list().then(projRes => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
     }).catch(() => setProjects([]));
 
-    try {
-      const saved = localStorage.getItem('mock_daily_progress_reports');
-      if (saved) {
-        setReports(JSON.parse(saved));
-        setLoading(false);
-      } else {
-        // Fallback to API load if local storage is empty
-        if (dailyReportsApi?.list) {
-          dailyReportsApi.list().then(dprRes => {
-            const rList = dprRes?.data?.daily_site_reports ?? dprRes?.data?.reports ?? dprRes?.data?.data ?? [];
-            if (Array.isArray(rList) && rList.length > 0) {
-              const normalized = rList.map((r, idx) => ({
-                id: r.id || idx + 1,
-                project_id: r.project_id || 1,
-                project_code: r.project_code || 'PRJ-2026-001',
-                project_name: r.project_name || 'Civil Project',
-                site_name: r.site_name || 'Site Yard',
-                zone_name: r.zone_name || 'Active Zone',
-                report_date: r.report_date || new Date().toISOString().split('T')[0],
-                weather: r.weather || 'Sunny & Clear (32°C)',
-                overall_progress: Number(r.overall_progress || 60),
-                total_manpower: Number(r.total_manpower || 40),
-                total_equipment: Number(r.total_equipment || 5),
-                material_consumption_summary: r.material_consumption_summary || 'Standard Batching',
-                issues_count: Number(r.issues_count || 0),
-                status_name: r.status_name || 'Submitted for Review',
-                submitted_by: r.submitted_by || 'Site Engineer',
-                approved_by: r.approved_by || 'Project Manager',
-                work_summary: r.work_summary || r.notes || '',
-              }));
-              setReports(normalized);
-            }
-          }).catch(() => {}).finally(() => setLoading(false));
-        } else {
-          setLoading(false);
+    if (dailyReportsApi?.list) {
+      dailyReportsApi.list().then(dprRes => {
+        const rList = dprRes?.data?.daily_site_reports ?? dprRes?.data?.reports ?? dprRes?.data?.data ?? [];
+        if (Array.isArray(rList)) {
+          setReports(rList);
         }
-      }
-    } catch (e) {
-      console.error('Failed to load mock daily progress reports', e);
+      }).catch(e => {
+        console.error('Failed to load daily progress reports', e);
+        toast.error('Failed to load reports from server.');
+      }).finally(() => setLoading(false));
+    } else {
       setLoading(false);
     }
-  }, []);
+  };
 
-  // Save Reports to LocalStorage
   useEffect(() => {
-    if (reports.length > 0) {
-      localStorage.setItem('mock_daily_progress_reports', JSON.stringify(reports));
-    }
-  }, [reports]);
+    loadData();
+  }, []);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -172,49 +141,52 @@ export function DailyProgressReportsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const newDPR = {
-        id: editingItem?.id || Date.now(),
+      const payload = {
         project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        site_name: form.site_name || 'Site Yard',
-        zone_name: form.zone_name || 'Active Zone',
+        site_id: 1, // Fallback since UI doesn't have site selector
+        report_no: `DPR-${Date.now()}`, // Auto-generate if missing
         report_date: form.report_date,
-        weather: form.weather,
-        overall_progress: Number(form.overall_progress || 0),
-        total_manpower: Number(form.total_manpower || 0),
-        total_equipment: Number(form.total_equipment || 0),
-        material_consumption_summary: form.material_consumption_summary,
-        issues_count: Number(form.issues_count || 0),
-        status_name: form.status_name,
-        submitted_by: form.submitted_by,
-        approved_by: 'Pending PM Review',
-        work_summary: form.work_summary,
+        shift_type_id: 1, // Fallback since UI doesn't have shift selector
+        overall_work_summary: form.work_summary,
+        planned_progress_percentage: Number(form.overall_progress || 0),
+        actual_progress_percentage: Number(form.overall_progress || 0)
       };
 
       if (editingItem?.id) {
-        setReports(prev => prev.map(r => r.id === editingItem.id ? newDPR : r));
+        await dailyReportsApi.update(editingItem.id, payload);
         toast.success('Daily progress report updated.');
       } else {
-        setReports(prev => [newDPR, ...prev]);
+        await dailyReportsApi.create(payload);
         toast.success('Daily progress report (DPR) submitted.');
       }
 
+      loadData(); // Reload from server
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save daily report.');
+    } catch (err) {
+      console.error('API Error:', err);
+      // Surface backend validation errors if any
+      if (err?.errors) {
+        setErrors(err.errors);
+      }
+      toast.error(err?.message || 'Failed to save daily report to server.');
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setReports(prev => prev.filter(r => r.id !== deleteItem.id));
-    toast.success('Daily report removed.');
-    setDeleteItem(null);
+    try {
+      await dailyReportsApi.remove(deleteItem.id);
+      toast.success('Daily report removed.');
+      loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to remove report from server.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {

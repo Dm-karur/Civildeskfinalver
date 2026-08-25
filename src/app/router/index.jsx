@@ -34,6 +34,8 @@ import { WorkCategoriesPage } from '../../features/masters/pages/WorkCategoriesP
 import { BoqListPage } from '../../features/boq/pages/BoqListPage';
 import { BoqSectionsPage } from '../../features/boq/pages/BoqSectionsPage';
 import { BoqItemsPage } from '../../features/boq/pages/BoqItemsPage';
+import { PlannedQuantitiesPage } from '../../features/boq/pages/PlannedQuantitiesPage';
+import { PlannedRatesPage } from '../../features/boq/pages/PlannedRatesPage';
 import { DrawingTakeoffPage } from '../../features/boq/pages/DrawingTakeoffPage';
 import { TakeoffReviewPage } from '../../features/boq/pages/TakeoffReviewPage';
 import { ConvertTakeoffPage } from '../../features/boq/pages/ConvertTakeoffPage';
@@ -233,6 +235,10 @@ export const router = createBrowserRouter([
           { path: 'boq', element: R('boq.view', BoqListPage) },
           { path: 'boq/sections', element: R('boq.view', BoqSectionsPage) },
           { path: 'boq/items', element: R('boq.view', BoqItemsPage) },
+          { path: 'boq/items/planned-quantities', element: R('boq.view', PlannedQuantitiesPage) },
+          { path: 'boq/items/planned-rates', element: R('boq.view', PlannedRatesPage) },
+          { path: 'boq/planned-quantities', element: R('boq.view', PlannedQuantitiesPage) },
+          { path: 'boq/planned-rates', element: R('boq.view', PlannedRatesPage) },
           { path: 'project-budgets', element: R('budget.view', BudgetListPage) },
           { path: 'budgets', element: R('budget.view', BudgetListPage) },
           { path: 'budgets/revisions', element: R('budget.view', BudgetRevisionsPage) },

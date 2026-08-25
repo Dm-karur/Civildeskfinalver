@@ -43,7 +43,14 @@ const EMPTY_FORM = {
 export function ClientContractsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [contracts, setContracts] = useState([]);
+  const [contracts, setContracts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_receivables_ClientContractsPage');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -70,28 +77,9 @@ export function ClientContractsPage() {
   }, []);
 
   
-  // --- MOCK PERSISTENCE INJECTED ---
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_receivables_ClientContractsPage');
-      if (saved) {
-        setContracts(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_receivables_ClientContractsPage');
-    if (contracts.length > 0 || saved) {
-       localStorage.setItem('mock_receivables_ClientContractsPage', JSON.stringify(contracts));
-    }
+    localStorage.setItem('mock_receivables_ClientContractsPage', JSON.stringify(contracts));
   }, [contracts]);
-  // ---------------------------------
 
   // Form Handlers
   const handleOpenAdd = () => {

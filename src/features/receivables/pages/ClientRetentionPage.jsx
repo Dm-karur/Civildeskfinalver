@@ -40,7 +40,14 @@ const EMPTY_FORM = {
 export function ClientRetentionPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [retentions, setRetentions] = useState([]);
+  const [retentions, setRetentions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_receivables_ClientRetentionPage');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -54,6 +61,9 @@ export function ClientRetentionPage() {
   const [releaseModalItem, setReleaseModalItem] = useState(null);
   const [releaseClaimAmount, setReleaseClaimAmount] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState({});
 
   // Load Projects
   useEffect(() => {
@@ -62,6 +72,44 @@ export function ClientRetentionPage() {
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('mock_receivables_ClientRetentionPage', JSON.stringify(retentions));
+  }, [retentions]);
+
+  const handleOpenAdd = () => {
+    setForm({ ...EMPTY_FORM, retention_no: `RET-2026-${String(retentions.length + 1).padStart(3, '0')}` });
+    setErrors({});
+    setIsAddOpen(true);
+  };
+
+  const handleFormChange = (key, val) => {
+    setForm(prev => ({ ...prev, [key]: val }));
+    if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }));
+  };
+
+  const handleSaveAdd = () => {
+    const req = ['retention_no', 'client_name', 'dlp_expiry_date'];
+    const newErr = {};
+    req.forEach(k => { if (!form[k]) newErr[k] = 'Required'; });
+    if (Object.keys(newErr).length > 0) {
+      setErrors(newErr);
+      return;
+    }
+    setSaving(true);
+    setTimeout(() => {
+      const newRet = {
+        ...form,
+        id: Date.now(),
+        status: '5% Held (DLP Active)',
+        balance_held_by_client: Number(form.cumulative_retention_deducted) - Number(form.retention_released),
+      };
+      setRetentions([newRet, ...retentions]);
+      toast.success('Retention ledger created.');
+      setIsAddOpen(false);
+      setSaving(false);
+    }, 500);
+  };
 
   const handleOpenClaimRelease = (item) => {
     setReleaseModalItem(item);
@@ -197,6 +245,15 @@ export function ClientRetentionPage() {
           </div>
 
           <div className="flex items-center gap-2 justify-end">
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<span className="text-lg leading-none mb-0.5">+</span>}
+              onClick={handleOpenAdd}
+              className="text-xs h-8 shadow-xs"
+            >
+              Add Ledger
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -460,6 +517,44 @@ export function ClientRetentionPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add Retention Ledger Modal */}
+      {isAddOpen && (
+        <EntityEditModal
+          title="Create Retention Ledger"
+          isOpen={isAddOpen}
+          onClose={() => setIsAddOpen(false)}
+          onSave={handleSaveAdd}
+          saving={saving}
+          size="md"
+        >
+          <div className="space-y-4 pt-2 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="Retention Ledger No" error={errors.retention_no} required>
+                <Input value={form.retention_no} onChange={(e) => handleFormChange('retention_no', e.target.value)} placeholder="RET-2026-001" />
+              </FormField>
+              <FormField label="Client Name" error={errors.client_name} required>
+                <Input value={form.client_name} onChange={(e) => handleFormChange('client_name', e.target.value)} placeholder="Enter client name" />
+              </FormField>
+              <FormField label="Contract Reference">
+                <Input value={form.contract_no} onChange={(e) => handleFormChange('contract_no', e.target.value)} />
+              </FormField>
+              <FormField label="DLP Expiry Date" error={errors.dlp_expiry_date} required>
+                <Input type="date" value={form.dlp_expiry_date} onChange={(e) => handleFormChange('dlp_expiry_date', e.target.value)} />
+              </FormField>
+              <FormField label="Total Contract Value (₹)">
+                <Input type="number" value={form.total_contract_value} onChange={(e) => handleFormChange('total_contract_value', e.target.value)} />
+              </FormField>
+              <FormField label="Cumulative Retention Deducted (₹)">
+                <Input type="number" value={form.cumulative_retention_deducted} onChange={(e) => handleFormChange('cumulative_retention_deducted', e.target.value)} />
+              </FormField>
+            </div>
+            <FormField label="Notes / Conditions">
+              <Textarea value={form.notes} onChange={(e) => handleFormChange('notes', e.target.value)} placeholder="Any specific DLP release conditions..." rows={2} />
+            </FormField>
+          </div>
+        </EntityEditModal>
       )}
     </PageContainer>
   );

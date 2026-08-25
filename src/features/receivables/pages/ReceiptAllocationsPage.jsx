@@ -40,7 +40,14 @@ const EMPTY_FORM = {
 export function ReceiptAllocationsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [allocations, setAllocations] = useState([]);
+  const [allocations, setAllocations] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_receivables_ReceiptAllocationsPage');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -67,28 +74,9 @@ export function ReceiptAllocationsPage() {
   }, []);
 
   
-  // --- MOCK PERSISTENCE INJECTED ---
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_receivables_ReceiptAllocationsPage');
-      if (saved) {
-        setAllocations(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_receivables_ReceiptAllocationsPage');
-    if (allocations.length > 0 || saved) {
-       localStorage.setItem('mock_receivables_ReceiptAllocationsPage', JSON.stringify(allocations));
-    }
+    localStorage.setItem('mock_receivables_ReceiptAllocationsPage', JSON.stringify(allocations));
   }, [allocations]);
-  // ---------------------------------
 
   // Form Handlers
   const handleOpenAdd = () => {

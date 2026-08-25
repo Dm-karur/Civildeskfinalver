@@ -22,7 +22,56 @@ import { useAuth } from '../../auth/context/AuthContext';
 export function ClientStatementsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [entries, setEntries] = useState([]);
+  const [entries, setEntries] = useState(() => {
+    try {
+      const invoices = JSON.parse(localStorage.getItem('mock_receivables_ClientInvoicesPage') || '[]');
+      const advances = JSON.parse(localStorage.getItem('mock_receivables_ClientAdvancesPage') || '[]');
+      const receipts = JSON.parse(localStorage.getItem('mock_receivables_ClientReceiptsPage') || '[]');
+
+      const formattedInvoices = invoices.map(i => ({
+        id: `inv-${i.id}`,
+        project_id: i.project_id,
+        date: i.invoice_date,
+        reference_no: i.invoice_no || `INV-${i.id}`,
+        txn_type: 'RA Bill Raised (Invoice)',
+        description: i.billing_type,
+        debit_billed: i.gross_invoice_amount,
+        credit_received: 0,
+        status: i.status || 'Submitted',
+      }));
+
+      const formattedAdvances = advances.map(a => ({
+        id: `adv-${a.id}`,
+        project_id: a.project_id,
+        date: a.claim_date,
+        reference_no: a.advance_no || `ADV-${a.id}`,
+        txn_type: 'Mobilization Advance',
+        description: a.advance_type,
+        debit_billed: 0,
+        credit_received: a.advance_amount,
+        status: a.status || 'Pending',
+      }));
+
+      const formattedReceipts = receipts.map(r => ({
+        id: `rec-${r.id}`,
+        project_id: r.project_id,
+        date: r.receipt_date,
+        reference_no: r.receipt_no || `REC-${r.id}`,
+        txn_type: 'Client Payment Receipt',
+        description: r.payment_mode,
+        debit_billed: 0,
+        credit_received: r.amount_received,
+        status: 'Cleared',
+      }));
+
+      const combined = [...formattedInvoices, ...formattedAdvances, ...formattedReceipts];
+      // Sort by date descending
+      combined.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+      return combined;
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   // Filters
