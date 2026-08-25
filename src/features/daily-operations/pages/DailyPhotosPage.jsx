@@ -32,12 +32,20 @@ const EMPTY_FORM = {
   gps_coordinates: '10.9602° N, 78.0766° E',
   photographer: 'Site QA Engineer',
   description: '',
+  image_data: null,
 };
 
 export function DailyPhotosPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [photos, setPhotos] = useState([]);
+  const [photos, setPhotos] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_daily-operations_DailyPhotosPage');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -61,29 +69,9 @@ export function DailyPhotosPage() {
     }).catch(() => setProjects([]));
   }, []);
 
-  
-  // --- MOCK PERSISTENCE INJECTED ---
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_daily-operations_DailyPhotosPage');
-      if (saved) {
-        setPhotos(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_daily-operations_DailyPhotosPage');
-    if (photos.length > 0 || saved) {
-       localStorage.setItem('mock_daily-operations_DailyPhotosPage', JSON.stringify(photos));
-    }
+    localStorage.setItem('mock_daily-operations_DailyPhotosPage', JSON.stringify(photos));
   }, [photos]);
-  // ---------------------------------
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -133,6 +121,7 @@ export function DailyPhotosPage() {
         photographer: form.photographer,
         file_name: `IMG_${form.date.replace(/-/g, '')}_${Date.now().toString().slice(-4)}.jpg`,
         description: form.description,
+        image_data: form.image_data,
         aspect_color: 'bg-primary/20 border-primary/30 text-primary',
       };
 
@@ -268,15 +257,21 @@ export function DailyPhotosPage() {
             <div key={p.id} className="bg-surface border border-border rounded-xl overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between group">
               <div>
                 {/* Photo Simulation Canvas / Banner */}
-                <div className={`h-40 ${p.aspect_color} border-b flex flex-col items-center justify-center relative p-4 text-center group-hover:scale-[1.01] transition-transform`}>
-                  <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center mb-2 text-white">
-                    <Camera className="w-6 h-6" />
-                  </div>
-                  <span className="font-mono text-[10px] tracking-wider uppercase font-bold text-white/90 bg-black/60 px-2 py-0.5 rounded backdrop-blur-sm">
-                    {p.file_name}
-                  </span>
+                <div className={`h-40 ${p.image_data ? '' : p.aspect_color} border-b flex flex-col items-center justify-center relative p-0 text-center group-hover:scale-[1.01] transition-transform overflow-hidden`}>
+                  {p.image_data ? (
+                    <img src={p.image_data} alt={p.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-4">
+                      <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center mb-2 text-white">
+                        <Camera className="w-6 h-6" />
+                      </div>
+                      <span className="font-mono text-[10px] tracking-wider uppercase font-bold text-white/90 bg-black/60 px-2 py-0.5 rounded backdrop-blur-sm">
+                        {p.file_name}
+                      </span>
+                    </div>
+                  )}
                   <div className="absolute top-2.5 right-2.5">
-                    <Badge variant="primary" className="text-[8px] uppercase tracking-wider font-bold">
+                    <Badge variant="primary" className="text-[8px] uppercase tracking-wider font-bold shadow-sm">
                       {p.tag}
                     </Badge>
                   </div>
@@ -333,12 +328,18 @@ export function DailyPhotosPage() {
             </div>
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
-              <div className={`h-52 ${viewingItem.aspect_color} border rounded-lg flex flex-col items-center justify-center p-4 text-center`}>
-                <Camera className="w-10 h-10 mb-2 opacity-80" />
-                <span className="font-mono text-xs font-bold text-white bg-black/60 px-3 py-1 rounded backdrop-blur-md">
-                  {viewingItem.file_name}
-                </span>
-                <span className="text-[10px] text-white/80 font-mono mt-1">Geo-Location: {viewingItem.gps_coordinates}</span>
+              <div className={`h-52 ${viewingItem.image_data ? '' : viewingItem.aspect_color} border rounded-lg flex flex-col items-center justify-center p-0 text-center overflow-hidden relative`}>
+                {viewingItem.image_data ? (
+                  <img src={viewingItem.image_data} alt={viewingItem.title} className="w-full h-full object-contain bg-black/5" />
+                ) : (
+                  <>
+                    <Camera className="w-10 h-10 mb-2 opacity-80" />
+                    <span className="font-mono text-xs font-bold text-white bg-black/60 px-3 py-1 rounded backdrop-blur-md">
+                      {viewingItem.file_name}
+                    </span>
+                    <span className="text-[10px] text-white/80 font-mono mt-1">Geo-Location: {viewingItem.gps_coordinates}</span>
+                  </>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
@@ -400,6 +401,27 @@ export function DailyPhotosPage() {
                     value={form.tag}
                     onChange={(v) => handleFormChange('tag', v)}
                   />
+                </FormField>
+
+                <FormField label="Site Photo" required error={errors.image_data} className="md:col-span-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => handleFormChange('image_data', reader.result);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="block w-full text-sm text-text-muted file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                  />
+                  {form.image_data && (
+                    <div className="mt-3">
+                       <img src={form.image_data} alt="Preview" className="h-32 rounded object-cover shadow-sm border border-border" />
+                    </div>
+                  )}
                 </FormField>
 
                 <FormField label="Photo Title / Subject" required error={errors.title} className="md:col-span-2">

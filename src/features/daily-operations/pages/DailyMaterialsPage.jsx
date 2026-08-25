@@ -46,7 +46,14 @@ const EMPTY_FORM = {
 export function DailyMaterialsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [pours, setPours] = useState([]);
+  const [pours, setPours] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_daily-operations_DailyMaterialsPage');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -73,28 +80,9 @@ export function DailyMaterialsPage() {
   }, []);
 
   
-  // --- MOCK PERSISTENCE INJECTED ---
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_daily-operations_DailyMaterialsPage');
-      if (saved) {
-        setPours(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_daily-operations_DailyMaterialsPage');
-    if (pours.length > 0 || saved) {
-       localStorage.setItem('mock_daily-operations_DailyMaterialsPage', JSON.stringify(pours));
-    }
+    localStorage.setItem('mock_daily-operations_DailyMaterialsPage', JSON.stringify(pours));
   }, [pours]);
-  // ---------------------------------
 
   // Form Handlers
   const handleOpenAdd = () => {

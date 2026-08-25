@@ -23,7 +23,14 @@ import { useAuth } from '../../auth/context/AuthContext';
 export function DailyApprovalsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [reports, setReports] = useState([]);
+  const [reports, setReports] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_daily_progress_reports');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -43,6 +50,10 @@ export function DailyApprovalsPage() {
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('mock_daily_progress_reports', JSON.stringify(reports));
+  }, [reports]);
 
   const handleApprove = (item) => {
     setReports(prev => prev.map(r => r.id === item.id ? { ...r, status_name: 'Approved by PM' } : r));

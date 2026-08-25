@@ -42,7 +42,14 @@ const EMPTY_FORM = {
 export function DailyManpowerPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mock_daily-operations_DailyManpowerPage');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -67,6 +74,10 @@ export function DailyManpowerPage() {
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('mock_daily-operations_DailyManpowerPage', JSON.stringify(logs));
+  }, [logs]);
 
   // Form Handlers
   const handleOpenAdd = () => {
