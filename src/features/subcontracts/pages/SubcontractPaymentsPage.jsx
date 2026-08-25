@@ -59,68 +59,64 @@ export function SubcontractPaymentsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects & API Data safely
-  useEffect(() => {
+  const [raBills, setRaBills] = useState([]);
+  const [paymentModes, setPaymentModes] = useState([]);
+
+  const fetchList = () => {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
-      subcontractsApi?.payments?.list ? subcontractsApi.payments.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([projRes, payRes]) => {
+      subcontractsApi.raBills.list().catch(() => ({ data: [] })),
+      subcontractsApi.masters().catch(() => ({ data: {} })),
+      subcontractsApi.payments.list().catch(() => ({ data: [] }))
+    ]).then(([projRes, raRes, mastersRes, payRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
+
+      const rList = raRes?.data?.ra_bills ?? raRes?.data?.data ?? [];
+      setRaBills(Array.isArray(rList) ? rList : []);
+
+      const mList = mastersRes?.data?.masters || {};
+      setPaymentModes(mList.payment_modes || []);
+
       const pListRes = payRes?.data?.payments ?? payRes?.data?.data ?? [];
-      if (Array.isArray(pListRes) && pListRes.length > 0) {
-        const normalized = pListRes.map((p, idx) => ({
-          id: p.id || idx + 1,
-          project_id: p.project_id || 1,
-          project_code: p.project_code || 'PRJ-2026-001',
-          project_name: p.project_name || 'Civil Project',
-          payment_no: p.payment_no || `PAY-2026-0${idx + 90}`,
-          payment_date: p.payment_date || '2026-08-20',
-          contractor_name: p.contractor_name || 'Subcontractor Firm',
-          ra_bill_no: p.ra_bill_no || 'RA-2026-003',
-          work_order_no: p.work_order_no || 'WO-2026-012',
-          amount: Number(p.amount || 500000),
-          payment_mode: p.payment_mode || 'RTGS Transfer',
-          reference_no: p.reference_no || `UTR-${Date.now()}`,
-          bank_account: p.bank_account || 'Commercial Bank A/C',
-          status_name: p.status_name || 'Disbursed (Settled)',
-          disbursed_by: 'Finance & Accounts',
-          notes: p.notes || '',
-        }));
+      if (Array.isArray(pListRes)) {
+        const normalized = pListRes.map((p, idx) => {
+          const matchedProj = pList.find(pr => String(pr.id) === String(p.project_id));
+          const matchedBill = rList.find(b => String(b.id) === String(p.ra_bill_id));
+          const matchedMode = (mList.payment_modes || []).find(m => String(m.id) === String(p.payment_mode_id));
+          return {
+            id: p.id,
+            project_id: p.project_id,
+            project_code: matchedProj?.project_code || 'PRJ-01',
+            project_name: matchedProj?.project_name || 'Project Name',
+            payment_no: p.payment_no || `PAY-${p.id}`,
+            payment_date: p.payment_date || '',
+            contractor_id: p.contractor_id,
+            contractor_name: matchedBill?.contractor_name || 'Subcontractor Partner',
+            ra_bill_id: p.ra_bill_id,
+            ra_bill_no: matchedBill?.ra_bill_no || 'RA-00',
+            amount: Number(p.amount || 0),
+            payment_mode_id: p.payment_mode_id,
+            payment_mode: matchedMode?.payment_mode_name || 'RTGS Transfer',
+            reference_no: p.reference_no || '',
+            status_name: p.status_name || 'Draft',
+            notes: p.remarks || '',
+          };
+        });
         setPayments(normalized);
       }
     }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_subcontracts_SubcontractPaymentsPage');
-      if (saved) {
-        setPayments(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
+  };
 
   useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_subcontracts_SubcontractPaymentsPage');
-    if (payments.length > 0 || saved) {
-       localStorage.setItem('mock_subcontracts_SubcontractPaymentsPage', JSON.stringify(payments));
-    }
-  }, [payments]);
-  // ---------------------------------
+    fetchList();
+  }, []);
 
   // Form Handlers
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
 
     setForm({
       ...EMPTY_FORM,
@@ -135,16 +131,14 @@ export function SubcontractPaymentsPage() {
 
   const handleOpenEdit = (item) => {
     setForm({
-      project_id: String(item.project_id || '1'),
+      project_id: String(item.project_id || ''),
       payment_no: item.payment_no || '',
       payment_date: item.payment_date || '',
-      contractor_name: item.contractor_name || '',
-      ra_bill_no: item.ra_bill_no || '',
-      work_order_no: item.work_order_no || '',
-      amount: String(item.amount || '500000'),
-      payment_mode: item.payment_mode || 'RTGS / Bank Transfer',
+      contractor_id: String(item.contractor_id || ''),
+      ra_bill_id: String(item.ra_bill_id || ''),
+      amount: String(item.amount || ''),
+      payment_mode_id: String(item.payment_mode_id || ''),
       reference_no: item.reference_no || '',
-      bank_account: item.bank_account || '',
       notes: item.notes || '',
     });
     setErrors({});
@@ -159,8 +153,12 @@ export function SubcontractPaymentsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
+    if (!form.project_id) errs.project_id = 'Project is required';
+    if (!form.ra_bill_id) errs.ra_bill_id = 'RA Bill is required';
     if (!form.payment_no.trim()) errs.payment_no = 'Payment voucher number is required';
-    if (!form.reference_no.trim()) errs.reference_no = 'Bank UTR reference is required';
+    if (!form.payment_date) errs.payment_date = 'Payment Date is required';
+    if (!form.payment_mode_id) errs.payment_mode_id = 'Payment Mode is required';
+    if (!form.amount) errs.amount = 'Amount is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -169,49 +167,39 @@ export function SubcontractPaymentsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const amt = Number(form.amount || 0);
+      const selectedBill = raBills.find(b => String(b.id) === String(form.ra_bill_id));
+      const contractorId = selectedBill ? selectedBill.contractor_id : form.contractor_id;
 
-      const newPay = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
+      const payload = {
+        project_id: Number(form.project_id),
+        ra_bill_id: Number(form.ra_bill_id),
+        contractor_id: Number(contractorId),
         payment_no: form.payment_no,
         payment_date: form.payment_date,
-        contractor_name: form.contractor_name,
-        ra_bill_no: form.ra_bill_no,
-        work_order_no: form.work_order_no,
-        amount: amt,
-        payment_mode: form.payment_mode,
-        reference_no: form.reference_no,
-        bank_account: form.bank_account,
-        status_name: 'Disbursed (Settled)',
-        disbursed_by: 'Finance & Accounts',
-        notes: form.notes,
+        payment_mode_id: Number(form.payment_mode_id),
+        amount: Number(form.amount || 0),
+        reference_no: form.reference_no || null,
+        remarks: form.notes,
       };
 
       if (editingItem?.id) {
-        setPayments(prev => prev.map(p => p.id === editingItem.id ? newPay : p));
+        await subcontractsApi.payments.update(editingItem.id, payload);
         toast.success('Payment voucher updated.');
       } else {
-        setPayments(prev => [newPay, ...prev]);
-        toast.success('Payment voucher recorded and settled.');
+        await subcontractsApi.payments.create(payload);
+        toast.success('Payment voucher recorded.');
       }
-
+      fetchList();
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save payment voucher.');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save payment voucher.');
     } finally {
       setSaving(false);
     }
   };
 
   const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setPayments(prev => prev.filter(p => p.id !== deleteItem.id));
-    toast.success('Payment voucher removed.');
     setDeleteItem(null);
   };
 
@@ -459,9 +447,12 @@ export function SubcontractPaymentsPage() {
                 <span className="font-bold text-primary truncate max-w-[180px]">{p.reference_no}</span>
               </div>
 
-              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
+              <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(p)}>
                   <Eye className="w-3 h-3 mr-1" /> View Payment Advice
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(p)}>
+                  <Edit className="w-3 h-3 mr-1" /> Edit
                 </Button>
               </div>
             </div>
@@ -556,19 +547,11 @@ export function SubcontractPaymentsPage() {
                   />
                 </FormField>
 
-                <FormField label="Linked RA Bill No">
-                  <Input
-                    value={form.ra_bill_no}
-                    onChange={(e) => handleFormChange('ra_bill_no', e.target.value)}
-                    placeholder="RA-2026-003"
-                  />
-                </FormField>
-
-                <FormField label="Contractor Name" className="md:col-span-2">
-                  <Input
-                    value={form.contractor_name}
-                    onChange={(e) => handleFormChange('contractor_name', e.target.value)}
-                    placeholder="e.g. Sri Murugan Civil Infra Pvt Ltd"
+                <FormField label="Linked RA Bill" required error={errors.ra_bill_id} className="md:col-span-2">
+                  <Select
+                    options={raBills.filter(b => !form.project_id || String(b.project_id) === String(form.project_id)).map(b => ({ value: String(b.id), label: `${b.ra_bill_no} - ${b.contractor_name} (₹${b.net_certified_amount.toLocaleString('en-IN')})` }))}
+                    value={form.ra_bill_id}
+                    onChange={(v) => handleFormChange('ra_bill_id', v)}
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -584,15 +567,11 @@ export function SubcontractPaymentsPage() {
                   />
                 </FormField>
 
-                <FormField label="Payment Mode">
+                <FormField label="Payment Mode" required error={errors.payment_mode_id}>
                   <Select
-                    options={[
-                      { value: 'RTGS / Bank Transfer', label: 'RTGS / Bank Transfer' },
-                      { value: 'NEFT Online Transfer', label: 'NEFT Online Transfer' },
-                      { value: 'Cheque Payment', label: 'Cheque Payment' },
-                    ]}
-                    value={form.payment_mode}
-                    onChange={(v) => handleFormChange('payment_mode', v)}
+                    options={paymentModes.map(m => ({ value: String(m.id), label: m.payment_mode_name }))}
+                    value={form.payment_mode_id}
+                    onChange={(v) => handleFormChange('payment_mode_id', v)}
                   />
                 </FormField>
 

@@ -39,24 +39,19 @@ export function SubcontractReportPage() {
     ]).then(([projRes, repRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
-      const rList = repRes?.data?.subcontracts ?? repRes?.data?.data ?? [];
-      if (Array.isArray(rList) && rList.length > 0) {
+      const rList = repRes?.data?.subcontract_report ?? repRes?.data?.data ?? [];
+      if (Array.isArray(rList)) {
         const normalized = rList.map((r, idx) => ({
           id: r.id || idx + 1,
           project_id: r.project_id || 1,
-          project_code: r.project_code || 'PRJ-2026-001',
           project_name: r.project_name || 'Civil Project',
-          contractor_name: r.contractor_name || 'Subcontractor',
-          trade: r.trade || r.category_name || 'Contracting',
-          wo_count: Number(r.wo_count || 1),
-          total_wo_value: Number(r.total_wo_value || 1000000),
-          billed_amount: Number(r.billed_amount || 500000),
-          certified_amount: Number(r.certified_amount || 500000),
-          paid_amount: Number(r.paid_amount || 450000),
-          retention_held: Number(r.retention_held || 25000),
-          balance_payable: Number(r.balance_payable || 550000),
-          progress_pct: Number(r.progress_pct || 50),
-          performance_rating: r.performance_rating || 'Grade A',
+          work_order_no: r.work_order_no || 'WO-00',
+          total_wo_value: Number(r.total_order_value || 0),
+          certified_amount: Number(r.certified_amount || 0),
+          paid_amount: Number(r.paid_amount || 0),
+          balance_payable: Math.max(0, Number(r.total_order_value || 0) - Number(r.paid_amount || 0)),
+          progress_pct: Math.min(100, Math.round((Number(r.certified_amount || 0) / (Number(r.total_order_value || 1))) * 100)),
+          status_name: r.status_name || 'Draft',
         }));
         setReportData(normalized);
       }
@@ -77,10 +72,9 @@ export function SubcontractReportPage() {
       if (selectedProjectId !== 'all' && String(r.project_id) !== String(selectedProjectId)) return false;
       if (search) {
         const s = search.toLowerCase();
-        const cont = String(r.contractor_name || '').toLowerCase();
-        const trade = String(r.trade || '').toLowerCase();
+        const wo = String(r.work_order_no || '').toLowerCase();
         const proj = String(r.project_name || '').toLowerCase();
-        if (!cont.includes(s) && !trade.includes(s) && !proj.includes(s)) return false;
+        if (!wo.includes(s) && !proj.includes(s)) return false;
       }
       return true;
     });
@@ -91,9 +85,9 @@ export function SubcontractReportPage() {
 
   // Metrics
   const totalContractedVal = useMemo(() => reportData.reduce((acc, r) => acc + Number(r.total_wo_value || 0), 0), [reportData]);
-  const totalBilledVal = useMemo(() => reportData.reduce((acc, r) => acc + Number(r.billed_amount || 0), 0), [reportData]);
+  const totalBilledVal = useMemo(() => reportData.reduce((acc, r) => acc + Number(r.certified_amount || 0), 0), [reportData]);
   const totalPaidVal = useMemo(() => reportData.reduce((acc, r) => acc + Number(r.paid_amount || 0), 0), [reportData]);
-  const totalRetentionVal = useMemo(() => reportData.reduce((acc, r) => acc + Number(r.retention_held || 0), 0), [reportData]);
+  const totalBalanceVal = useMemo(() => reportData.reduce((acc, r) => acc + Number(r.balance_payable || 0), 0), [reportData]);
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
@@ -130,8 +124,8 @@ export function SubcontractReportPage() {
             icon={<Users className="w-4 h-4 text-sky-500" />}
           />
           <KpiCard
-            label="Retention Escrow Balance"
-            value={`₹${(totalRetentionVal / 100000).toFixed(2)}L`}
+            label="Outstanding Balance"
+            value={`₹${(totalBalanceVal / 100000).toFixed(2)}L`}
             status="warning"
             icon={<ShieldCheck className="w-4 h-4 text-amber-500" />}
           />
@@ -202,14 +196,14 @@ export function SubcontractReportPage() {
               <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
                   <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2">Contractor & Specialty</th>
-                  <th className="px-3 py-2 text-center w-20">WOs</th>
+                  <th className="px-3 py-2">Work Order No</th>
+                  <th className="px-3 py-2">Project Name</th>
                   <th className="px-3 py-2 text-right w-28">Order Value</th>
                   <th className="px-3 py-2 text-right w-28">Certified</th>
                   <th className="px-3 py-2 text-right w-28">Paid</th>
-                  <th className="px-3 py-2 text-right w-24 hidden md:table-cell">Retention</th>
                   <th className="px-3 py-2 text-right w-28 font-bold">Balance</th>
                   <th className="px-3 py-2 text-center w-24">Progress %</th>
+                  <th className="px-3 py-2 text-center w-24">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -231,18 +225,11 @@ export function SubcontractReportPage() {
                       <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
                         {(page - 1) * perPage + idx + 1}
                       </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={r.contractor_name}>
-                            {r.contractor_name}
-                          </span>
-                          <span className="text-[10px] text-text-muted truncate">
-                            {r.trade} • {r.project_name}
-                          </span>
-                        </div>
+                      <td className="px-3 py-2 font-semibold text-text-primary text-[12px]">
+                        {r.work_order_no}
                       </td>
-                      <td className="px-3 py-2 text-center font-mono text-[11px] text-text-primary">
-                        {r.wo_count}
+                      <td className="px-3 py-2 text-text-secondary">
+                        {r.project_name}
                       </td>
                       <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary">
                         ₹{r.total_wo_value.toLocaleString('en-IN')}
@@ -253,14 +240,16 @@ export function SubcontractReportPage() {
                       <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary">
                         ₹{r.paid_amount.toLocaleString('en-IN')}
                       </td>
-                      <td className="px-3 py-2 text-right hidden md:table-cell font-mono text-[11px] text-amber-600">
-                        ₹{r.retention_held.toLocaleString('en-IN')}
-                      </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
                         ₹{r.balance_payable.toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-center font-mono font-bold text-emerald-600 text-[11px]">
                         {r.progress_pct}%
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <Badge variant={r.status_name === 'Active' ? 'success' : 'neutral'} className="text-[10px]">
+                          {r.status_name}
+                        </Badge>
                       </td>
                     </tr>
                   ))
@@ -276,8 +265,8 @@ export function SubcontractReportPage() {
             <div key={r.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{r.contractor_name}</h4>
-                  <span className="text-[11px] text-text-muted">{r.trade}</span>
+                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{r.work_order_no}</h4>
+                  <span className="text-[11px] text-text-muted">{r.project_name}</span>
                 </div>
                 <Badge
                   variant="success"

@@ -43,22 +43,27 @@ export function BudgetVsActualReportPage() {
     ]).then(([projRes, repRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
-      const rList = repRes?.data?.cost ?? repRes?.data?.data ?? [];
+      const rList = repRes?.data?.cost_report ?? repRes?.data?.data ?? [];
       if (Array.isArray(rList) && rList.length > 0) {
-        const normalized = rList.map((r, idx) => ({
-          id: r.id || idx + 1,
-          project_id: r.project_id || 1,
-          project_code: r.project_code || 'PRJ-2026-001',
-          project_name: r.project_name || 'Civil Project',
-          cost_code: r.cost_code || `WBS-${idx + 100}`,
-          cost_head: r.cost_head || 'Construction Work Head',
-          budget_amount: Number(r.budget_amount || 50000000),
-          committed_amount: Number(r.committed_amount || 30000000),
-          actual_amount: Number(r.actual_amount || 20000000),
-          variance: Number(r.variance || 30000000),
-          utilization_pct: Number(r.utilization_pct || 40.0),
-          status: r.status || 'Within Budget'
-        }));
+        const normalized = rList.map((r, idx) => {
+          const budgetVal = Number(r.approved_budget || 0);
+          const actualVal = Number(r.total_actual_cost || 0);
+          const util = budgetVal > 0 ? Math.round((actualVal / budgetVal) * 100) : 0;
+          return {
+            id: r.id || idx + 1,
+            project_id: r.project_id || 1,
+            project_code: r.project_code || 'PRJ-2026-001',
+            project_name: r.project_name || 'Civil Project',
+            cost_code: r.snapshot_level_code || r.project_code || 'PROJECT',
+            cost_head: r.snapshot_name || 'Baseline Cost Snapshot',
+            budget_amount: budgetVal,
+            committed_amount: Number(r.committed_cost || 0),
+            actual_amount: actualVal,
+            variance: Number(r.budget_variance || 0),
+            utilization_pct: util,
+            status: Number(r.budget_variance) >= 0 ? 'Within Budget' : 'Over Budget'
+          };
+        });
         setBudgetList(normalized);
       }
     }).catch(() => {}).finally(() => setLoading(false));

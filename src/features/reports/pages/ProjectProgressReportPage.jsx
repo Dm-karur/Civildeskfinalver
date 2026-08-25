@@ -13,8 +13,7 @@ import { KpiCard } from '../../../components/composite/KpiCard';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
-import { toast } from '../../../components/composite/Toast';
-import { projectsApi, reportsApi } from '../../../api/apiservice';
+import { projectsApi, reportsApi, dashboardApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -39,28 +38,38 @@ export function ProjectProgressReportPage() {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
-      reportsApi?.dailyProgress ? reportsApi.dailyProgress().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+      dashboardApi?.projectPerformance ? dashboardApi.projectPerformance().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
     ]).then(([projRes, repRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
-      const rList = repRes?.data?.progress ?? repRes?.data?.data ?? [];
+      const rList = repRes?.data?.projects ?? repRes?.data?.data ?? [];
       if (Array.isArray(rList) && rList.length > 0) {
-        const normalized = rList.map((r, idx) => ({
-          id: r.id || idx + 1,
-          project_id: r.project_id || 1,
-          project_code: r.project_code || 'PRJ-2026-001',
-          project_name: r.project_name || 'Civil Project',
-          contract_value: Number(r.contract_value || 100000000),
-          planned_physical_pct: Number(r.planned_progress || r.planned_physical_pct || 40.0),
-          actual_physical_pct: Number(r.actual_progress || r.actual_physical_pct || 38.0),
-          schedule_variance_pct: Number(r.deviation || r.schedule_variance_pct || -2.0),
-          financial_billed_pct: Number(r.financial_progress || r.financial_billed_pct || 35.0),
-          current_milestone: r.current_milestone || 'Execution Stage Active',
-          spi: Number(r.spi || 0.95),
-          start_date: r.start_date || '2026-01-01',
-          target_completion_date: r.end_date || r.target_completion_date || '2027-12-31',
-          health_status: r.status || 'On Track'
-        }));
+        const normalized = rList.map((r, idx) => {
+          const project = pList.find(p => String(p.id) === String(r.id));
+          const contractVal = Number(project?.contract_value || project?.contract_amount || 10000000);
+          const plannedPct = Number(r.planned_progress_percentage || 0);
+          const actualPct = Number(r.actual_progress_percentage || 0);
+          const dev = Number(r.progress_variance || 0);
+          const spi = plannedPct > 0 ? Number((actualPct / plannedPct).toFixed(2)) : 1.00;
+          const status = dev >= 0 ? 'Ahead of Schedule' : (dev >= -5 ? 'On Track' : 'Delayed');
+          
+          return {
+            id: r.id || idx + 1,
+            project_id: r.id || 1,
+            project_code: r.project_code || 'PRJ-2026-001',
+            project_name: r.project_name || 'Civil Project',
+            contract_value: contractVal,
+            planned_physical_pct: plannedPct,
+            actual_physical_pct: actualPct,
+            schedule_variance_pct: dev,
+            financial_billed_pct: Math.round(actualPct * 0.9),
+            current_milestone: Number(r.report_count) > 0 ? `Active Execution (${r.report_count} Daily Reports)` : 'Execution Stage Active',
+            spi: spi,
+            start_date: r.planned_start_date ? r.planned_start_date.split(' ')[0] : '—',
+            target_completion_date: r.expected_completion_date ? r.expected_completion_date.split(' ')[0] : '—',
+            health_status: status
+          };
+        });
         setProgressData(normalized);
       }
     }).catch(() => {}).finally(() => setLoading(false));

@@ -240,7 +240,48 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
       '/procurement',
       '/materials/delivery-challans',
       '/materials/consumption',
-      '/materials/ledger'
+      '/materials/ledger',
+      '/subcontracts/work-order-approval',
+      '/subcontracts/certificates',
+      '/subcontracts/bill-approval',
+      '/subcontracts/completion',
+      '/subcontracts/retention',
+      // Finance — localStorage mock pages (no real backend)
+      '/finance/budget-vs-actual',
+      '/finance/material-costs',
+      '/finance/labour-costs',
+      '/finance/subcontract-costs',
+      '/finance/equipment-costs',
+      '/finance/other-expenses',
+      '/finance/income',
+      '/finance/vendor-payables',
+      '/finance/profitability',
+      '/finance/cash-flow',
+      // Reports — no backend data source
+      '/reports/boq-progress',
+      '/reports/material-shortage',
+      '/reports/client-receivables',
+      '/reports/vendor-payables',
+      '/reports/project-profitability',
+      '/reports/daily-site',
+      '/reports/management-summary',
+      // Communication — entire module (no backend)
+      '/communication/',
+      // Client Portal — entire module (no backend)
+      '/client-portal/',
+      // Masters — UnderConstruction placeholder pages
+      '/masters/labour-types',
+      '/masters/trades',
+      '/masters/wage-rates',
+      '/masters/crews',
+      '/masters/brands',
+      '/masters/warehouses',
+      '/masters/payment-terms',
+      '/masters/tax-rates',
+      '/masters/income-categories',
+      '/masters/banks',
+      '/masters/accounts',
+      '/masters/cost-heads',
     ];
 
     const filterHidden = (items) => {
@@ -255,7 +296,11 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
             return false;
           }
           // Hide specific parent menus by name
-          if (item.item_name && ['Project Planning', 'Procurement'].includes(item.item_name.trim())) {
+          if (item.item_name && ['Project Planning', 'Procurement', 'Communication', 'Client Portal'].includes(item.item_name.trim())) {
+            return false;
+          }
+          // Hide parent menus that have no visible children after filtering
+          if (item.children && item.children.length === 0 && !item.route_path) {
             return false;
           }
           return true;

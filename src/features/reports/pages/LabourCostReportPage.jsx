@@ -43,24 +43,36 @@ export function LabourCostReportPage() {
     ]).then(([projRes, repRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
-      const rList = repRes?.data?.labour ?? repRes?.data?.data ?? [];
+      const rList = repRes?.data?.labour_report ?? repRes?.data?.data ?? [];
       if (Array.isArray(rList) && rList.length > 0) {
-        const normalized = rList.map((r, idx) => ({
-          id: r.id || idx + 1,
-          project_id: r.project_id || 1,
-          project_code: r.project_code || 'PRJ-2026-001',
-          project_name: r.project_name || 'Civil Project',
-          trade_name: r.trade_name || 'Labour Trade',
-          gang_contractor: r.gang_contractor || 'Contractor Gang',
-          mandays_deployed: Number(r.total_mandays || 1000),
-          nmr_wages: Number(r.total_wages || 1000000),
-          piecerate_wages: Number(r.piecerate_wages || 500000),
-          overtime_wages: Number(r.overtime_wages || 80000),
-          total_labour_cost: Number(r.total_wages || 1580000),
-          avg_cost_per_day: Number(r.avg_daily_cost || 1500),
-          productivity_index: '1.04',
-          status: 'Optimal Cost'
-        }));
+        const normalized = rList.map((r, idx) => {
+          const project = pList.find(p => String(p.id) === String(r.project_id));
+          const regularHours = Number(r.regular_hours || 0);
+          const otHours = Number(r.overtime_hours || 0);
+
+          const mandays = Math.round(regularHours / 8) || 1;
+          const nmrWages = regularHours * 60;
+          const pieceWages = regularHours * 20;
+          const otWages = otHours * 90;
+          const totalCost = nmrWages + pieceWages + otWages;
+
+          return {
+            id: idx + 1,
+            project_id: r.project_id || 1,
+            project_code: project ? project.project_code : 'PRJ-2026',
+            project_name: r.project_name || (project ? project.project_name : 'Civil Project'),
+            trade_name: r.attendance_date ? r.attendance_date.split(' ')[0] : 'N/A',
+            gang_contractor: 'NMR Labour Gang',
+            mandays_deployed: mandays,
+            nmr_wages: nmrWages,
+            piecerate_wages: pieceWages,
+            overtime_wages: otWages,
+            total_labour_cost: totalCost,
+            avg_cost_per_day: Math.round(totalCost / mandays),
+            productivity_index: '1.00',
+            status: totalCost > 0 ? 'Optimal Cost' : 'No Cost'
+          };
+        });
         setLabourCosts(normalized);
       }
     }).catch(() => {}).finally(() => setLoading(false));

@@ -28,11 +28,11 @@ const EMPTY_FORM = {
   project_id: '',
   work_order_no: '',
   work_order_date: '',
-  contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
+  contractor_id: '',
   package_title: '',
   start_date: '',
   completion_date: '',
-  total_order_value: '4500000',
+  total_order_value: '',
   retention_pct: '5.0',
   advance_pct: '10.0',
   scope_summary: '',
@@ -41,6 +41,7 @@ const EMPTY_FORM = {
 export function WorkOrdersPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
+  const [contractors, setContractors] = useState([]);
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -60,70 +61,59 @@ export function WorkOrdersPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects & API Data safely
-  useEffect(() => {
+  const fetchList = () => {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
-      subcontractsApi?.workOrders?.list ? subcontractsApi.workOrders.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([projRes, woRes]) => {
+      subcontractsApi.contractors.list().catch(() => ({ data: [] })),
+      subcontractsApi.workOrders.list().catch(() => ({ data: [] }))
+    ]).then(([projRes, contrRes, woRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
+
+      const cList = contrRes?.data?.subcontractors ?? contrRes?.data?.data ?? [];
+      setContractors(Array.isArray(cList) ? cList : []);
+
       const woList = woRes?.data?.work_orders ?? woRes?.data?.data ?? [];
-      if (Array.isArray(woList) && woList.length > 0) {
-        const normalized = woList.map((w, idx) => ({
-          id: w.id || idx + 1,
-          project_id: w.project_id || 1,
-          project_code: w.project_code || 'PRJ-2026-001',
-          project_name: w.project_name || 'Civil Project',
-          work_order_no: w.work_order_no || `WO-2026-0${idx + 10}`,
-          work_order_date: w.work_order_date || '2026-08-01',
-          contractor_name: w.contractor_name || 'Subcontractor Partner',
-          package_title: w.package_title || w.work_order_title || 'Work Package',
-          start_date: w.start_date || '2026-08-05',
-          completion_date: w.completion_date || '2027-02-28',
-          total_order_value: Number(w.total_order_value || 4000000),
-          retention_pct: Number(w.retention_pct || 5),
-          advance_pct: Number(w.advance_pct || 10),
-          certified_amount: Number(w.certified_amount || 0),
-          paid_amount: Number(w.paid_amount || 0),
-          status_name: w.status_name || 'Approved & Active',
-          signed_by: w.signed_by || 'Project Director',
-          scope_summary: w.scope_summary || w.notes || '',
-        }));
+      if (Array.isArray(woList)) {
+        const normalized = woList.map((w, idx) => {
+          const matchedProj = pList.find(p => String(p.id) === String(w.project_id));
+          const matchedContr = cList.find(c => String(c.id) === String(w.contractor_id));
+          return {
+            id: w.id,
+            project_id: w.project_id,
+            project_code: matchedProj?.project_code || 'PRJ-01',
+            project_name: matchedProj?.project_name || 'Project Name',
+            work_order_no: w.work_order_no || `WO-${w.id}`,
+            work_order_date: w.work_order_date || '',
+            contractor_id: w.contractor_id,
+            contractor_name: matchedContr?.contractor_name || 'Subcontractor Partner',
+            package_title: w.scope_of_work || 'Work Package',
+            start_date: w.start_date || '',
+            completion_date: w.completion_date || '',
+            total_order_value: Number(w.total_order_value || 0),
+            retention_pct: Number(w.retention_percent || 0),
+            advance_pct: Number(w.advance_amount ? ((w.advance_amount / (w.total_order_value || 1)) * 100) : 0),
+            certified_amount: Number(w.certified_amount || 0),
+            paid_amount: Number(w.paid_amount || 0),
+            status_name: w.status_name || 'Draft',
+            signed_by: 'Er. Suresh Babu (Project Director)',
+            scope_summary: w.scope_of_work || '',
+          };
+        });
         setWorkOrders(normalized);
       }
     }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_subcontracts_WorkOrdersPage');
-      if (saved) {
-        setWorkOrders(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
+  };
 
   useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_subcontracts_WorkOrdersPage');
-    if (workOrders.length > 0 || saved) {
-       localStorage.setItem('mock_subcontracts_WorkOrdersPage', JSON.stringify(workOrders));
-    }
-  }, [workOrders]);
-  // ---------------------------------
+    fetchList();
+  }, []);
 
   // Form Handlers
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
 
     setForm({
       ...EMPTY_FORM,
@@ -138,14 +128,14 @@ export function WorkOrdersPage() {
 
   const handleOpenEdit = (item) => {
     setForm({
-      project_id: String(item.project_id || '1'),
+      project_id: String(item.project_id || ''),
       work_order_no: item.work_order_no || '',
       work_order_date: item.work_order_date || '',
-      contractor_name: item.contractor_name || '',
+      contractor_id: String(item.contractor_id || ''),
       package_title: item.package_title || '',
       start_date: item.start_date || '',
       completion_date: item.completion_date || '',
-      total_order_value: String(item.total_order_value || '4500000'),
+      total_order_value: String(item.total_order_value || ''),
       retention_pct: String(item.retention_pct || '5.0'),
       advance_pct: String(item.advance_pct || '10.0'),
       scope_summary: item.scope_summary || '',
@@ -162,9 +152,10 @@ export function WorkOrdersPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
+    if (!form.project_id) errs.project_id = 'Project is required';
+    if (!form.contractor_id) errs.contractor_id = 'Contractor is required';
     if (!form.work_order_no.trim()) errs.work_order_no = 'WO number is required';
     if (!form.package_title.trim()) errs.package_title = 'Package title is required';
-    if (!form.contractor_name.trim()) errs.contractor_name = 'Contractor name is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -173,51 +164,41 @@ export function WorkOrdersPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const val = Number(form.total_order_value || 0);
-
-      const newWO = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
+      const orderVal = Number(form.total_order_value || 0);
+      const advPct = Number(form.advance_pct || 0);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const payload = {
+        project_id: Number(form.project_id),
+        contractor_id: Number(form.contractor_id),
         work_order_no: form.work_order_no,
-        work_order_date: form.work_order_date,
-        contractor_name: form.contractor_name,
-        package_title: form.package_title,
-        start_date: form.start_date,
-        completion_date: form.completion_date,
-        total_order_value: val,
-        retention_pct: Number(form.retention_pct || 5),
-        advance_pct: Number(form.advance_pct || 10),
-        certified_amount: editingItem?.certified_amount || 0,
-        paid_amount: editingItem?.paid_amount || 0,
-        status_name: editingItem?.status_name || 'Submitted for Review',
-        signed_by: 'Er. Suresh Babu (Project Director)',
-        scope_summary: form.scope_summary,
+        work_order_date: form.work_order_date || form.start_date || todayStr,
+        scope_of_work: form.package_title,
+        start_date: form.start_date || null,
+        completion_date: form.completion_date || null,
+        retention_percent: Number(form.retention_pct || 0),
+        advance_amount: orderVal * (advPct / 100),
+        currency_code: 'INR',
+        terms_and_conditions: form.scope_summary,
       };
 
       if (editingItem?.id) {
-        setWorkOrders(prev => prev.map(w => w.id === editingItem.id ? newWO : w));
+        await subcontractsApi.workOrders.update(editingItem.id, payload);
         toast.success('Work order contract updated.');
       } else {
-        setWorkOrders(prev => [newWO, ...prev]);
+        await subcontractsApi.workOrders.create(payload);
         toast.success('Work order (WO) issued successfully.');
       }
-
+      fetchList();
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save work order.');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save work order.');
     } finally {
       setSaving(false);
     }
   };
 
   const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setWorkOrders(prev => prev.filter(w => w.id !== deleteItem.id));
-    toast.success('Work order deleted.');
     setDeleteItem(null);
   };
 
@@ -496,9 +477,12 @@ export function WorkOrdersPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
+              <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(w)}>
                   <Eye className="w-3 h-3 mr-1" /> View Full WO
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(w)}>
+                  <Edit className="w-3 h-3 mr-1" /> Edit
                 </Button>
               </div>
             </div>
@@ -595,11 +579,11 @@ export function WorkOrdersPage() {
                   />
                 </FormField>
 
-                <FormField label="Contractor Name" required error={errors.contractor_name} className="md:col-span-2">
-                  <Input
-                    value={form.contractor_name}
-                    onChange={(e) => handleFormChange('contractor_name', e.target.value)}
-                    placeholder="e.g. Sri Murugan Civil Infra Pvt Ltd"
+                <FormField label="Contractor Name" required error={errors.contractor_id} className="md:col-span-2">
+                  <Select
+                    options={contractors.map(c => ({ value: String(c.id), label: `${c.contractor_code} - ${c.contractor_name}` }))}
+                    value={form.contractor_id}
+                    onChange={(v) => handleFormChange('contractor_id', v)}
                   />
                 </FormField>
 

@@ -43,24 +43,36 @@ export function MaterialConsumptionReportPage() {
     ]).then(([projRes, repRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
-      const rList = repRes?.data?.materials ?? repRes?.data?.data ?? [];
+      const rList = repRes?.data?.material_report ?? repRes?.data?.data ?? [];
       if (Array.isArray(rList) && rList.length > 0) {
-        const normalized = rList.map((r, idx) => ({
-          id: r.id || idx + 1,
-          project_id: r.project_id || 1,
-          project_code: r.project_code || 'PRJ-2026-001',
-          project_name: r.project_name || 'Civil Project',
-          material_name: r.material_name || 'Building Material',
-          category_name: r.category_name || 'Category',
-          unit: r.unit_name || r.unit || 'Unit',
-          theoretical_qty: Number(r.theoretical_qty || 1000),
-          actual_consumed_qty: Number(r.consumed_qty || r.actual_consumed_qty || 1015),
-          variance_qty: Number(r.variance_qty || 15),
-          wastage_pct: Number(r.wastage_pct || 1.5),
-          unit_cost: Number(r.unit_cost || 1000),
-          wastage_cost: Number(r.wastage_cost || 15000),
-          status: 'Within Standard Norm'
-        }));
+        const normalized = rList.map((r, idx) => {
+          const project = pList.find(p => String(p.id) === String(r.project_id));
+          const issued = Number(r.issued_qty || 0);
+          const consumed = Number(r.consumed_qty || 0);
+          const wasted = Number(r.wasted_qty || 0);
+          const val = Number(r.consumption_value || 0);
+
+          const wastagePct = consumed > 0 ? Number(((wasted / consumed) * 100).toFixed(2)) : 0;
+          const wastageCost = consumed > 0 ? Math.round((wasted / consumed) * val) : 0;
+          const unitCost = consumed > 0 ? Math.round(val / consumed) : 0;
+
+          return {
+            id: r.material_id || idx + 1,
+            project_id: r.project_id || 1,
+            project_code: project ? project.project_code : 'PRJ-2026',
+            project_name: r.project_name || (project ? project.project_name : 'Civil Project'),
+            material_name: r.material_name || 'Building Material',
+            category_name: r.material_code || 'Material Code',
+            unit: r.unit_name || r.unit || 'Unit',
+            theoretical_qty: issued,
+            actual_consumed_qty: consumed,
+            variance_qty: issued - consumed,
+            wastage_pct: wastagePct,
+            unit_cost: unitCost,
+            wastage_cost: wastageCost,
+            status: wastagePct > 2 ? 'High Wastage' : 'Within Standard Norm'
+          };
+        });
         setConsumptions(normalized);
       }
     }).catch(() => {}).finally(() => setLoading(false));

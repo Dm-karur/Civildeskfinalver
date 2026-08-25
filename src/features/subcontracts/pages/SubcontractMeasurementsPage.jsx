@@ -19,29 +19,25 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { subcontractsApi, projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
-
-
 
 const EMPTY_FORM = {
   project_id: '',
+  work_order_id: '',
   measurement_no: '',
   measurement_date: '',
   period_from: '',
   period_to: '',
-  work_order_no: 'WO-2026-012',
-  contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-  work_item: '',
-  total_measured_amount: '85000',
-  measured_by: 'Site Incharge',
-  witnessed_by: 'Contractor Representative',
-  notes: '',
+  measured_by: '',
+  contractor_representative: '',
+  remarks: '',
 };
 
 export function SubcontractMeasurementsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
+  const [workOrders, setWorkOrders] = useState([]);
   const [measurements, setMeasurements] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -60,42 +56,56 @@ export function SubcontractMeasurementsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
-  useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
-  }, []);
+  const fetchList = () => {
+    setLoading(true);
+    Promise.all([
+      projectsApi.list().catch(() => ({ data: [] })),
+      subcontractsApi.workOrders.list().catch(() => ({ data: [] })),
+      subcontractsApi.measurements.list().catch(() => ({ data: [] }))
+    ]).then(([projRes, woRes, measRes]) => {
+      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+      setProjects(Array.isArray(pList) ? pList : []);
 
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_subcontracts_SubcontractMeasurementsPage');
-      if (saved) {
-        setMeasurements(JSON.parse(saved));
+      const woList = woRes?.data?.work_orders ?? woRes?.data?.data ?? [];
+      setWorkOrders(Array.isArray(woList) ? woList : []);
+
+      const mList = measRes?.data?.measurements ?? measRes?.data?.data ?? [];
+      if (Array.isArray(mList)) {
+        const normalized = mList.map((m, idx) => {
+          const matchedProj = pList.find(p => String(p.id) === String(m.project_id));
+          const matchedWo = woList.find(w => String(w.id) === String(m.work_order_id));
+          return {
+            id: m.id,
+            project_id: m.project_id,
+            project_code: matchedProj?.project_code || 'PRJ-01',
+            project_name: matchedProj?.project_name || 'Project Name',
+            work_order_id: m.work_order_id,
+            work_order_no: matchedWo?.work_order_no || 'WO-00',
+            contractor_name: matchedWo?.contractor_name || 'Contractor Name',
+            measurement_no: m.measurement_no || `SMB-${m.id}`,
+            measurement_date: m.measurement_date || '',
+            period_from: m.period_from || '',
+            period_to: m.period_to || '',
+            total_measured_amount: Number(m.total_measured_amount || 0),
+            measured_by: m.measured_by || '',
+            witnessed_by: m.contractor_representative || '',
+            notes: m.remarks || '',
+            status_name: m.status_name || 'Draft',
+          };
+        });
+        setMeasurements(normalized);
       }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
+    }).catch(() => {}).finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_subcontracts_SubcontractMeasurementsPage');
-    if (measurements.length > 0 || saved) {
-       localStorage.setItem('mock_subcontracts_SubcontractMeasurementsPage', JSON.stringify(measurements));
-    }
-  }, [measurements]);
-  // ---------------------------------
+    fetchList();
+  }, []);
 
   // Form Handlers
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
 
     setForm({
       ...EMPTY_FORM,
@@ -111,18 +121,15 @@ export function SubcontractMeasurementsPage() {
 
   const handleOpenEdit = (item) => {
     setForm({
-      project_id: String(item.project_id || '1'),
+      project_id: String(item.project_id || ''),
+      work_order_id: String(item.work_order_id || ''),
       measurement_no: item.measurement_no || '',
       measurement_date: item.measurement_date || '',
       period_from: item.period_from || '',
       period_to: item.period_to || '',
-      work_order_no: item.work_order_no || '',
-      contractor_name: item.contractor_name || '',
-      work_item: item.work_item || '',
-      total_measured_amount: String(item.total_measured_amount || '50000'),
       measured_by: item.measured_by || '',
-      witnessed_by: item.witnessed_by || '',
-      notes: item.notes || '',
+      contractor_representative: item.witnessed_by || '',
+      remarks: item.notes || '',
     });
     setErrors({});
     setEditingItem(item);
@@ -136,8 +143,10 @@ export function SubcontractMeasurementsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
+    if (!form.project_id) errs.project_id = 'Project is required';
+    if (!form.work_order_id) errs.work_order_id = 'Work Order is required';
     if (!form.measurement_no.trim()) errs.measurement_no = 'MB number is required';
-    if (!form.work_item.trim()) errs.work_item = 'Work item description is required';
+    if (!form.measurement_date) errs.measurement_date = 'Measurement date is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -146,49 +155,36 @@ export function SubcontractMeasurementsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const amt = Number(form.total_measured_amount || 0);
-
-      const newMB = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
+      const payload = {
+        project_id: Number(form.project_id),
+        work_order_id: Number(form.work_order_id),
         measurement_no: form.measurement_no,
         measurement_date: form.measurement_date,
-        period_from: form.period_from,
-        period_to: form.period_to,
-        work_order_no: form.work_order_no,
-        contractor_name: form.contractor_name,
-        work_item: form.work_item,
-        total_measured_amount: amt,
-        status_name: editingItem?.status_name || 'Verified & Certified for RA Bill',
+        period_from: form.period_from || null,
+        period_to: form.period_to || null,
         measured_by: form.measured_by,
-        witnessed_by: form.witnessed_by,
-        notes: form.notes,
+        contractor_representative: form.contractor_representative,
+        remarks: form.remarks,
       };
 
       if (editingItem?.id) {
-        setMeasurements(prev => prev.map(m => m.id === editingItem.id ? newMB : m));
+        await subcontractsApi.measurements.update(editingItem.id, payload);
         toast.success('Subcontract measurement record updated.');
       } else {
-        setMeasurements(prev => [newMB, ...prev]);
+        await subcontractsApi.measurements.create(payload);
         toast.success('Subcontract measurement recorded in MB Book.');
       }
-
+      fetchList();
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save measurement sheet.');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save measurement sheet.');
     } finally {
       setSaving(false);
     }
   };
 
   const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setMeasurements(prev => prev.filter(m => m.id !== deleteItem.id));
-    toast.success('Measurement entry removed.');
     setDeleteItem(null);
   };
 
@@ -434,9 +430,12 @@ export function SubcontractMeasurementsPage() {
                 {m.work_item}
               </p>
 
-              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
+              <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(m)}>
                   <Eye className="w-3 h-3 mr-1" /> View MB Sheet
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(m)}>
+                  <Edit className="w-3 h-3 mr-1" /> Edit
                 </Button>
               </div>
             </div>
@@ -535,19 +534,11 @@ export function SubcontractMeasurementsPage() {
                   />
                 </FormField>
 
-                <FormField label="Linked Work Order No">
-                  <Input
-                    value={form.work_order_no}
-                    onChange={(e) => handleFormChange('work_order_no', e.target.value)}
-                    placeholder="WO-2026-012"
-                  />
-                </FormField>
-
-                <FormField label="Contractor Name" className="md:col-span-2">
-                  <Input
-                    value={form.contractor_name}
-                    onChange={(e) => handleFormChange('contractor_name', e.target.value)}
-                    placeholder="e.g. Sri Murugan Civil Infra Pvt Ltd"
+                <FormField label="Linked Work Order" required error={errors.work_order_id} className="md:col-span-2">
+                  <Select
+                    options={workOrders.filter(w => !form.project_id || String(w.project_id) === String(form.project_id)).map(w => ({ value: String(w.id), label: `${w.work_order_no} - ${w.contractor_name} (${w.package_title})` }))}
+                    value={form.work_order_id}
+                    onChange={(v) => handleFormChange('work_order_id', v)}
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -571,28 +562,27 @@ export function SubcontractMeasurementsPage() {
                   />
                 </FormField>
 
-                <FormField label="Total Measured Work Value (₹)" required>
+                <FormField label="Measured By (Incharge)">
                   <Input
-                    type="number"
-                    value={form.total_measured_amount}
-                    onChange={(e) => handleFormChange('total_measured_amount', e.target.value)}
+                    value={form.measured_by}
+                    onChange={(e) => handleFormChange('measured_by', e.target.value)}
+                    placeholder="Site Incharge"
                   />
                 </FormField>
 
-                <FormField label="Work Item & Dimensions Description" required error={errors.work_item} className="md:col-span-2">
-                  <Textarea
-                    rows={2}
-                    value={form.work_item}
-                    onChange={(e) => handleFormChange('work_item', e.target.value)}
-                    placeholder="e.g. Level 2 Column Formwork & Concrete Pouring (42 m³ @ ₹2,200/m³)..."
+                <FormField label="Contractor Representative (Witness)">
+                  <Input
+                    value={form.contractor_representative}
+                    onChange={(e) => handleFormChange('contractor_representative', e.target.value)}
+                    placeholder="Witness Representative"
                   />
                 </FormField>
 
-                <FormField label="Joint Measurement Notes" className="md:col-span-2">
+                <FormField label="Joint Measurement Notes/Remarks" className="md:col-span-2">
                   <Textarea
                     rows={2}
-                    value={form.notes}
-                    onChange={(e) => handleFormChange('notes', e.target.value)}
+                    value={form.remarks}
+                    onChange={(e) => handleFormChange('remarks', e.target.value)}
                     placeholder="Cross-references to drawings, laser distance meter calibration..."
                   />
                 </FormField>

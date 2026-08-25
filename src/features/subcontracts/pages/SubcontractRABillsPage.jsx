@@ -62,70 +62,71 @@ export function SubcontractRABillsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects & API Data safely
-  useEffect(() => {
+  const [workOrders, setWorkOrders] = useState([]);
+  const [contractors, setContractors] = useState([]);
+
+  const fetchList = () => {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
-      subcontractsApi?.raBills?.list ? subcontractsApi.raBills.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([projRes, raRes]) => {
+      subcontractsApi.contractors.list().catch(() => ({ data: [] })),
+      subcontractsApi.workOrders.list().catch(() => ({ data: [] })),
+      subcontractsApi.raBills.list().catch(() => ({ data: [] }))
+    ]).then(([projRes, contrRes, woRes, raRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
+
+      const cList = contrRes?.data?.subcontractors ?? contrRes?.data?.data ?? [];
+      setContractors(Array.isArray(cList) ? cList : []);
+
+      const woList = woRes?.data?.work_orders ?? woRes?.data?.data ?? [];
+      setWorkOrders(Array.isArray(woList) ? woList : []);
+
       const rList = raRes?.data?.ra_bills ?? raRes?.data?.data ?? [];
-      if (Array.isArray(rList) && rList.length > 0) {
-        const normalized = rList.map((r, idx) => ({
-          id: r.id || idx + 1,
-          project_id: r.project_id || 1,
-          project_code: r.project_code || 'PRJ-2026-001',
-          project_name: r.project_name || 'Civil Project',
-          ra_bill_no: r.ra_bill_no || `RA-2026-00${idx + 10}`,
-          bill_date: r.bill_date || '2026-08-20',
-          contractor_bill_no: r.contractor_bill_no || `VND-INV-${idx + 100}`,
-          work_order_no: r.work_order_no || 'WO-2026-012',
-          contractor_name: r.contractor_name || 'Subcontractor Firm',
-          gross_work_value: Number(r.gross_work_value || 500000),
-          retention_amount: Number(r.retention_amount || 25000),
-          advance_recovery: Number(r.advance_recovery || 50000),
-          tds_amount: Number(r.tds_amount || 10000),
-          gst_amount: Number(r.gst_amount || 90000),
-          net_certified_amount: Number(r.net_certified_amount || 415000),
-          status_name: r.status_name || 'Certified & Passed for Payment',
-          certified_by: r.certified_by || 'Project Director',
-          notes: r.notes || '',
-        }));
+      if (Array.isArray(rList)) {
+        const normalized = rList.map((r, idx) => {
+          const matchedProj = pList.find(p => String(p.id) === String(r.project_id));
+          const matchedContr = cList.find(c => String(c.id) === String(r.contractor_id));
+          const matchedWo = woList.find(w => String(w.id) === String(r.work_order_id));
+          return {
+            id: r.id,
+            project_id: r.project_id,
+            project_code: matchedProj?.project_code || 'PRJ-01',
+            project_name: matchedProj?.project_name || 'Project Name',
+            ra_bill_no: r.ra_bill_no || `RA-${r.id}`,
+            bill_date: r.bill_date || '',
+            contractor_bill_no: r.contractor_bill_no || '',
+            work_order_id: r.work_order_id,
+            work_order_no: matchedWo?.work_order_no || 'WO-00',
+            contractor_id: r.contractor_id,
+            contractor_name: matchedContr?.contractor_name || 'Subcontractor Partner',
+            gross_work_value: Number(r.gross_work_value || 0),
+            retention_amount: Number(r.retention_amount || 0),
+            advance_recovery: Number(r.advance_recovery || 0),
+            tds_amount: Number(r.tds_amount || 0),
+            gst_amount: Number(r.cgst_amount || 0) + Number(r.sgst_amount || 0) + Number(r.igst_amount || 0),
+            cgst_amount: Number(r.cgst_amount || 0),
+            sgst_amount: Number(r.sgst_amount || 0),
+            igst_amount: Number(r.igst_amount || 0),
+            net_certified_amount: Number(r.net_certified_amount || 0),
+            status_name: r.status_name || 'Draft',
+            certified_by: 'Er. Suresh Babu (Project Director)',
+            notes: r.remarks || '',
+          };
+        });
         setRaBills(normalized);
       }
     }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_subcontracts_SubcontractRABillsPage');
-      if (saved) {
-        setRaBills(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
+  };
 
   useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_subcontracts_SubcontractRABillsPage');
-    if (raBills.length > 0 || saved) {
-       localStorage.setItem('mock_subcontracts_SubcontractRABillsPage', JSON.stringify(raBills));
-    }
-  }, [raBills]);
-  // ---------------------------------
+    fetchList();
+  }, []);
 
   // Form Handlers
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
 
     setForm({
       ...EMPTY_FORM,
@@ -139,18 +140,18 @@ export function SubcontractRABillsPage() {
 
   const handleOpenEdit = (item) => {
     setForm({
-      project_id: String(item.project_id || '1'),
+      project_id: String(item.project_id || ''),
       ra_bill_no: item.ra_bill_no || '',
       bill_date: item.bill_date || '',
       contractor_bill_no: item.contractor_bill_no || '',
-      work_order_no: item.work_order_no || '',
-      contractor_name: item.contractor_name || '',
-      gross_work_value: String(item.gross_work_value || '500000'),
-      retention_amount: String(item.retention_amount || '25000'),
-      advance_recovery: String(item.advance_recovery || '50000'),
-      tds_amount: String(item.tds_amount || '10000'),
-      gst_amount: String(item.gst_amount || '90000'),
-      net_certified_amount: String(item.net_certified_amount || '415000'),
+      work_order_id: String(item.work_order_id || ''),
+      contractor_id: String(item.contractor_id || ''),
+      gross_work_value: String(item.gross_work_value || ''),
+      retention_amount: String(item.retention_amount || ''),
+      advance_recovery: String(item.advance_recovery || ''),
+      tds_amount: String(item.tds_amount || ''),
+      gst_amount: String(item.gst_amount || ''),
+      net_certified_amount: String(item.net_certified_amount || ''),
       notes: item.notes || '',
     });
     setErrors({});
@@ -175,8 +176,10 @@ export function SubcontractRABillsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
+    if (!form.project_id) errs.project_id = 'Project is required';
+    if (!form.work_order_id) errs.work_order_id = 'Work Order is required';
     if (!form.ra_bill_no.trim()) errs.ra_bill_no = 'RA Bill number is required';
-    if (!form.contractor_name.trim()) errs.contractor_name = 'Contractor name is required';
+    if (!form.bill_date) errs.bill_date = 'Bill Date is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -185,54 +188,43 @@ export function SubcontractRABillsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const gross = Number(form.gross_work_value || 0);
-      const ret = Number(form.retention_amount || 0);
-      const adv = Number(form.advance_recovery || 0);
-      const tds = Number(form.tds_amount || 0);
+      const selectedWo = workOrders.find(w => String(w.id) === String(form.work_order_id));
+      const contractorId = selectedWo ? selectedWo.contractor_id : form.contractor_id;
 
-      const newBill = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
+      const payload = {
+        project_id: Number(form.project_id),
+        work_order_id: Number(form.work_order_id),
+        contractor_id: Number(contractorId),
         ra_bill_no: form.ra_bill_no,
+        contractor_bill_no: form.contractor_bill_no || null,
         bill_date: form.bill_date,
-        contractor_bill_no: form.contractor_bill_no,
-        work_order_no: form.work_order_no,
-        contractor_name: form.contractor_name,
-        gross_work_value: gross,
-        retention_amount: ret,
-        advance_recovery: adv,
-        tds_amount: tds,
-        gst_amount: Number(form.gst_amount || 0),
-        net_certified_amount: gross - ret - adv - tds,
-        status_name: editingItem?.status_name || 'Submitted for QS Verification',
-        certified_by: 'Er. Suresh Babu (Project Director)',
-        notes: form.notes,
+        retention_amount: Number(form.retention_amount || 0),
+        advance_recovery: Number(form.advance_recovery || 0),
+        cgst_amount: Number(form.gst_amount || 0) / 2,
+        sgst_amount: Number(form.gst_amount || 0) / 2,
+        igst_amount: 0,
+        tds_amount: Number(form.tds_amount || 0),
+        remarks: form.notes,
       };
 
       if (editingItem?.id) {
-        setRaBills(prev => prev.map(r => r.id === editingItem.id ? newBill : r));
+        await subcontractsApi.raBills.update(editingItem.id, payload);
         toast.success('RA Bill updated.');
       } else {
-        setRaBills(prev => [newBill, ...prev]);
+        await subcontractsApi.raBills.create(payload);
         toast.success('Subcontractor RA Bill submitted.');
       }
-
+      fetchList();
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save RA bill.');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save RA Bill.');
     } finally {
       setSaving(false);
     }
   };
 
   const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setRaBills(prev => prev.filter(r => r.id !== deleteItem.id));
-    toast.success('RA Bill removed.');
     setDeleteItem(null);
   };
 
@@ -514,9 +506,12 @@ export function SubcontractRABillsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
+              <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(r)}>
                   <Eye className="w-3 h-3 mr-1" /> View Full RA Bill
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(r)}>
+                  <Edit className="w-3 h-3 mr-1" /> Edit
                 </Button>
               </div>
             </div>
@@ -620,19 +615,11 @@ export function SubcontractRABillsPage() {
                   />
                 </FormField>
 
-                <FormField label="Linked Work Order No">
-                  <Input
-                    value={form.work_order_no}
-                    onChange={(e) => handleFormChange('work_order_no', e.target.value)}
-                    placeholder="WO-2026-012"
-                  />
-                </FormField>
-
-                <FormField label="Subcontractor Name" required error={errors.contractor_name} className="md:col-span-2">
-                  <Input
-                    value={form.contractor_name}
-                    onChange={(e) => handleFormChange('contractor_name', e.target.value)}
-                    placeholder="e.g. Sri Murugan Civil Infra Pvt Ltd"
+                <FormField label="Linked Work Order" required error={errors.work_order_id} className="md:col-span-2">
+                  <Select
+                    options={workOrders.filter(w => !form.project_id || String(w.project_id) === String(form.project_id)).map(w => ({ value: String(w.id), label: `${w.work_order_no} - ${w.contractor_name} (${w.package_title})` }))}
+                    value={form.work_order_id}
+                    onChange={(v) => handleFormChange('work_order_id', v)}
                   />
                 </FormField>
               </EntityEditModal.Grid>

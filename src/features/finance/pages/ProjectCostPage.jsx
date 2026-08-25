@@ -13,6 +13,9 @@ import { KpiCard } from '../../../components/composite/KpiCard';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
+import { Input } from '../../../components/ui/Input';
+import { FormField } from '../../../components/composite/FormField';
+import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, projectCostingApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
@@ -33,40 +36,89 @@ export function ProjectCostPage() {
 
   // Modals
   const [viewingItem, setViewingItem] = useState(null);
+  const [isGenerateOpen, setIsGenerateOpen] = useState(false);
+  const [genProjectId, setGenProjectId] = useState('');
+  const [genDate, setGenDate] = useState(new Date().toISOString().split('T')[0]);
+  const [genSaving, setGenSaving] = useState(false);
+
+  const fetchCostData = (projList) => {
+    setLoading(true);
+    projectCostingApi.snapshots()
+      .then((costRes) => {
+        const cList = costRes?.data?.project_cost_snapshots ?? costRes?.data?.data ?? [];
+        const normalized = cList.map((c, idx) => {
+          const project = projList.find(p => String(p.id) === String(c.project_id));
+          const approvedBudget = Number(c.approved_budget || 0);
+          const forecastCost = Number(c.forecast_cost_at_completion || 0);
+          const cpi = forecastCost > 0 ? (approvedBudget / forecastCost) : 1.0;
+          return {
+            id: c.id || idx + 1,
+            project_id: c.project_id,
+            project_code: project ? project.project_code : (c.project_code || 'PRJ-2026'),
+            project_name: c.project_name || (project ? project.project_name : 'Civil Project'),
+            contract_value: Number(project ? project.contract_value : 0),
+            budgeted_cost: approvedBudget,
+            materials_cost: Number(c.material_actual || 0),
+            labour_cost: Number(c.labour_actual || 0),
+            subcontract_cost: Number(c.subcontract_actual || 0),
+            equipment_cost: Number((c.material_commitment || 0) + (c.subcontract_commitment || 0) + (c.expense_commitment || 0)),
+            overhead_cost: Number(c.site_expense_actual || 0),
+            actual_cost_incurred: Number(c.total_actual_cost || 0),
+            projected_final_cost: forecastCost,
+            cost_variance: Number(c.budget_variance || 0),
+            cpi: cpi,
+            status: cpi >= 1.0 ? 'On Track (Healthy Margin)' : cpi >= 0.95 ? 'Minor Overrun' : 'Critical Budget Overrun',
+            total_paid: Number(c.total_paid || 0),
+            total_outstanding: Number(c.total_outstanding || 0)
+          };
+        });
+        setCostData(normalized);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
 
   // Load Projects & API Data safely
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      projectsApi.list().catch(() => ({ data: [] })),
-      projectCostingApi?.snapshots ? projectCostingApi.snapshots().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([projRes, costRes]) => {
-      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
-      setProjects(Array.isArray(pList) ? pList : []);
-      const cList = costRes?.data?.snapshots ?? costRes?.data?.data ?? [];
-      if (Array.isArray(cList) && cList.length > 0) {
-        const normalized = cList.map((c, idx) => ({
-          id: c.id || idx + 1,
-          project_id: c.project_id || 1,
-          project_code: c.project_code || 'PRJ-2026-001',
-          project_name: c.project_name || 'Civil Project',
-          contract_value: Number(c.contract_value || 100000000),
-          budgeted_cost: Number(c.budgeted_cost || 80000000),
-          materials_cost: Number(c.materials_cost || 10000000),
-          labour_cost: Number(c.labour_cost || 4000000),
-          subcontract_cost: Number(c.subcontract_cost || 5000000),
-          equipment_cost: Number(c.equipment_cost || 2000000),
-          overhead_cost: Number(c.overhead_cost || 1000000),
-          actual_cost_incurred: Number(c.actual_cost_incurred || 22000000),
-          projected_final_cost: Number(c.projected_final_cost || 79000000),
-          cost_variance: Number(c.cost_variance || 1000000),
-          cpi: Number(c.cpi || 1.02),
-          status: c.status || 'On Track (Healthy Margin)',
-        }));
-        setCostData(normalized);
-      }
-    }).catch(() => {}).finally(() => setLoading(false));
+    projectsApi.list()
+      .then((projRes) => {
+        const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+        const validList = Array.isArray(pList) ? pList : [];
+        setProjects(validList);
+        if (validList.length > 0) {
+          setGenProjectId(String(validList[0].id));
+        }
+        fetchCostData(validList);
+      })
+      .catch(() => {
+        fetchCostData([]);
+      });
   }, []);
+
+  const handleGenerateSnapshot = (e) => {
+    e.preventDefault();
+    if (!genProjectId) {
+      toast.error('Please select a project');
+      return;
+    }
+    setGenSaving(true);
+    projectCostingApi.generateSnapshot({
+      project_id: Number(genProjectId),
+      snapshot_date: genDate,
+      site_id: null
+    })
+      .then(() => {
+        toast.success('Cost snapshot generated successfully.');
+        setIsGenerateOpen(false);
+        fetchCostData(projects);
+      })
+      .catch((err) => {
+        toast.error(err?.message || 'Failed to generate cost snapshot.');
+      })
+      .finally(() => {
+        setGenSaving(false);
+      });
+  };
 
   const handlePrint = () => {
     window.print();
@@ -176,6 +228,15 @@ export function ProjectCostPage() {
               title="Print Cost Summary"
             >
               Print Summary
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+              onClick={() => setIsGenerateOpen(true)}
+              className="text-xs h-8 shadow-xs"
+            >
+              Generate Snapshot
             </Button>
           </div>
         </div>
@@ -394,6 +455,49 @@ export function ProjectCostPage() {
           </div>
         </div>
       )}
+
+      {/* Generate Cost Snapshot Modal */}
+      <EntityEditModal
+        isOpen={isGenerateOpen}
+        onClose={() => setIsGenerateOpen(false)}
+      >
+        <EntityEditModal.Header
+          icon={PieChart}
+          title="Generate Cost Snapshot"
+          subtitle="Generate and save a project cost baseline/snapshot for the selected date."
+          onClose={() => setIsGenerateOpen(false)}
+        />
+        <form id="gen-snapshot-form" onSubmit={handleGenerateSnapshot} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <EntityEditModal.Body>
+            <EntityEditModal.Section title="Snapshot Target">
+              <EntityEditModal.Grid>
+                <FormField label="Target Project" required>
+                  <Select
+                    options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
+                    value={genProjectId}
+                    onChange={setGenProjectId}
+                  />
+                </FormField>
+
+                <FormField label="Snapshot Date" required>
+                  <Input
+                    type="date"
+                    value={genDate}
+                    onChange={(e) => setGenDate(e.target.value)}
+                  />
+                </FormField>
+              </EntityEditModal.Grid>
+            </EntityEditModal.Section>
+          </EntityEditModal.Body>
+
+          <EntityEditModal.Footer
+            formId="gen-snapshot-form"
+            submitLabel="Generate Snapshot"
+            onCancel={() => setIsGenerateOpen(false)}
+            isSubmitting={genSaving}
+          />
+        </form>
+      </EntityEditModal>
     </PageContainer>
   );
 }

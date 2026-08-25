@@ -650,6 +650,11 @@ export function StockTransfersPage() {
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(t)}>
                   <Eye className="w-3 h-3 mr-1" /> View STN
                 </Button>
+                {(t.status_code || t.status || '').toUpperCase().includes('DRAFT') && (
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(t)}>
+                    <Edit className="w-3 h-3 mr-1" /> Edit
+                  </Button>
+                )}
                 {t.status === 'In-Transit' && (
                   <Button variant="primary" size="sm" className="h-7 text-[11px] px-2 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleAcknowledge(t)}>
                     <Check className="w-3 h-3 mr-1" /> Receive

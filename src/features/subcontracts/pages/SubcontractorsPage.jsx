@@ -63,68 +63,45 @@ export function SubcontractorsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load from API safely
-  useEffect(() => {
-    if (subcontractsApi?.contractors?.list) {
-      setLoading(true);
-      subcontractsApi.contractors.list().then(res => {
-        const list = res?.data?.contractors ?? res?.data?.data ?? [];
-        if (Array.isArray(list) && list.length > 0) {
-          const normalized = list.map((c, idx) => ({
-            id: c.id || idx + 1,
-            contractor_code: c.contractor_code || `SUB-2026-00${idx + 1}`,
-            contractor_name: c.contractor_name || 'Subcontractor Firm',
-            trade_specialization: c.contractor_type_name || c.trade_specialization || 'Civil Contracting',
-            contact_person: c.contact_person || 'Managing Director',
-            phone: c.phone || '+91 90000 00000',
-            email: c.email || 'info@subcontractor.com',
-            gstin: c.gstin || '33AABCS1429B1Z2',
-            pan: c.pan || 'AABCS1429B',
-            city: c.city || 'Chennai',
-            state: c.state || 'Tamil Nadu',
-            active_work_orders: Number(c.active_work_orders || 1),
-            rating: c.rating || 'Grade A',
-            status: c.status_name || 'Active (Approved)',
-            bank_name: c.bank_name || 'Commercial Bank',
-            account_no: c.account_no || '50200018491029',
-            ifsc: c.ifsc || 'HDFC0000024',
-            notes: c.notes || '',
-          }));
-          setContractors(normalized);
-        }
-      }).catch(() => {}).finally(() => setLoading(false));
-    }
-  }, []);
-
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_subcontracts_SubcontractorsPage');
-      if (saved) {
-        setContractors(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
+  const fetchList = () => {
+    setLoading(true);
+    subcontractsApi.contractors.list().then(res => {
+      const list = res?.data?.subcontractors ?? res?.data?.data ?? [];
+      const normalized = (Array.isArray(list) ? list : []).map((c, idx) => ({
+        id: c.id,
+        contractor_code: c.contractor_code || `SUB-2026-${String(idx + 1).padStart(3, '0')}`,
+        contractor_name: c.contractor_name || 'Subcontractor Firm',
+        trade_specialization: c.contractor_type_name || 'RCC Structure & Masonry',
+        contractor_type_id: Number(c.contractor_type_id || 1),
+        contact_person: c.contact_person || 'MD',
+        phone: c.phone || '',
+        email: c.email || '',
+        gstin: c.gstin || '',
+        pan: c.pan || '',
+        city: c.city || '',
+        state: c.state_name || '',
+        active_work_orders: Number(c.active_work_orders || 0),
+        rating: 'Grade A',
+        status: c.status_name || 'Active',
+        status_id: Number(c.status_id || 1),
+        bank_name: c.bank_name || '',
+        account_no: c.bank_account_no || '',
+        ifsc: c.bank_ifsc || '',
+        notes: c.notes || '',
+      }));
+      setContractors(normalized);
+    }).catch(() => {}).finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_subcontracts_SubcontractorsPage');
-    if (contractors.length > 0 || saved) {
-       localStorage.setItem('mock_subcontracts_SubcontractorsPage', JSON.stringify(contractors));
-    }
-  }, [contractors]);
-  // ---------------------------------
+    fetchList();
+  }, []);
 
   // Form Handlers
   const handleOpenAdd = () => {
     setForm({
       ...EMPTY_FORM,
-      contractor_code: `SUB-2026-00${contractors.length + 1}`,
+      contractor_code: `SUB-2026-${String(contractors.length + 1).padStart(3, '0')}`,
     });
     setErrors({});
     setIsAddOpen(true);
@@ -135,6 +112,7 @@ export function SubcontractorsPage() {
       contractor_code: item.contractor_code || '',
       contractor_name: item.contractor_name || '',
       trade_specialization: item.trade_specialization || 'RCC Structure & Masonry',
+      contractor_type_id: item.contractor_type_id || 1,
       contact_person: item.contact_person || '',
       phone: item.phone || '',
       email: item.email || '',
@@ -144,6 +122,7 @@ export function SubcontractorsPage() {
       state: item.state || '',
       rating: item.rating || 'Grade A (90%)',
       status: item.status || 'Active (Approved)',
+      status_id: item.status_id || 1,
       bank_name: item.bank_name || '',
       account_no: item.account_no || '',
       ifsc: item.ifsc || '',
@@ -172,48 +151,42 @@ export function SubcontractorsPage() {
 
     setSaving(true);
     try {
-      const newSub = {
-        id: editingItem?.id || Date.now(),
+      const payload = {
         contractor_code: form.contractor_code,
         contractor_name: form.contractor_name,
-        trade_specialization: form.trade_specialization,
+        contractor_type_id: Number(form.contractor_type_id || 1),
         contact_person: form.contact_person,
         phone: form.phone,
         email: form.email,
         gstin: form.gstin,
         pan: form.pan,
         city: form.city,
-        state: form.state,
-        active_work_orders: editingItem?.active_work_orders || 1,
-        rating: form.rating,
-        status: form.status,
+        state_name: form.state,
         bank_name: form.bank_name,
-        account_no: form.account_no,
-        ifsc: form.ifsc,
+        bank_account_no: form.account_no,
+        bank_ifsc: form.ifsc,
+        status_id: Number(form.status_id || 1),
         notes: form.notes,
       };
 
       if (editingItem?.id) {
-        setContractors(prev => prev.map(c => c.id === editingItem.id ? newSub : c));
+        await subcontractsApi.contractors.update(editingItem.id, payload);
         toast.success('Subcontractor profile updated.');
       } else {
-        setContractors(prev => [newSub, ...prev]);
+        await subcontractsApi.contractors.create(payload);
         toast.success('Subcontractor onboarded successfully.');
       }
-
+      fetchList();
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save subcontractor profile.');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save subcontractor profile.');
     } finally {
       setSaving(false);
     }
   };
 
   const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setContractors(prev => prev.filter(c => c.id !== deleteItem.id));
-    toast.success('Subcontractor removed from register.');
     setDeleteItem(null);
   };
 
@@ -479,9 +452,12 @@ export function SubcontractorsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
+              <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(c)}>
-                  <Eye className="w-3 h-3 mr-1" /> View Vendor Dossier
+                  <Eye className="w-3 h-3 mr-1" /> View Dossier
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(c)}>
+                  <Edit className="w-3 h-3 mr-1" /> Edit
                 </Button>
               </div>
             </div>

@@ -26,15 +26,14 @@ import { useAuth } from '../../auth/context/AuthContext';
 
 const EMPTY_FORM = {
   project_id: '',
+  bill_id: '',
   payment_no: '',
   payment_date: '',
-  bill_no: '',
+  payment_mode_id: '',
   beneficiary_name: '',
-  category: 'Material Supplier Payment',
-  amount_paid: '500000',
-  tds_deducted: '5000',
-  payment_mode: 'HDFC Corporate RTGS',
-  bank_account: 'HDFC Main Operations A/C #0012',
+  amount_paid: '0',
+  tds_deducted: '0',
+  bank_account: '',
   utr_no: '',
   notes: '',
 };
@@ -42,6 +41,8 @@ const EMPTY_FORM = {
 export function FinancePaymentsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
+  const [paymentModes, setPaymentModes] = useState([]);
+  const [bills, setBills] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -60,73 +61,72 @@ export function FinancePaymentsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects & API Data
-  useEffect(() => {
+  const fetchPayments = () => {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
-      expensesApi?.payments ? expensesApi.payments.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([projRes, payRes]) => {
+      expensesApi.payments.list().catch(() => ({ data: [] })),
+      expensesApi.bills.list().catch(() => ({ data: [] })),
+      expensesApi.masters().catch(() => ({ data: {} }))
+    ]).then(([projRes, payRes, billsRes, mastersRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
+
+      const masters = mastersRes?.data?.masters ?? mastersRes?.masters ?? {};
+      setPaymentModes(masters.payment_modes || []);
+
+      const allBills = billsRes?.data?.expense_bills ?? billsRes?.data?.data ?? [];
+      setBills(allBills);
+
       const payList = payRes?.data?.expense_payments ?? payRes?.data?.data ?? [];
-      if (Array.isArray(payList) && payList.length > 0) {
-        const normalized = payList.map((p, idx) => ({
-          id: p.id || idx + 1,
-          project_id: p.project_id || 1,
-          project_code: p.project_code || 'PRJ-2026-001',
-          project_name: p.project_name || 'Civil Project',
-          payment_no: p.payment_no || `PAY-2026-${idx + 100}`,
-          payment_date: p.payment_date || '2026-08-18',
-          bill_no: p.bill_no || 'BILL-REF',
-          beneficiary_name: p.beneficiary_name || p.payee_name || 'Beneficiary Entity',
-          category: p.category || 'Vendor Payment',
-          amount_paid: Number(p.amount_paid || p.amount || 500000),
-          tds_deducted: Number(p.tds_deducted || 5000),
-          payment_mode: p.payment_mode || 'HDFC Corporate RTGS',
-          bank_account: p.bank_account || 'HDFC Main Operations A/C #0012',
-          utr_no: p.utr_no || p.reference_no || `HDFCR520260818${idx}`,
-          status: 'Settled'
-        }));
-        setPayments(normalized);
-      }
+      const normalized = payList.map((p, idx) => {
+        const project = pList.find(proj => String(proj.id) === String(p.project_id));
+        const bill = allBills.find(b => String(b.id) === String(p.bill_id));
+        const mode = (masters.payment_modes || []).find(m => String(m.id) === String(p.payment_mode_id));
+
+        return {
+          id: p.id,
+          project_id: p.project_id,
+          project_code: project ? project.project_code : 'PRJ-2026',
+          project_name: project ? project.project_name : 'Civil Project',
+          payment_no: p.payment_no,
+          payment_date: p.payment_date ? p.payment_date.split(' ')[0] : '',
+          bill_id: p.bill_id,
+          bill_no: bill ? bill.bill_no : `BILL-${p.bill_id}`,
+          beneficiary_name: p.payee_name || (bill ? bill.payee_name : 'Vendor/Supplier'),
+          category: mode ? mode.payment_mode_name || mode.payment_mode_code : 'Bank Transfer',
+          amount_paid: Number(p.amount || 0),
+          tds_deducted: Number(p.tds_deducted || 0),
+          payment_mode: mode ? mode.payment_mode_name || mode.payment_mode_code : 'RTGS',
+          bank_account: p.petty_cash_account_id ? `Petty Cash A/C #${p.petty_cash_account_id}` : 'Corporate Operation A/C',
+          utr_no: p.reference_no || '',
+          status_code: p.status_code || 'DRAFT',
+          status_name: p.status_name || 'Draft',
+          notes: p.remarks || ''
+        };
+      });
+      setPayments(normalized);
     }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+  };
 
-  
-  // --- MOCK PERSISTENCE INJECTED ---
+  // Load Projects & API Data
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_finance_FinancePaymentsPage');
-      if (saved) {
-        setPayments(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
+    fetchPayments();
   }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_finance_FinancePaymentsPage');
-    if (payments.length > 0 || saved) {
-       localStorage.setItem('mock_finance_FinancePaymentsPage', JSON.stringify(payments));
-    }
-  }, [payments]);
-  // ---------------------------------
 
   // Form Handlers
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
+    const defaultMode = paymentModes[0]?.id ? String(paymentModes[0].id) : '';
 
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
-      payment_no: `PAY-2026-09${payments.length + 1}`,
+      payment_mode_id: defaultMode,
       payment_date: today,
+      amount_paid: '0',
+      tds_deducted: '0',
     });
     setErrors({});
     setIsAddOpen(true);
@@ -134,16 +134,15 @@ export function FinancePaymentsPage() {
 
   const handleOpenEdit = (item) => {
     setForm({
-      project_id: String(item.project_id || '1'),
+      project_id: String(item.project_id || ''),
+      bill_id: String(item.bill_id || ''),
       payment_no: item.payment_no || '',
       payment_date: item.payment_date || '',
-      bill_no: item.bill_no || '',
       beneficiary_name: item.beneficiary_name || '',
-      category: item.category || 'Material Supplier Payment',
-      amount_paid: String(item.amount_paid || '500000'),
-      tds_deducted: String(item.tds_deducted || '5000'),
-      payment_mode: item.payment_mode || 'HDFC Corporate RTGS',
-      bank_account: item.bank_account || 'HDFC Main Operations A/C #0012',
+      amount_paid: String(item.amount_paid || '0'),
+      tds_deducted: String(item.tds_deducted || '0'),
+      payment_mode_id: String(item.payment_mode_id || ''),
+      bank_account: item.bank_account || '',
       utr_no: item.utr_no || '',
       notes: item.notes || '',
     });
@@ -152,15 +151,28 @@ export function FinancePaymentsPage() {
   };
 
   const handleFormChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'bill_id') {
+        const selectedBill = bills.find(b => String(b.id) === String(value));
+        if (selectedBill) {
+          next.beneficiary_name = selectedBill.payee_name || '';
+          next.amount_paid = String(selectedBill.outstanding_amount || '0');
+        }
+      }
+      return next;
+    });
     setErrors(prev => ({ ...prev, [field]: null }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
+    if (!form.project_id) errs.project_id = 'Project is required';
+    if (!form.bill_id) errs.bill_id = 'Posted bill is required';
     if (!form.payment_no.trim()) errs.payment_no = 'Payment voucher number is required';
-    if (!form.beneficiary_name.trim()) errs.beneficiary_name = 'Beneficiary name is required';
+    if (!form.payment_mode_id) errs.payment_mode_id = 'Payment mode is required';
+    if (!form.amount_paid || Number(form.amount_paid) <= 0) errs.amount_paid = 'Amount must be positive';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -169,51 +181,58 @@ export function FinancePaymentsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const amt = Number(form.amount_paid || 0);
-      const tds = Number(form.tds_deducted || 0);
-
-      const newItem = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        payment_no: form.payment_no,
+      const payload = {
+        bill_id: Number(form.bill_id),
+        payment_no: form.payment_no.trim(),
         payment_date: form.payment_date,
-        bill_no: form.bill_no,
-        beneficiary_name: form.beneficiary_name,
-        category: form.category,
-        amount_paid: amt,
-        tds_deducted: tds,
-        payment_mode: form.payment_mode,
-        bank_account: form.bank_account,
-        utr_no: form.utr_no || 'HDFCR520260821001',
-        status: 'Settled',
-        notes: form.notes,
+        payment_mode_id: Number(form.payment_mode_id),
+        amount: Number(form.amount_paid),
+        tds_deducted: Number(form.tds_deducted || 0),
+        reference_no: form.utr_no ? form.utr_no.trim() : null,
+        remarks: form.notes || null
       };
 
       if (editingItem?.id) {
-        setPayments(prev => prev.map(p => p.id === editingItem.id ? newItem : p));
+        await expensesApi.payments.update(editingItem.id, payload);
         toast.success('Payment voucher updated.');
       } else {
-        setPayments(prev => [newItem, ...prev]);
+        await expensesApi.payments.create(payload);
         toast.success('Disbursement payment voucher recorded.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save payment voucher.');
+      fetchPayments();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save payment voucher.');
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const handleAction = async (id, actionName) => {
+    try {
+      await expensesApi.payments.action(id, actionName, {});
+      toast.success(`Payment voucher ${actionName} completed.`);
+      if (viewingItem && viewingItem.id === id) {
+        setViewingItem(null);
+      }
+      fetchPayments();
+    } catch (err) {
+      toast.error(err?.message || `Failed to perform action ${actionName}.`);
+    }
+  };
+
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setPayments(prev => prev.filter(p => p.id !== deleteItem.id));
-    toast.success('Payment voucher removed.');
-    setDeleteItem(null);
+    try {
+      await expensesApi.payments.action(deleteItem.id, 'cancel', {});
+      toast.success('Payment voucher cancelled.');
+      setDeleteItem(null);
+      fetchPayments();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to cancel payment.');
+    }
   };
 
   const handlePrint = () => {
@@ -261,7 +280,7 @@ export function FinancePaymentsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard
             label="Total Disbursed to Date"
-            value={`₹${(totalDisbursed / 10000000).toFixed(2)} Cr`}
+            value={`₹${(totalDisbursed / 100000).toFixed(2)}L`}
             status="primary"
             icon={<IndianRupee className="w-4 h-4" />}
           />
@@ -395,7 +414,7 @@ export function FinancePaymentsPage() {
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
-                        ₹{(p.amount_paid / 100000).toFixed(2)}L
+                        ₹{p.amount_paid.toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-right hidden md:table-cell font-mono text-[11px] text-amber-600">
                         ₹{p.tds_deducted.toLocaleString('en-IN')}
@@ -405,10 +424,10 @@ export function FinancePaymentsPage() {
                       </td>
                       <td className="px-3 py-2 text-center">
                         <Badge
-                          variant="success"
+                          variant={p.status_code === 'PAID' ? 'success' : p.status_code === 'APPROVED' ? 'primary' : p.status_code === 'SUBMITTED' ? 'warning' : 'neutral'}
                           className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
                         >
-                          Settled
+                          {p.status_name}
                         </Badge>
                       </td>
                       <td className="px-3 py-2">
@@ -422,15 +441,17 @@ export function FinancePaymentsPage() {
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Edit"
-                            onClick={() => handleOpenEdit(p)}
-                          >
-                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
+                          {p.status_code === 'DRAFT' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="Edit"
+                              onClick={() => handleOpenEdit(p)}
+                            >
+                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -452,10 +473,10 @@ export function FinancePaymentsPage() {
                   <span className="text-[11px] text-text-muted">{p.category}</span>
                 </div>
                 <Badge
-                  variant="success"
+                  variant={p.status_code === 'PAID' ? 'success' : p.status_code === 'APPROVED' ? 'primary' : p.status_code === 'SUBMITTED' ? 'warning' : 'neutral'}
                   className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
                 >
-                  ₹{(p.amount_paid / 100000).toFixed(2)}L
+                  ₹{p.amount_paid.toLocaleString('en-IN')}
                 </Badge>
               </div>
 
@@ -500,19 +521,50 @@ export function FinancePaymentsPage() {
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Disbursed Amount</span> <span className="font-bold text-emerald-600 font-mono text-base">₹{(viewingItem.amount_paid / 100000).toFixed(2)}L</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Disbursed Amount</span> <span className="font-bold text-emerald-600 font-mono text-base">₹{viewingItem.amount_paid.toLocaleString('en-IN')}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">TDS Withheld</span> <span className="font-mono text-amber-600 font-bold">₹{viewingItem.tds_deducted.toLocaleString('en-IN')}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Payment Mode</span> <span className="font-mono">{viewingItem.payment_mode}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Bank UTR Reference</span> <span className="font-mono font-bold text-primary">{viewingItem.utr_no}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Debited Bank Account</span> <span className="font-mono font-medium">{viewingItem.bank_account}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Settled Against Bill</span> <span className="font-mono">{viewingItem.bill_no}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Bank UTR Reference</span> <span className="font-mono font-bold text-primary">{viewingItem.utr_no || '—'}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Payment Date</span> <span className="font-mono">{viewingItem.payment_date}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Workflow Status</span> <span className="font-mono font-semibold text-primary">{viewingItem.status_name}</span></div>
+                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Settled Against Bill</span> <span className="font-mono">{viewingItem.bill_no}</span></div>
+                {viewingItem.notes && (
+                  <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Remarks / Notes</span> <span className="text-text-secondary">{viewingItem.notes}</span></div>
+                )}
               </div>
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print Payment Advice
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex flex-wrap gap-2 justify-between items-center">
+              <div className="flex flex-wrap gap-1.5">
+                <Button variant="outline" size="sm" onClick={handlePrint}>
+                  <Printer className="w-3.5 h-3.5 mr-1" /> Print
+                </Button>
+                {viewingItem.status_code === 'DRAFT' && (
+                  <>
+                    <Button variant="primary" size="sm" onClick={() => handleAction(viewingItem.id, 'submit')}>
+                      Submit
+                    </Button>
+                    <Button variant="danger" size="sm" onClick={() => handleAction(viewingItem.id, 'cancel')}>
+                      Cancel
+                    </Button>
+                  </>
+                )}
+                {viewingItem.status_code === 'SUBMITTED' && (
+                  <>
+                    <Button variant="success" size="sm" onClick={() => handleAction(viewingItem.id, 'approve')}>
+                      Approve
+                    </Button>
+                    <Button variant="danger" size="sm" onClick={() => handleAction(viewingItem.id, 'reject')}>
+                      Reject
+                    </Button>
+                  </>
+                )}
+                {viewingItem.status_code === 'APPROVED' && (
+                  <Button variant="success" size="sm" onClick={() => handleAction(viewingItem.id, 'mark-paid')}>
+                    Mark Paid
+                  </Button>
+                )}
+              </div>
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>
@@ -550,19 +602,32 @@ export function FinancePaymentsPage() {
                   />
                 </FormField>
 
-                <FormField label="Beneficiary Entity Name" required error={errors.beneficiary_name} className="md:col-span-2">
-                  <Input
-                    value={form.beneficiary_name}
-                    onChange={(e) => handleFormChange('beneficiary_name', e.target.value)}
-                    placeholder="e.g. Tata Steel Ltd / Authorized Distributor"
+                <FormField label="Select Posted Bill" required error={errors.bill_id} className="md:col-span-2">
+                  <Select
+                    options={bills
+                      .filter(b => String(b.project_id) === String(form.project_id) && b.status_code === 'POSTED')
+                      .map(b => ({
+                        value: String(b.id),
+                        label: `${b.bill_no} (Outstanding: ₹${Number(b.outstanding_amount).toLocaleString('en-IN')}) - ${b.payee_name}`
+                      }))}
+                    value={form.bill_id}
+                    onChange={(v) => handleFormChange('bill_id', v)}
                   />
                 </FormField>
 
-                <FormField label="Bill / Work Order Reference">
+                <FormField label="Beneficiary Entity Name">
                   <Input
-                    value={form.bill_no}
-                    onChange={(e) => handleFormChange('bill_no', e.target.value)}
-                    placeholder="BILL-2026-104"
+                    value={form.beneficiary_name}
+                    readOnly
+                    className="bg-surface-muted"
+                  />
+                </FormField>
+
+                <FormField label="Payment Date" required>
+                  <Input
+                    type="date"
+                    value={form.payment_date}
+                    onChange={(e) => handleFormChange('payment_date', e.target.value)}
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -570,7 +635,15 @@ export function FinancePaymentsPage() {
 
             <EntityEditModal.Section title="Bank Settlement & TDS">
               <EntityEditModal.Grid>
-                <FormField label="Amount Paid (₹)" required>
+                <FormField label="Payment Mode" required error={errors.payment_mode_id}>
+                  <Select
+                    options={paymentModes.map(m => ({ value: String(m.id), label: m.payment_mode_name }))}
+                    value={form.payment_mode_id}
+                    onChange={(v) => handleFormChange('payment_mode_id', v)}
+                  />
+                </FormField>
+
+                <FormField label="Amount Paid (₹)" required error={errors.amount_paid}>
                   <Input
                     type="number"
                     value={form.amount_paid}
@@ -586,18 +659,19 @@ export function FinancePaymentsPage() {
                   />
                 </FormField>
 
-                <FormField label="Bank Settlement Account" className="md:col-span-2">
-                  <Input
-                    value={form.bank_account}
-                    onChange={(e) => handleFormChange('bank_account', e.target.value)}
-                  />
-                </FormField>
-
                 <FormField label="Bank UTR Reference No" className="md:col-span-2">
                   <Input
                     value={form.utr_no}
                     onChange={(e) => handleFormChange('utr_no', e.target.value)}
                     placeholder="HDFCR520260821901"
+                  />
+                </FormField>
+
+                <FormField label="Notes / Remarks" className="md:col-span-2">
+                  <Textarea
+                    value={form.notes}
+                    onChange={(e) => handleFormChange('notes', e.target.value)}
+                    placeholder="Enter transaction remarks..."
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -616,10 +690,10 @@ export function FinancePaymentsPage() {
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={Boolean(deleteItem)}
-        title="Delete Payment Record"
-        message={`Are you sure you want to delete "${deleteItem?.payment_no}"?`}
+        title="Cancel Payment Record"
+        message={`Are you sure you want to cancel payment "${deleteItem?.payment_no}"?`}
         variant="danger"
-        confirmLabel="Delete"
+        confirmLabel="Cancel Payment"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteItem(null)}
       />

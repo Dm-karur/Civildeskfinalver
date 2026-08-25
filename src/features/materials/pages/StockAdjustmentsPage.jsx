@@ -629,10 +629,15 @@ export function StockAdjustmentsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
+              <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(a)}>
                   <Eye className="w-3 h-3 mr-1" /> View SAN
                 </Button>
+                {(a.status_code || a.status || '').toUpperCase().includes('DRAFT') && (
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(a)}>
+                    <Edit className="w-3 h-3 mr-1" /> Edit
+                  </Button>
+                )}
               </div>
             </div>
           ))}
