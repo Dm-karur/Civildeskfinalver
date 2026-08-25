@@ -363,6 +363,23 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
                    );
                  }
               }
+
+              // Rework Project Menu
+              if (newItem.item_code === 'PROJECTS' || (newItem.item_name && newItem.item_name.toLowerCase().trim() === 'projects')) {
+                // Completely overwrite the children with exactly the 9 requested items
+                newItem.children = [
+                  { item_code: 'CLIENT_MASTER', item_name: 'Client master', route_path: '/project-masters/clients', icon_key: 'users' },
+                  { item_code: 'PROJECT_MASTER', item_name: 'Project master', route_path: '/projects', icon_key: 'folder-kanban' },
+                  { item_code: 'PROJECT_TYPE_STATUS', item_name: 'Project type/status', route_path: '/project-masters/project-types', icon_key: 'layers' },
+                  { item_code: 'PROJECT_TEAM', item_name: 'Project team', route_path: '/projects/team', icon_key: 'users' },
+                  { item_code: 'FINANCIAL_YEAR', item_name: 'Financial year', route_path: '/project-masters/financial-years', icon_key: 'wallet' },
+                  { item_code: 'UNITS', item_name: 'Units', route_path: '/project-masters/units', icon_key: 'file-spreadsheet' },
+                  { item_code: 'WORK_STAGES', item_name: 'Work stages', route_path: '/project-masters/work-stages', icon_key: 'layers' },
+                  { item_code: 'PROGRESS_METHODS', item_name: 'Progress methods', route_path: '/project-masters/progress-methods', icon_key: 'bar-chart-3' },
+                  { item_code: 'WORK_CATEGORIES', item_name: 'Work categories', route_path: '/project-masters/work-categories', icon_key: 'folder-cog' }
+                ];
+              }
+
               return newItem;
             });
           };

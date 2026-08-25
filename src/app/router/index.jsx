@@ -31,6 +31,8 @@ import { ProjectStatusesPage } from '../../features/masters/pages/ProjectStatuse
 import { FinancialYearsPage } from '../../features/masters/pages/FinancialYearsPage';
 import { UnitsOfMeasurementPage } from '../../features/masters/pages/UnitsOfMeasurementPage';
 import { WorkCategoriesPage } from '../../features/masters/pages/WorkCategoriesPage';
+import { WorkStagesPage } from '../../features/masters/pages/WorkStagesPage';
+import { ProgressMethodsPage } from '../../features/masters/pages/ProgressMethodsPage';
 import { BoqListPage } from '../../features/boq/pages/BoqListPage';
 import { BoqSectionsPage } from '../../features/boq/pages/BoqSectionsPage';
 import { BoqItemsPage } from '../../features/boq/pages/BoqItemsPage';
@@ -229,6 +231,13 @@ export const router = createBrowserRouter([
           { path: 'sites/instructions', element: R('site.view', SiteInstructionsPage) },
           { path: 'sites/documents', element: R('site.view', SiteDocumentsPage) },
           { path: 'project-masters/sites', element: R('site.view', SitesListPage) },
+          { path: 'project-masters/project-types', element: R('master.view', ProjectTypesPage) },
+          { path: 'project-masters/project-statuses', element: R('master.view', ProjectStatusesPage) },
+          { path: 'project-masters/financial-years', element: R('master.view', FinancialYearsPage) },
+          { path: 'project-masters/units', element: R('master.view', UnitsOfMeasurementPage) },
+          { path: 'project-masters/work-categories', element: R('master.view', WorkCategoriesPage) },
+          { path: 'project-masters/work-stages', element: R('master.view', WorkStagesPage) },
+          { path: 'project-masters/progress-methods', element: R('master.view', ProgressMethodsPage) },
 
           // ─── 3. BOQ & Project Budget ─────────────────────
           { path: 'project-boqs', element: R('boq.view', BoqListPage) },
