@@ -66,6 +66,30 @@ export function EquipmentCostsPage() {
     }).catch(() => setProjects([]));
   }, []);
 
+  
+  // --- MOCK PERSISTENCE INJECTED ---
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('mock_finance_EquipmentCostsPage');
+      if (saved) {
+        setEquipmentCosts(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error('Failed to load mock data', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
+    // but for purely mock pages, saving the current state on every change is correct).
+    // To be safe, we check if there's at least something, or if there's a saved version already.
+    const saved = localStorage.getItem('mock_finance_EquipmentCostsPage');
+    if (equipmentCosts.length > 0 || saved) {
+       localStorage.setItem('mock_finance_EquipmentCostsPage', JSON.stringify(equipmentCosts));
+    }
+  }, [equipmentCosts]);
+  // ---------------------------------
+
   // Form Handlers
   const handleOpenAdd = () => {
     const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');

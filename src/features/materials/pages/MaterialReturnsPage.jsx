@@ -71,6 +71,30 @@ export function MaterialReturnsPage() {
     }).catch(() => setProjects([]));
   }, []);
 
+  
+  // --- MOCK PERSISTENCE INJECTED ---
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('mock_materials_MaterialReturnsPage');
+      if (saved) {
+        setReturns(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error('Failed to load mock data', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
+    // but for purely mock pages, saving the current state on every change is correct).
+    // To be safe, we check if there's at least something, or if there's a saved version already.
+    const saved = localStorage.getItem('mock_materials_MaterialReturnsPage');
+    if (returns.length > 0 || saved) {
+       localStorage.setItem('mock_materials_MaterialReturnsPage', JSON.stringify(returns));
+    }
+  }, [returns]);
+  // ---------------------------------
+
   // Form Handlers
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
