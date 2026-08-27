@@ -69,49 +69,23 @@ export function ManpowerCostPage() {
     }).catch(() => setProjects([]));
   }, []);
 
-  // Load Costs from LocalStorage (Mock Backend)
-  useEffect(() => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      const saved = localStorage.getItem('mock_manpower_costs');
-      if (saved) {
-        setCosts(JSON.parse(saved));
-      } else {
-        // Default mock data if empty
-        setCosts([
-          {
-            id: 1,
-            project_id: 1,
-            wbs_code: 'WBS-1.1',
-            trade_name: 'Testing the labour cost',
-            category_name: 'RCC Concrete Squad',
-            contractor_name: 'Direct Roll',
-            mandays_spent: 50,
-            regular_hours: 400,
-            ot_hours: 20,
-            output_qty: 100,
-            uom: 'cum',
-            budgeted_cost: 60000,
-            actual_cost: 55000,
-            variance_amount: 5000,
-            variance_pct: 8.3,
-            unit_rate_actual: 550,
-            unit_rate_budget: 600,
-            status: 'Under Budget',
-            notes: '',
-          }
-        ]);
-      }
+      const res = await request.get('/labour/manpower-cost');
+      const list = res?.data ?? res ?? [];
+      setCosts(Array.isArray(list) ? list : []);
     } catch (e) {
-      console.error('Failed to load mock manpower costs', e);
+      console.error('Failed to load manpower costs', e);
+      setCosts([]);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
-  // Save Costs to LocalStorage
   useEffect(() => {
-    if (costs.length > 0) {
-      localStorage.setItem('mock_manpower_costs', JSON.stringify(costs));
-    }
-  }, [costs]);
+    loadData();
+  }, []);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -199,14 +173,16 @@ export function ManpowerCostPage() {
       };
 
       if (editingItem?.id) {
-        try { await request.patch(`/labour/manpower-cost/${editingItem.id}`, newRecord); } catch(e){}
-        setCosts(prev => prev.map(c => c.id === editingItem.id ? newRecord : c));
+        await request.patch(`/labour/manpower-cost/${editingItem.id}`, newRecord);
         toast.success('Cost record updated.');
       } else {
-        try { await request.post('/labour/manpower-cost', newRecord); } catch(e){}
-        setCosts(prev => [newRecord, ...prev]);
+        // Exclude ID when creating so DB can auto-increment
+        const { id, ...createPayload } = newRecord;
+        await request.post('/labour/manpower-cost', createPayload);
         toast.success('Manpower cost trade added.');
       }
+
+      loadData();
 
       setIsAddOpen(false);
       setEditingItem(null);
@@ -220,9 +196,9 @@ export function ManpowerCostPage() {
   const confirmDelete = async () => {
     if (!deleteItem?.id) return;
     try {
-      try { await request.delete(`/labour/manpower-cost/${deleteItem.id}`); } catch(e){}
-      setCosts(prev => prev.filter(c => c.id !== deleteItem.id));
+      await request.delete(`/labour/manpower-cost/${deleteItem.id}`);
       toast.success('Cost record deleted.');
+      loadData();
     } catch {
       toast.error('Failed to delete cost record.');
     } finally {

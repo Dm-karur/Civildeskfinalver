@@ -313,7 +313,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
               if (newItem.children) {
                 newItem.children = filterNavigation(newItem.children);
               }
-              
+
               if (
                 newItem.item_code === 'LABOUR' ||
                 newItem.item_code === 'LABOUR_ATTENDANCE' ||
@@ -336,24 +336,24 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
               }
 
               if (newItem.item_code === 'BOQ_BUDGET' || (newItem.item_name && newItem.item_name.includes('BOQ & Project Budget'))) {
-                 newItem.item_name = 'BOQ & Project Budget';
-                 newItem.children = [
-                   { item_code: 'BOQ_REGISTER', item_name: 'BOQ Register', route_path: '/boq', icon_key: 'file-spreadsheet' },
-                   { item_code: 'BOQ_SECTIONS', item_name: 'BOQ Sections', route_path: '/boq/sections', icon_key: 'layers' },
-                   { item_code: 'BOQ_ITEMS', item_name: 'BOQ Items', route_path: '/boq/items', icon_key: 'clipboard-list' },
-                   { item_code: 'BUDGET_SUMMARY', item_name: 'Budget Summary', route_path: '/budgets', icon_key: 'wallet' },
-                   { item_code: 'BUDGET_REVISIONS', item_name: 'Budget Revisions', route_path: '/budgets/revisions', icon_key: 'history' },
-                   { item_code: 'VARIATION_ORDERS', item_name: 'Variation Orders', route_path: '/budgets/variations', icon_key: 'trending-up' },
-                   { item_code: 'CHANGE_APPROVAL', item_name: 'Change Approval', route_path: '/budgets/approvals', icon_key: 'check-square' },
-                   { item_code: 'DRAWING_TAKEOFF', item_name: 'Drawing Quantity Takeoff', route_path: '/takeoff', icon_key: 'pen-tool' },
-                   { item_code: 'TAKEOFF_REVIEW', item_name: 'Takeoff Review', route_path: '/takeoff/review', icon_key: 'eye' },
-                   { item_code: 'CONVERT_TAKEOFF', item_name: 'Convert Takeoff to BOQ', route_path: '/takeoff/convert', icon_key: 'refresh-cw' }
-                 ];
+                newItem.item_name = 'BOQ & Project Budget';
+                newItem.children = [
+                  { item_code: 'BOQ_REGISTER', item_name: 'BOQ Register', route_path: '/boq', icon_key: 'file-spreadsheet' },
+                  { item_code: 'BOQ_SECTIONS', item_name: 'BOQ Sections', route_path: '/boq/sections', icon_key: 'layers' },
+                  { item_code: 'BOQ_ITEMS', item_name: 'BOQ Items', route_path: '/boq/items', icon_key: 'clipboard-list' },
+                  { item_code: 'BUDGET_SUMMARY', item_name: 'Budget Summary', route_path: '/budgets', icon_key: 'wallet' },
+                  { item_code: 'BUDGET_REVISIONS', item_name: 'Budget Revisions', route_path: '/budgets/revisions', icon_key: 'history' },
+                  { item_code: 'VARIATION_ORDERS', item_name: 'Variation Orders', route_path: '/budgets/variations', icon_key: 'trending-up' },
+                  { item_code: 'CHANGE_APPROVAL', item_name: 'Change Approval', route_path: '/budgets/approvals', icon_key: 'check-square' },
+                  { item_code: 'DRAWING_TAKEOFF', item_name: 'Drawing Quantity Takeoff', route_path: '/takeoff', icon_key: 'pen-tool' },
+                  { item_code: 'TAKEOFF_REVIEW', item_name: 'Takeoff Review', route_path: '/takeoff/review', icon_key: 'eye' },
+                  { item_code: 'CONVERT_TAKEOFF', item_name: 'Convert Takeoff to BOQ', route_path: '/takeoff/convert', icon_key: 'refresh-cw' }
+                ];
               }
 
               // Rework Project Menu
               if (newItem.item_code === 'PROJECTS' || (newItem.item_name && newItem.item_name.toLowerCase().trim() === 'projects')) {
-                newItem.item_name = 'Project Master'; // Rename menu as requested
+                newItem.item_name = 'Projects '; // Rename menu as requested
                 // Completely overwrite the children with exactly the 7 requested items
                 newItem.children = [
                   { item_code: 'PROJECT_REGISTER', item_name: 'Project Register', route_path: '/projects', icon_key: 'folder-kanban' },
@@ -382,7 +382,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
               return newItem;
             });
           };
-          
+
           const renamedItems = filterNavigation(items);
           setNavigation(filterHidden(renamedItems));
         }

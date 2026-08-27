@@ -20,13 +20,34 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, request } from '../../../api/apiservice';
+import { projectsApi, sitesApi, wagesApi, request } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
+
+const extractList = (res) => {
+  if (Array.isArray(res)) return res;
+  if (res?.data && Array.isArray(res.data)) return res.data;
+  
+  // Search for the first array in res.data
+  if (res?.data && typeof res.data === 'object') {
+    for (const key in res.data) {
+      if (Array.isArray(res.data[key])) return res.data[key];
+    }
+  }
+  
+  // Search for the first array in res
+  if (res && typeof res === 'object') {
+    for (const key in res) {
+      if (Array.isArray(res[key])) return res[key];
+    }
+  }
+  return [];
+};
 
 
 
 const EMPTY_FORM = {
   project_id: '',
+  site_id: '',
   batch_code: '',
   period_start: '',
   period_end: '',
@@ -63,15 +84,59 @@ export function LabourWageApprovalPage() {
   const [deleteItem, setDeleteItem] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
+  const [submitDebug, setSubmitDebug] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [sites, setSites] = useState([]);
 
-  // Load Projects
+  const loadBatches = async () => {
+    setLoading(true);
+    try {
+      const res = await wagesApi.list({ project_id: selectedProjectId !== 'all' ? selectedProjectId : undefined });
+      const list = extractList(res);
+      const mapped = list.map(b => {
+        // Find if we have any local edits for this backend ID since backend lacks PUT/PATCH
+        const localEditsStr = localStorage.getItem('wage_batch_edits');
+        const localEdits = localEditsStr ? JSON.parse(localEditsStr) : {};
+        const edits = localEdits[b.id] || {};
+
+        return {
+          ...b,
+          batch_code: edits.batch_code || b.batch_code || b.period_code || b.code || `WB-${b.id}`,
+          status: edits.status || (typeof b.status === 'object' ? b.status?.name || b.status?.status || 'Pending' : (b.status || 'Pending')),
+          worker_count: edits.worker_count || b.worker_count || b.workers_count || b.headcount || 0,
+          total_mandays: edits.total_mandays || b.total_mandays || b.mandays || 0,
+          gross_wages: edits.gross_wages || b.gross_wages || b.gross_amount || b.amount || 0,
+          advances_deducted: edits.advances_deducted || b.advances_deducted || b.deductions || b.advance_amount || 0,
+          net_payable: edits.net_payable || b.net_payable || b.net_amount || b.amount || 0,
+          contractor_name: edits.contractor_name || b.contractor_name || b.contractor?.name || b.contractor?.contractor_name || 'N/A',
+          project_name: edits.project_name || b.project_name || b.project?.name || b.project?.project_name || 'N/A',
+        };
+      });
+      setBatches(mapped);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load wage batches from backend.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects and Batches
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+
+    sitesApi.list().then(res => {
+      const list = res?.data?.sites ?? res?.sites ?? (Array.isArray(res?.data) ? res.data : []);
+      setSites(Array.isArray(list) ? list : []);
+    }).catch(() => setSites([]));
   }, []);
+
+  useEffect(() => {
+    loadBatches();
+  }, [selectedProjectId]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -81,18 +146,21 @@ export function LabourWageApprovalPage() {
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
+      site_id: sites.find(s => String(s.project_id) === String(defaultProj))?.id || '',
       batch_code: `WB-2026-W${35 + batches.length}`,
       period_start: today,
       period_end: today,
     });
     setErrors({});
+    setSubmitDebug(null);
     setIsAddOpen(true);
   };
 
   const handleOpenEdit = (item) => {
     setForm({
       project_id: String(item.project_id || '1'),
-      batch_code: item.batch_code || '',
+      site_id: String(item.site_id || ''),
+      batch_code: item.batch_code || item.code || '',
       period_start: item.period_start || '',
       period_end: item.period_end || '',
       contractor_name: item.contractor_name || '',
@@ -108,6 +176,7 @@ export function LabourWageApprovalPage() {
       notes: item.notes || '',
     });
     setErrors({});
+    setSubmitDebug(null);
     setEditingItem(item);
   };
 
@@ -135,62 +204,82 @@ export function LabourWageApprovalPage() {
     }
 
     setSaving(true);
+    const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
+    const gross = Number(form.gross_wages || 0);
+    const adv = Number(form.advances_deducted || 0);
+
+    const newBatch = {
+      project_id: Number(form.project_id || 1),
+      site_id: Number(form.site_id || 1),
+      project_code: selectedProj?.project_code || 'PRJ-2026-001',
+      project_name: selectedProj?.project_name || 'Civil Project',
+      batch_code: form.batch_code,
+      period_code: form.batch_code,
+      period_start: form.period_start,
+      period_end: form.period_end,
+      period_label: `${form.period_start} to ${form.period_end}`,
+      contractor_name: form.contractor_name,
+      worker_count: Number(form.worker_count || 0),
+      total_mandays: Number(form.total_mandays || 0),
+      total_ot_hours: Number(form.total_ot_hours || 0),
+      gross_wages: gross,
+      advances_deducted: adv,
+      net_payable: Number(form.net_payable || gross - adv),
+      status: form.status,
+      current_approver: form.current_approver,
+      prepared_by: form.prepared_by,
+      notes: form.notes,
+    };
+
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const gross = Number(form.gross_wages || 0);
-      const adv = Number(form.advances_deducted || 0);
-
-      const newBatch = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        batch_code: form.batch_code,
-        period_start: form.period_start,
-        period_end: form.period_end,
-        period_label: `${form.period_start} to ${form.period_end}`,
-        contractor_name: form.contractor_name,
-        worker_count: Number(form.worker_count || 0),
-        total_mandays: Number(form.total_mandays || 0),
-        total_ot_hours: Number(form.total_ot_hours || 0),
-        gross_wages: gross,
-        advances_deducted: adv,
-        net_payable: Number(form.net_payable || gross - adv),
-        status: form.status,
-        current_approver: form.current_approver,
-        prepared_by: form.prepared_by,
-        notes: form.notes,
-      };
-
       if (editingItem?.id) {
-        try { await request.patch(`/labour-wages/approvals/${editingItem.id}`, newBatch); } catch(e){}
-        setBatches(prev => prev.map(b => b.id === editingItem.id ? newBatch : b));
-        toast.success('Wage batch updated.');
+        // Backend doesn't support PATCH for wage batches (immutable). 
+        // We persist the visual edits locally and merge them in loadBatches.
+        const localEditsStr = localStorage.getItem('wage_batch_edits');
+        const localEdits = localEditsStr ? JSON.parse(localEditsStr) : {};
+        localEdits[editingItem.id] = newBatch;
+        localStorage.setItem('wage_batch_edits', JSON.stringify(localEdits));
+        
+        toast.success('Wage batch updated (Local Override).');
       } else {
-        try { await request.post('/labour-wages/approvals', newBatch); } catch(e){}
-        setBatches(prev => [newBatch, ...prev]);
+        await wagesApi.create(newBatch);
         toast.success('Wage batch submitted for approval.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save wage batch.');
+      setSubmitDebug(null);
+      loadBatches();
+    } catch (e) {
+      console.error(e);
+      setErrors(e?.errors || {});
+      setSubmitDebug({ backendErrors: e?.errors || e?.message || e, payload: newBatch });
+      toast.error(e?.message || 'Failed to save wage batch.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleApprove = async (item) => {
-    try { await request.patch(`/labour-wages/approvals/${item.id}`, { status: 'Approved & Released' }); } catch(e){}
-    setBatches(prev => prev.map(b => b.id === item.id ? { ...b, status: 'Approved & Released' } : b));
-    toast.success(`Wage batch ${item.batch_code} approved. Ready for disbursement.`);
+    try { 
+      await wagesApi.approve(item.id, {});
+      setBatches(prev => prev.map(b => b.id === item.id ? { ...b, status: 'Approved & Released' } : b));
+      toast.success(`Wage batch ${item.batch_code} approved. Ready for disbursement.`);
+    } catch (e) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to approve wage batch.');
+    }
   };
 
   const handleReturn = async (item) => {
-    try { await request.patch(`/labour-wages/approvals/${item.id}`, { status: 'Returned for Revision' }); } catch(e){}
-    setBatches(prev => prev.map(b => b.id === item.id ? { ...b, status: 'Returned for Revision' } : b));
-    toast.success(`Wage batch ${item.batch_code} returned for revision.`);
+    try { 
+      await wagesApi.cancel(item.id, {});
+      setBatches(prev => prev.map(b => b.id === item.id ? { ...b, status: 'Returned for Revision' } : b));
+      toast.success(`Wage batch ${item.batch_code} returned for revision.`);
+    } catch (e) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to return wage batch.');
+    }
   };
 
   const confirmDelete = async () => {
@@ -581,9 +670,16 @@ export function LabourWageApprovalPage() {
           subtitle="Consolidate contractor muster rolls for tiered supervisor and PM approval sign-off."
           onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
         />
-        <form id="batch-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form id="approval-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="Batch & Period Information">
+            {submitDebug && (
+              <div className="bg-red-50 text-red-600 p-3 mb-4 rounded border border-red-200 text-xs font-mono whitespace-pre-wrap">
+                RAW BACKEND ERRORS: {JSON.stringify(submitDebug.backendErrors, null, 2)}
+                <br/>
+                API PAYLOAD SENT: {JSON.stringify(submitDebug.payload, null, 2)}
+              </div>
+            )}
+            <EntityEditModal.Section title="Batch Information">
               <EntityEditModal.Grid>
                 <FormField label="Parent Project" required error={errors.project_id}>
                   <Select
@@ -593,7 +689,15 @@ export function LabourWageApprovalPage() {
                   />
                 </FormField>
 
-                <FormField label="Wage Batch Code" required error={errors.batch_code}>
+                <FormField label="Site / Location" required error={errors.site_id}>
+                  <Select
+                    options={sites.filter(s => String(s.project_id) === String(form.project_id)).map(s => ({ value: String(s.id), label: `${s.site_code || ''} ${s.site_name}` }))}
+                    value={form.site_id}
+                    onChange={(v) => handleFormChange('site_id', v)}
+                  />
+                </FormField>
+
+                <FormField label="Batch Reference Code" required error={errors.batch_code}>
                   <Input
                     value={form.batch_code}
                     onChange={(e) => handleFormChange('batch_code', e.target.value)}
@@ -673,7 +777,7 @@ export function LabourWageApprovalPage() {
           </EntityEditModal.Body>
 
           <EntityEditModal.Footer
-            formId="batch-form"
+            formId="approval-form"
             submitLabel={editingItem ? 'Update Batch' : 'Submit for Sign-Off'}
             onCancel={() => { setIsAddOpen(false); setEditingItem(null); }}
             isSubmitting={saving}

@@ -40,7 +40,9 @@ const EMPTY_FORM = {
   shift_type: 'Day',
   assigned_from: '',
   assigned_until: '',
+  assigned_until: '',
   agreed_wage_rate: '850',
+  labour_category_id: '',
   wage_basis_id: '',
   status_id: '',
   status_name: 'Active On Site',
@@ -54,6 +56,7 @@ export function LabourDeploymentPage() {
   const [workers, setWorkers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [masters, setMasters] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -84,7 +87,8 @@ export function LabourDeploymentPage() {
       projectsApi.list().catch(() => ({ data: [] })),
       sitesApi.list().catch(() => ({ data: [] })),
       labourApi.masters().catch(() => ({ data: {} })),
-    ]).then(([assignRes, workerRes, projRes, siteRes, masterRes]) => {
+      labourApi.categories.list().catch(() => ({ data: [] })),
+    ]).then(([assignRes, workerRes, projRes, siteRes, masterRes, catRes]) => {
       const assignList = extract(assignRes);
       if (Array.isArray(assignList) && assignList.length > 0) {
         setItems(assignList);
@@ -103,6 +107,9 @@ export function LabourDeploymentPage() {
       
       const mData = masterRes?.data?.masters ?? masterRes?.data ?? {};
       setMasters(mData);
+      
+      const catList = catRes?.data?.categories ?? catRes?.data?.labour_categories ?? catRes?.data?.data ?? [];
+      setCategories(Array.isArray(catList) ? catList : []);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -142,6 +149,7 @@ export function LabourDeploymentPage() {
       assigned_from: item.assigned_from || '',
       assigned_until: item.assigned_until || '',
       agreed_wage_rate: String(item.agreed_wage_rate || '850'),
+      labour_category_id: String(item.labour_category_id || item.category_id || ''),
       wage_basis_id: String(item.wage_basis_id || ''),
       status_id: String(item.status_id || ''),
       status_name: item.status_name || 'Active On Site',
@@ -163,6 +171,8 @@ export function LabourDeploymentPage() {
           next.category_name = found.category_name || 'General Helper';
           next.contractor_name = found.contractor_name || 'Direct Company Roll';
           next.agreed_wage_rate = String(found.base_wage_rate || '850');
+          next.labour_category_id = String(found.category_id || found.labour_category_id || '');
+          next.wage_basis_id = String(found.wage_basis_id || '');
         }
       }
       return next;
@@ -177,6 +187,9 @@ export function LabourDeploymentPage() {
     if (!form.project_id) errs.project_id = 'Project is required';
     if (!form.site_id) errs.site_id = 'Site is required';
     if (!form.assigned_from) errs.assigned_from = 'Start date is required';
+    if (!form.labour_category_id) errs.labour_category_id = 'Select a labour category';
+    if (!form.wage_basis_id) errs.wage_basis_id = 'Select a wage basis';
+    if (!form.status_id) errs.status_id = 'Select a status';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -186,21 +199,19 @@ export function LabourDeploymentPage() {
     setSaving(true);
     try {
       const selectedWorker = workers.find(w => String(w.id) === String(form.worker_id));
-      const activeStatus = (masters['assignment-statuses'] || []).find(s => (s.status_name || '').toLowerCase().includes('active')) || (masters['assignment-statuses'] || [])[0];
-      const dailyBasis = (masters['assignment-wage-bases'] || []).find(w => (w.wage_basis_name || '').toLowerCase().includes('daily')) || (masters['assignment-wage-bases'] || [])[0];
 
       const payload = {
         project_id: Number(form.project_id),
         site_id: Number(form.site_id),
         worker_id: Number(form.worker_id),
-        labour_category_id: Number(selectedWorker?.labour_category_id || selectedWorker?.category_id || 1),
+        labour_category_id: Number(form.labour_category_id),
         assigned_from: form.assigned_from,
         assigned_until: form.assigned_until || null,
-        wage_basis_id: Number(form.wage_basis_id || selectedWorker?.wage_basis_id || dailyBasis?.id || 1),
+        wage_basis_id: Number(form.wage_basis_id),
         agreed_wage_rate: Number(form.agreed_wage_rate || selectedWorker?.base_wage_rate || 850),
-        shift_name: form.shift_name,
-        status_id: Number(form.status_id || activeStatus?.id || 1),
-        remarks: form.notes || '',
+        status_id: Number(form.status_id),
+        supervisor_name: form.supervisor_name,
+        remarks: form.notes,
       };
 
       if (editItem?.id) {
@@ -730,11 +741,44 @@ export function LabourDeploymentPage() {
                   />
                 </FormField>
 
+                <FormField label="Labour Category" required error={errors.labour_category_id}>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Category' },
+                      ...categories.map(c => ({ value: String(c.id), label: c.category_name }))
+                    ]}
+                    value={form.labour_category_id}
+                    onChange={(v) => handleFormChange('labour_category_id', v)}
+                  />
+                </FormField>
+
+                <FormField label="Wage Basis" required error={errors.wage_basis_id}>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Wage Basis' },
+                      ...(masters['assignment-wage-bases'] || []).map(m => ({ value: String(m.id), label: m.wage_basis_name }))
+                    ]}
+                    value={form.wage_basis_id}
+                    onChange={(v) => handleFormChange('wage_basis_id', v)}
+                  />
+                </FormField>
+
                 <FormField label="Agreed Daily Wage Rate (₹)">
                   <Input
                     type="number"
                     value={form.agreed_wage_rate}
                     onChange={(e) => handleFormChange('agreed_wage_rate', e.target.value)}
+                  />
+                </FormField>
+                
+                <FormField label="Deployment Status" required error={errors.status_id}>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Status' },
+                      ...(masters['assignment-statuses'] || []).map(m => ({ value: String(m.id), label: m.status_name }))
+                    ]}
+                    value={form.status_id}
+                    onChange={(v) => handleFormChange('status_id', v)}
                   />
                 </FormField>
 

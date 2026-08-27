@@ -19,13 +19,26 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, dailyReportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-
-
-const EMPTY_FORM = {
+const extractArray = (res) => {
+  if (Array.isArray(res)) return res;
+  if (res?.data && Array.isArray(res.data)) return res.data;
+  if (res?.data && typeof res.data === 'object') {
+    for (const key in res.data) {
+      if (Array.isArray(res.data[key])) return res.data[key];
+    }
+  }
+  if (res && typeof res === 'object') {
+    for (const key in res) {
+      if (Array.isArray(res[key])) return res[key];
+    }
+  }
+  return [];
+};const EMPTY_FORM = {
   project_id: '',
+  report_id: '',
   date: '',
   equipment_code: 'EQP-CRN-001',
   equipment_name: 'Tower Crane 5 Ton (TC-1)',
@@ -43,14 +56,8 @@ const EMPTY_FORM = {
 export function DailyEquipmentPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [logs, setLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_daily-operations_DailyEquipmentPage');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [reports, setReports] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -68,17 +75,41 @@ export function DailyEquipmentPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
-  useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
-  }, []);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const projRes = await projectsApi.list();
+      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+      setProjects(Array.isArray(pList) ? pList : []);
 
+      if (dailyReportsApi?.list) {
+        const dprRes = await dailyReportsApi.list(selectedProjectId !== 'all' ? { project_id: selectedProjectId } : {});
+        const rList = dprRes?.data?.daily_site_reports ?? dprRes?.data?.reports ?? dprRes?.data?.data ?? [];
+        setReports(Array.isArray(rList) ? rList : []);
+
+        let allEquipment = [];
+        for (const r of (Array.isArray(rList) ? rList.slice(0, 20) : [])) {
+          try {
+            const eqRes = await dailyReportsApi.equipment.list(r.id);
+            const eqList = extractArray(eqRes);
+            const withMeta = eqList.map(eq => ({ ...eq, report_id: r.id, project_id: r.project_id, date: r.report_date, project_code: r.project_code }));
+            allEquipment = [...allEquipment, ...withMeta];
+          } catch (e) { /* ignore individual report fetch failures */ }
+        }
+        setLogs(allEquipment);
+      }
+    } catch (e) {
+      console.error(e);
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Initial
   useEffect(() => {
-    localStorage.setItem('mock_daily-operations_DailyEquipmentPage', JSON.stringify(logs));
-  }, [logs]);
+    loadData();
+  }, [selectedProjectId]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -88,6 +119,7 @@ export function DailyEquipmentPage() {
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
+      report_id: '',
       date: today,
     });
     setErrors({});
@@ -97,6 +129,7 @@ export function DailyEquipmentPage() {
   const handleOpenEdit = (item) => {
     setForm({
       project_id: String(item.project_id || '1'),
+      report_id: String(item.report_id || ''),
       date: item.date || '',
       equipment_code: item.equipment_code || '',
       equipment_name: item.equipment_name || '',
@@ -122,8 +155,9 @@ export function DailyEquipmentPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.equipment_name.trim()) errs.equipment_name = 'Equipment name is required';
-    if (!form.assigned_work.trim()) errs.assigned_work = 'Assigned work is required';
+    if (!form.report_id) errs.report_id = 'Daily Report is required';
+    if (!form.equipment_name?.trim()) errs.equipment_name = 'Equipment name is required';
+    if (!form.assigned_work?.trim()) errs.assigned_work = 'Assigned work is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -132,49 +166,57 @@ export function DailyEquipmentPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-
-      const newLog = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        date: form.date,
+      const payload = {
         equipment_code: form.equipment_code,
         equipment_name: form.equipment_name,
         operator_name: form.operator_name,
-        running_hours: Number(form.running_hours || 0),
+        working_hours: Number(form.running_hours || 0),
         idle_hours: Number(form.idle_hours || 0),
         breakdown_hours: Number(form.breakdown_hours || 0),
-        fuel_consumed_litres: Number(form.fuel_consumed_litres || 0),
-        assigned_work: form.assigned_work,
+        fuel_consumed: Number(form.fuel_consumed_litres || 0),
+        work_description: form.assigned_work,
         location: form.location,
         status: form.status,
         notes: form.notes,
+        // Backend mapping fields that throw 'Select a valid controlled value' if missing
+        ownership_type_id: 1, // 1 = Owned
+        status_id: 1, // 1 = Working
       };
 
       if (editingItem?.id) {
-        setLogs(prev => prev.map(l => l.id === editingItem.id ? newLog : l));
-        toast.success('Equipment operating log updated.');
+        await dailyReportsApi.equipment.update(form.report_id, editingItem.id, payload);
+        toast.success('Equipment deployment updated.');
       } else {
-        setLogs(prev => [newLog, ...prev]);
-        toast.success('Daily machinery operating log saved.');
+        await dailyReportsApi.equipment.create(form.report_id, payload);
+        toast.success('Daily equipment logged.');
       }
 
+      loadData(); // Reload from db
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save equipment log.');
+    } catch (err) {
+      if (err?.errors) {
+        setErrors(err.errors);
+        toast.error(Object.values(err.errors).flat().join('\n') || 'Validation failed.');
+      } else {
+        toast.error(err?.message || 'Failed to save equipment log.');
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setLogs(prev => prev.filter(l => l.id !== deleteItem.id));
-    toast.success('Equipment log removed.');
-    setDeleteItem(null);
+  const confirmDelete = async () => {
+    if (!deleteItem?.id || !deleteItem?.report_id) return;
+    try {
+      await dailyReportsApi.equipment.remove(deleteItem.report_id, deleteItem.id);
+      toast.success('Equipment log removed.');
+      loadData();
+    } catch (err) {
+      toast.error('Failed to remove equipment log.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -303,7 +345,7 @@ export function DailyEquipmentPage() {
                 totalItems={filtered.length}
                 itemsPerPage={perPage}
                 onPageChange={setPage}
-                onItemsPerPageChange={() => {}}
+                onItemsPerPageChange={() => { }}
               />
             }
           >
@@ -403,6 +445,15 @@ export function DailyEquipmentPage() {
                           >
                             <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            title="Delete"
+                            onClick={() => setDeleteItem(l)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-red-500" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -458,7 +509,7 @@ export function DailyEquipmentPage() {
               totalItems={filtered.length}
               itemsPerPage={perPage}
               onPageChange={setPage}
-              onItemsPerPageChange={() => {}}
+              onItemsPerPageChange={() => { }}
             />
           </div>
         </div>
@@ -529,15 +580,19 @@ export function DailyEquipmentPage() {
                   />
                 </FormField>
 
-                <FormField label="Log Date" required>
-                  <Input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => handleFormChange('date', e.target.value)}
+                <FormField label="Link to Daily Report *" required error={errors.report_id}>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Daily Report...' },
+                      ...reports.filter(r => String(r.project_id) === form.project_id).map(r => ({ value: String(r.id), label: `${r.report_date} - ${r.site_name || 'Report'}` }))
+                    ]}
+                    value={form.report_id}
+                    onChange={(v) => handleFormChange('report_id', v)}
+                    disabled={!form.project_id}
                   />
                 </FormField>
 
-                <FormField label="Equipment Code">
+                <FormField label="Equipment Code/ID">
                   <Input
                     value={form.equipment_code}
                     onChange={(e) => handleFormChange('equipment_code', e.target.value)}

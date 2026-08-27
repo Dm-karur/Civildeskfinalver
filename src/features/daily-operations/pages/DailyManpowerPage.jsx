@@ -19,16 +19,34 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, dailyReportsApi, labourApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-
+const extractArray = (res) => {
+  if (Array.isArray(res)) return res;
+  if (res?.data && Array.isArray(res.data)) return res.data;
+  
+  if (res?.data && typeof res.data === 'object') {
+    for (const key in res.data) {
+      if (Array.isArray(res.data[key])) return res.data[key];
+    }
+  }
+  
+  if (res && typeof res === 'object') {
+    for (const key in res) {
+      if (Array.isArray(res[key])) return res[key];
+    }
+  }
+  return [];
+};
 
 const EMPTY_FORM = {
   project_id: '',
+  report_id: '',
   date: '',
-  contractor_name: 'Sri Murugan Labour Services',
-  trade_category: 'Masons & Concrete Gang',
+  contractor_id: '',
+  labour_category_id: '',
+  source_type_id: '',
   shift_general_count: '10',
   shift_night_count: '0',
   total_workers: '10',
@@ -42,14 +60,11 @@ const EMPTY_FORM = {
 export function DailyManpowerPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [logs, setLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_daily-operations_DailyManpowerPage');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [reports, setReports] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [masters, setMasters] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [contractors, setContractors] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -67,17 +82,91 @@ export function DailyManpowerPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
-  useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
-  }, []);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const projRes = await projectsApi.list();
+      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+      setProjects(Array.isArray(pList) ? pList : []);
 
+      const mRes = await dailyReportsApi.masters().catch(()=>({}));
+      setMasters(mRes?.data?.masters ?? mRes?.data ?? {});
+      
+      const cRes = await labourApi.categories.list().catch(()=>({}));
+      const catList = cRes?.data?.categories ?? cRes?.data?.labour_categories ?? cRes?.data?.data ?? [];
+      setCategories(Array.isArray(catList) ? catList : []);
+      
+      const conRes = await labourApi.contractors.list().catch(()=>({}));
+      const conList = conRes?.data?.contractors ?? conRes?.data?.labour_contractors ?? conRes?.data?.data ?? [];
+      setContractors(Array.isArray(conList) ? conList : []);
+
+      if (dailyReportsApi?.list) {
+        const dprRes = await dailyReportsApi.list(selectedProjectId !== 'all' ? { project_id: selectedProjectId } : {});
+        const rList = dprRes?.data?.daily_site_reports ?? dprRes?.data?.reports ?? dprRes?.data?.data ?? [];
+        setReports(Array.isArray(rList) ? rList : []);
+        
+        // Fetch manpower logs for up to the last 20 reports
+        let allManpower = [];
+        for (const r of (Array.isArray(rList) ? rList.slice(0, 20) : [])) {
+          try {
+            const mpRes = await dailyReportsApi.manpower.list(r.id);
+            const mpList = extractArray(mpRes);
+            const withMeta = mpList.map(m => {
+              const cat = catList.find(c => String(c.id) === String(m.labour_category_id));
+              const con = conList.find(c => String(c.id) === String(m.contractor_id));
+
+              // Attempt to parse out location and foreman if appended to work_description
+              let cleanAssignedWork = m.work_description || '';
+              let extractedLoc = '';
+              let extractedForeman = '';
+              
+              if (cleanAssignedWork.includes('(Loc:')) {
+                const parts = cleanAssignedWork.split('(Loc:');
+                cleanAssignedWork = parts[0].trim();
+                extractedLoc = parts[1].split(')')[0].trim();
+              }
+              if (cleanAssignedWork.includes('(Foreman:')) {
+                const parts = cleanAssignedWork.split('(Foreman:');
+                cleanAssignedWork = parts[0].trim();
+                extractedForeman = parts[1].split(')')[0].trim();
+              }
+
+              return {
+                ...m,
+                report_id: r.id,
+                project_id: r.project_id,
+                date: r.report_date,
+                project_code: r.project_code,
+                
+                trade_category: cat ? cat.category_name : 'Unknown Category',
+                contractor_name: con ? con.contractor_name : 'None / Direct Roll',
+                shift_general_count: String(m.present_count || 0),
+                shift_night_count: '0',
+                total_workers: String(m.present_count || 0),
+                ot_hours: String(m.total_overtime_hours || 0),
+                assigned_work: cleanAssignedWork,
+                location: extractedLoc,
+                foreman_incharge: extractedForeman,
+                notes: m.remarks || '',
+              };
+            });
+            allManpower = [...allManpower, ...withMeta];
+          } catch(e) { /* ignore individual report fetch failures */ }
+        }
+        setLogs(allManpower);
+      }
+    } catch (e) {
+      console.error(e);
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Initial
   useEffect(() => {
-    localStorage.setItem('mock_daily-operations_DailyManpowerPage', JSON.stringify(logs));
-  }, [logs]);
+    loadData();
+  }, [selectedProjectId]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -87,6 +176,7 @@ export function DailyManpowerPage() {
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
+      report_id: '',
       date: today,
     });
     setErrors({});
@@ -96,10 +186,12 @@ export function DailyManpowerPage() {
   const handleOpenEdit = (item) => {
     setForm({
       project_id: String(item.project_id || '1'),
+      report_id: String(item.report_id || ''),
       date: item.date || '',
-      contractor_name: item.contractor_name || '',
-      trade_category: item.trade_category || '',
-      shift_general_count: String(item.shift_general_count || '10'),
+      contractor_id: String(item.contractor_id || ''),
+      labour_category_id: String(item.labour_category_id || ''),
+      source_type_id: String(item.source_type_id || ''),
+      shift_general_count: String(item.shift_general_count || item.present_count || '10'),
       shift_night_count: String(item.shift_night_count || '0'),
       total_workers: String(item.total_workers || '10'),
       ot_hours: String(item.ot_hours || '0'),
@@ -128,8 +220,10 @@ export function DailyManpowerPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.trade_category.trim()) errs.trade_category = 'Trade category is required';
-    if (!form.assigned_work.trim()) errs.assigned_work = 'Assigned work is required';
+    if (!form.report_id) errs.report_id = 'Daily Report is required';
+    if (!form.labour_category_id) errs.labour_category_id = 'Labour category is required';
+    if (!form.source_type_id) errs.source_type_id = 'Source type is required';
+    if (!form.assigned_work?.trim()) errs.assigned_work = 'Assigned work is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -138,51 +232,53 @@ export function DailyManpowerPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
       const gen = Number(form.shift_general_count || 0);
       const nite = Number(form.shift_night_count || 0);
 
-      const newLog = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        date: form.date,
-        contractor_name: form.contractor_name,
-        trade_category: form.trade_category,
-        shift_general_count: gen,
-        shift_night_count: nite,
-        total_workers: gen + nite,
-        ot_hours: Number(form.ot_hours || 0),
-        assigned_work: form.assigned_work,
-        location: form.location,
-        foreman_incharge: form.foreman_incharge,
-        status: 'Verified by Timekeeper',
-        notes: form.notes,
+      const payload = {
+        labour_category_id: Number(form.labour_category_id),
+        source_type_id: Number(form.source_type_id),
+        contractor_id: form.contractor_id ? Number(form.contractor_id) : null,
+        present_count: gen + nite,
+        total_overtime_hours: Number(form.ot_hours || 0),
+        work_description: form.assigned_work + (form.location ? ` (Loc: ${form.location})` : '') + (form.foreman_incharge ? ` (Foreman: ${form.foreman_incharge})` : ''),
+        remarks: form.notes,
       };
 
       if (editingItem?.id) {
-        setLogs(prev => prev.map(l => l.id === editingItem.id ? newLog : l));
+        await dailyReportsApi.manpower.update(form.report_id, editingItem.id, payload);
         toast.success('Manpower gang deployment updated.');
       } else {
-        setLogs(prev => [newLog, ...prev]);
+        await dailyReportsApi.manpower.create(form.report_id, payload);
         toast.success('Daily manpower gang logged.');
       }
 
+      loadData(); // Reload from db
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save manpower log.');
+    } catch (err) {
+      if (err?.errors) {
+        setErrors(err.errors);
+        toast.error(Object.values(err.errors).flat().join('\n') || 'Validation failed.');
+      } else {
+        toast.error(err?.message || 'Failed to save manpower log.');
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setLogs(prev => prev.filter(l => l.id !== deleteItem.id));
-    toast.success('Manpower log removed.');
-    setDeleteItem(null);
+  const confirmDelete = async () => {
+    if (!deleteItem?.id || !deleteItem?.report_id) return;
+    try {
+      await dailyReportsApi.manpower.remove(deleteItem.report_id, deleteItem.id);
+      toast.success('Manpower log removed.');
+      loadData();
+    } catch (err) {
+      toast.error('Failed to remove manpower log.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -532,27 +628,48 @@ export function DailyManpowerPage() {
                   />
                 </FormField>
 
-                <FormField label="Deployment Date" required>
-                  <Input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => handleFormChange('date', e.target.value)}
+                <FormField label="Link to Daily Report *" required error={errors.report_id}>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Daily Report...' },
+                      ...reports.filter(r => String(r.project_id) === form.project_id).map(r => ({ value: String(r.id), label: `${r.report_date} - ${r.site_name || 'Report'}` }))
+                    ]}
+                    value={form.report_id}
+                    onChange={(v) => handleFormChange('report_id', v)}
+                    disabled={!form.project_id}
                   />
                 </FormField>
 
                 <FormField label="Contractor / Labour Agency">
-                  <Input
-                    value={form.contractor_name}
-                    onChange={(e) => handleFormChange('contractor_name', e.target.value)}
-                    placeholder="e.g. Sri Murugan Labour Services"
+                  <Select
+                    options={[
+                      { value: '', label: 'None / Direct Roll' },
+                      ...contractors.map(c => ({ value: String(c.id), label: c.contractor_name }))
+                    ]}
+                    value={form.contractor_id}
+                    onChange={(v) => handleFormChange('contractor_id', v)}
                   />
                 </FormField>
 
-                <FormField label="Trade Gang Category" required error={errors.trade_category}>
-                  <Input
-                    value={form.trade_category}
-                    onChange={(e) => handleFormChange('trade_category', e.target.value)}
-                    placeholder="e.g. Masons, Bar Benders, Carpenters"
+                <FormField label="Labour Category" required error={errors.labour_category_id}>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Category' },
+                      ...categories.map(c => ({ value: String(c.id), label: c.category_name }))
+                    ]}
+                    value={form.labour_category_id}
+                    onChange={(v) => handleFormChange('labour_category_id', v)}
+                  />
+                </FormField>
+
+                <FormField label="Source Type" required error={errors.source_type_id} className="md:col-span-2">
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Source Type' },
+                      ...(masters['manpower_source_types'] || []).map(m => ({ value: String(m.id), label: m.source_type_name }))
+                    ]}
+                    value={form.source_type_id}
+                    onChange={(v) => handleFormChange('source_type_id', v)}
                   />
                 </FormField>
               </EntityEditModal.Grid>

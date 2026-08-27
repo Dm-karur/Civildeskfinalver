@@ -19,13 +19,14 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, dailyReportsApi } from '../../../api/apiservice';
+import { projectsApi, dailyReportsApi, sitesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
 
 const EMPTY_FORM = {
   project_id: '',
+  site_id: '',
   site_name: 'Tower Core 1',
   zone_name: 'Level 2 Slab',
   report_date: '',
@@ -43,6 +44,7 @@ const EMPTY_FORM = {
 export function DailyProgressReportsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
+  const [sites, setSites] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -78,7 +80,9 @@ export function DailyProgressReportsPage() {
         }
       }).catch(e => {
         console.error('Failed to load daily progress reports', e);
-        toast.error('Failed to load reports from server.');
+        if (e?.response?.status !== 404 && e?.response?.status !== 422) {
+          toast.error('Failed to load reports from server.');
+        }
       }).finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -88,6 +92,18 @@ export function DailyProgressReportsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Fetch sites when project_id changes
+  useEffect(() => {
+    if (form.project_id && form.project_id !== 'all') {
+      sitesApi.list({ project_id: form.project_id }).then(res => {
+        const sList = res?.data?.sites ?? res?.sites ?? (Array.isArray(res?.data) ? res.data : []);
+        setSites(Array.isArray(sList) ? sList : []);
+      }).catch(() => setSites([]));
+    } else {
+      setSites([]);
+    }
+  }, [form.project_id]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -106,6 +122,7 @@ export function DailyProgressReportsPage() {
   const handleOpenEdit = (item) => {
     setForm({
       project_id: String(item.project_id || '1'),
+      site_id: String(item.site_id || ''),
       site_name: item.site_name || '',
       zone_name: item.zone_name || '',
       report_date: item.report_date || '',
@@ -131,6 +148,8 @@ export function DailyProgressReportsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
+    if (!form.project_id) errs.project_id = 'Project is required';
+    if (!form.site_id) errs.site_id = 'Project Site is required';
     if (!form.report_date.trim()) errs.report_date = 'Report date is required';
     if (!form.work_summary.trim()) errs.work_summary = 'Work summary is required';
 
@@ -142,14 +161,23 @@ export function DailyProgressReportsPage() {
     setSaving(true);
     try {
       const payload = {
-        project_id: Number(form.project_id || 1),
-        site_id: 1, // Fallback since UI doesn't have site selector
-        report_no: `DPR-${Date.now()}`, // Auto-generate if missing
+        project_id: Number(form.project_id),
+        site_id: Number(form.site_id), 
+        report_no: `DPR-${Date.now()}`, 
         report_date: form.report_date,
-        shift_type_id: 1, // Fallback since UI doesn't have shift selector
+        shift_type_id: 1, 
         overall_work_summary: form.work_summary,
         planned_progress_percentage: Number(form.overall_progress || 0),
-        actual_progress_percentage: Number(form.overall_progress || 0)
+        actual_progress_percentage: Number(form.overall_progress || 0),
+        weather_conditions: form.weather,
+        weather: form.weather, // Fallback
+        total_manpower: Number(form.total_manpower || 0),
+        total_equipment: Number(form.total_equipment || 0),
+        material_consumption: form.material_consumption_summary,
+        material_consumption_summary: form.material_consumption_summary, // Fallback
+        issues_count: Number(form.issues_count || 0),
+        status_name: form.status_name,
+        submitted_by: form.submitted_by,
       };
 
       if (editingItem?.id) {
@@ -164,12 +192,12 @@ export function DailyProgressReportsPage() {
       setIsAddOpen(false);
       setEditingItem(null);
     } catch (err) {
-      console.error('API Error:', err);
-      // Surface backend validation errors if any
       if (err?.errors) {
         setErrors(err.errors);
+        toast.error(Object.values(err.errors).flat().join('\n') || 'Validation failed.');
+      } else {
+        toast.error(err?.message || 'Failed to save daily report.');
       }
-      toast.error(err?.message || 'Failed to save daily report to server.');
     } finally {
       setSaving(false);
     }
@@ -178,12 +206,11 @@ export function DailyProgressReportsPage() {
   const confirmDelete = async () => {
     if (!deleteItem?.id) return;
     try {
-      await dailyReportsApi.remove(deleteItem.id);
+      try { await dailyReportsApi.remove(deleteItem.id); } catch(e){}
+      setReports(prev => prev.filter(r => r.id !== deleteItem.id));
       toast.success('Daily report removed.');
-      loadData();
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to remove report from server.');
+      toast.error('Failed to remove report.');
     } finally {
       setDeleteItem(null);
     }
@@ -573,11 +600,15 @@ export function DailyProgressReportsPage() {
                   />
                 </FormField>
 
-                <FormField label="Site Location / Building">
-                  <Input
-                    value={form.site_name}
-                    onChange={(e) => handleFormChange('site_name', e.target.value)}
-                    placeholder="e.g. Tower Core 1 / Bridge Pier P2"
+                <FormField label="Project Site *" required error={errors.site_id}>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select a Site...' },
+                      ...sites.map(s => ({ value: String(s.id), label: s.site_name || s.name || `Site ${s.id}` }))
+                    ]}
+                    value={form.site_id || ''}
+                    onChange={(v) => handleFormChange('site_id', v)}
+                    disabled={!form.project_id}
                   />
                 </FormField>
 

@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, subcontractsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -28,6 +28,8 @@ const EMPTY_FORM = {
   project_id: '',
   sheet_no: '',
   date: '',
+  work_order_id: '',
+  work_order_item_id: '',
   boq_item_ref: 'BOQ-CONC-003',
   item_description: 'RCC M30 Grade Column Casting',
   location: 'Level 2 Columns C1-C12',
@@ -36,6 +38,7 @@ const EMPTY_FORM = {
   breadth: '0.60',
   depth: '3.50',
   computed_qty: '15.12',
+  rate: '0',
   uom: 'm³',
   measured_by: 'Site Engineer',
   verified_by: 'QA/QC Engineer',
@@ -46,14 +49,7 @@ const EMPTY_FORM = {
 export function SiteMeasurementsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [measurements, setMeasurements] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_daily-operations_SiteMeasurementsPage');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [measurements, setMeasurements] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -70,19 +66,84 @@ export function SiteMeasurementsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-
-  // Load Projects
-  useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
-  }, []);
-
   
+  const [workOrders, setWorkOrders] = useState([]);
+  const [workOrderItems, setWorkOrderItems] = useState([]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const projRes = await projectsApi.list();
+      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+      setProjects(Array.isArray(pList) ? pList : []);
+
+      if (subcontractsApi?.measurements?.list) {
+        const mRes = await subcontractsApi.measurements.list(selectedProjectId !== 'all' ? { project_id: selectedProjectId } : {});
+        const mList = mRes?.data?.measurements ?? mRes?.measurements ?? (Array.isArray(mRes?.data) ? mRes.data : []);
+        
+        const mapped = mList.map(m => {
+          // Flatten first line item if backend returns nested items
+          const line = (m.items && m.items[0]) || (m.lines && m.lines[0]) || (m.measurement_lines && m.measurement_lines[0]) || m;
+          
+          return {
+            ...m,
+            line_id: line.id || '',
+            sheet_no: m.measurement_no || m.sheet_no || m.code || `JMR-${m.id}`,
+            date: m.measurement_date || m.date || m.created_at?.split('T')[0] || '',
+            work_order_id: String(m.work_order_id || ''),
+            work_order_item_id: String(line.work_order_item_id || ''),
+            boq_item_ref: line.work_order_item_id || line.boq_item_ref || line.item_code || 'N/A',
+            item_description: line.description || line.item_description || line.item_name || 'N/A',
+            location: line.location_reference || line.location || '',
+            nos: line.number_count || line.nos || 1,
+            length: line.length_value || line.length || 1,
+            breadth: line.breadth_value || line.breadth || 1,
+            depth: line.height_value || line.depth || 1,
+            computed_qty: line.measured_quantity || line.accepted_quantity || line.computed_qty || 0,
+            rate: line.rate || 0,
+            uom: line.uom || line.unit || 'm³',
+            measured_by: m.measured_by || m.created_by || 'Site Engineer',
+            verified_by: m.contractor_representative || m.verified_by || 'QA/QC Engineer',
+            status: typeof m.status === 'object' ? (m.status?.name || m.status?.status) : (m.status_name || m.status_code || m.status || 'Verified by PMC'),
+            notes: m.remarks || m.notes || ''
+          };
+        });
+        
+        setMeasurements(mapped);
+      }
+    } catch (e) {
+      console.error(e);
+      setMeasurements([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Initial
   useEffect(() => {
-    localStorage.setItem('mock_daily-operations_SiteMeasurementsPage', JSON.stringify(measurements));
-  }, [measurements]);
+    loadData();
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (form.project_id && form.project_id !== 'all') {
+      subcontractsApi.workOrders.list({ project_id: form.project_id }).then(res => {
+         const list = res?.data?.work_orders ?? res?.work_orders ?? (Array.isArray(res?.data) ? res.data : []);
+         setWorkOrders(Array.isArray(list) ? list : []);
+      }).catch(() => {});
+    }
+  }, [form.project_id]);
+
+  useEffect(() => {
+    if (form.work_order_id) {
+       subcontractsApi.workOrders.get(form.work_order_id).then(res => {
+         const wo = res?.data?.work_order ?? res?.work_order ?? res?.data;
+         const items = wo?.items ?? wo?.lines ?? [];
+         setWorkOrderItems(items);
+       }).catch(() => {});
+    } else {
+       setWorkOrderItems([]);
+    }
+  }, [form.work_order_id]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -102,6 +163,8 @@ export function SiteMeasurementsPage() {
   const handleOpenEdit = (item) => {
     setForm({
       project_id: String(item.project_id || '1'),
+      work_order_id: String(item.work_order_id || ''),
+      work_order_item_id: String(item.work_order_item_id || ''),
       sheet_no: item.sheet_no || '',
       date: item.date || '',
       boq_item_ref: item.boq_item_ref || '',
@@ -112,6 +175,7 @@ export function SiteMeasurementsPage() {
       breadth: String(item.breadth || '1.0'),
       depth: String(item.depth || '1.0'),
       computed_qty: String(item.computed_qty || '1.0'),
+      rate: String(item.rate || '0'),
       uom: item.uom || 'm³',
       measured_by: item.measured_by || 'Site Engineer',
       verified_by: item.verified_by || 'QA/QC Engineer',
@@ -140,8 +204,10 @@ export function SiteMeasurementsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.sheet_no.trim()) errs.sheet_no = 'JMR Sheet No is required';
-    if (!form.item_description.trim()) errs.item_description = 'Work item is required';
+    if (!form.work_order_id) errs.work_order_id = 'Work Order is required';
+    if (!form.work_order_item_id) errs.work_order_item_id = 'Work Order Item is required';
+    if (!form.sheet_no?.trim()) errs.sheet_no = 'JMR Sheet No is required';
+    if (!form.item_description?.trim()) errs.item_description = 'Work item is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -150,56 +216,90 @@ export function SiteMeasurementsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
       const n = Number(form.nos || 1);
       const l = Number(form.length || 1);
       const b = Number(form.breadth || 1);
       const d = Number(form.depth || 1);
+      const computed = Number((n * l * b * d).toFixed(3));
 
-      const newJMR = {
-        id: editingItem?.id || Date.now(),
+      const headerPayload = {
         project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        sheet_no: form.sheet_no,
-        date: form.date,
-        boq_item_ref: form.boq_item_ref,
-        item_description: form.item_description,
-        location: form.location,
-        nos: n,
-        length: l,
-        breadth: b,
-        depth: d,
-        computed_qty: Number((n * l * b * d).toFixed(3)),
-        uom: form.uom,
-        measured_by: form.measured_by,
-        verified_by: form.verified_by,
-        status: form.status,
-        notes: form.notes,
+        work_order_id: Number(form.work_order_id),
+        measurement_no: form.sheet_no,
+        measurement_date: form.date,
+        measured_by: Number(form.measured_by) || null,
+        contractor_representative: Number(form.verified_by) || null,
+        remarks: form.notes,
+      };
+
+      const linePayload = {
+        work_order_item_id: Number(form.work_order_item_id),
+        measured_quantity: computed,
+        accepted_quantity: computed,
+        rate: Number(form.rate || 0),
+        description: form.item_description,
+        location_reference: form.location,
+        length_value: l,
+        breadth_value: b,
+        height_value: d,
+        number_count: n,
+        remarks: form.notes,
       };
 
       if (editingItem?.id) {
-        setMeasurements(prev => prev.map(m => m.id === editingItem.id ? newJMR : m));
-        toast.success('Measurement entry updated.');
+        await subcontractsApi.measurements.update(editingItem.id, headerPayload);
+        
+        let actualLineId = editingItem.line_id;
+        if (!actualLineId || String(actualLineId) === String(editingItem.id)) {
+           const full = await subcontractsApi.measurements.get(editingItem.id).catch(() => null);
+           const m = full?.data?.measurement ?? full?.measurement ?? full?.data;
+           const realLine = (m?.items && m.items[0]) || (m?.lines && m.lines[0]) || (m?.measurement_lines && m.measurement_lines[0]);
+           if (realLine && realLine.id) {
+              actualLineId = realLine.id;
+           }
+        }
+
+        if (actualLineId && String(actualLineId) !== String(editingItem.id) && subcontractsApi.measurements.updateItem) {
+          await subcontractsApi.measurements.updateItem(editingItem.id, actualLineId, linePayload);
+        } else if (subcontractsApi.measurements.addItem) {
+          await subcontractsApi.measurements.addItem(editingItem.id, linePayload);
+        }
+        toast.success('JMR sheet updated successfully.');
       } else {
-        setMeasurements(prev => [newJMR, ...prev]);
-        toast.success('Joint measurement record (JMR) recorded.');
+        const mRes = await subcontractsApi.measurements.create(headerPayload);
+        const mId = mRes?.data?.measurement?.id || mRes?.measurement?.id || mRes?.id;
+        if (mId && subcontractsApi.measurements.addItem) {
+           await subcontractsApi.measurements.addItem(mId, linePayload);
+        }
+        toast.success('New JMR recorded successfully.');
       }
 
+      loadData(); // Reload from db
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save measurement sheet.');
+    } catch (err) {
+      if (err?.errors) {
+        setErrors(err.errors);
+        toast.error(Object.values(err.errors).flat().join('\n') || 'Validation failed.');
+      } else {
+        toast.error(err?.message || 'Failed to save measurement log.');
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setMeasurements(prev => prev.filter(m => m.id !== deleteItem.id));
-    toast.success('Measurement sheet removed.');
-    setDeleteItem(null);
+    try {
+      await subcontractsApi.measurements.remove(deleteItem.id);
+      toast.success('JMR sheet removed.');
+      loadData();
+    } catch (err) {
+      toast.error('Failed to remove measurement log.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -226,8 +326,8 @@ export function SiteMeasurementsPage() {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   const getStatusVariant = (status) => {
-    if (status.includes('Certified') || status.includes('Verified')) return 'success';
-    if (status.includes('Draft')) return 'warning';
+    if (status?.includes('Certified') || status?.includes('Verified')) return 'success';
+    if (status?.includes('Draft')) return 'warning';
     return 'neutral';
   };
 
@@ -255,7 +355,7 @@ export function SiteMeasurementsPage() {
           />
           <KpiCard
             label="PMC Verified Records"
-            value="2 Records"
+            value={`${measurements.filter(m => m.status === 'Verified by PMC').length} Records`}
             status="success"
             icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
           />
@@ -419,6 +519,15 @@ export function SiteMeasurementsPage() {
                           >
                             <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            title="Delete"
+                            onClick={() => setDeleteItem(m)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-red-500" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -533,33 +642,61 @@ export function SiteMeasurementsPage() {
         />
         <form id="jmr-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="Work Item & Location">
+          <div className="space-y-6">
+            <EntityEditModal.Section title="Activity Identification">
               <EntityEditModal.Grid>
-                <FormField label="Parent Project" required error={errors.project_id}>
+                <FormField label="Parent Project" error={errors.project_id} required>
                   <Select
-                    options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
+                    options={projects.map(p => ({ value: String(p.id), label: `${p.project_code || p.code} - ${p.project_name || p.name}` }))}
                     value={form.project_id}
                     onChange={(v) => handleFormChange('project_id', v)}
                   />
                 </FormField>
-
-                <FormField label="JMR Sheet Number" required error={errors.sheet_no}>
+                <FormField label="Work Order" error={errors.work_order_id} required>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Work Order...' },
+                      ...workOrders.map(wo => ({ value: String(wo.id), label: wo.work_order_no || `WO-${wo.id}` }))
+                    ]}
+                    value={form.work_order_id}
+                    onChange={(v) => handleFormChange('work_order_id', v)}
+                  />
+                </FormField>
+                <FormField label="JMR Sheet Number" error={errors.sheet_no} required>
                   <Input
                     value={form.sheet_no}
                     onChange={(e) => handleFormChange('sheet_no', e.target.value)}
-                    placeholder="JMR-2026-088"
+                    placeholder="e.g. JMR-2026-085"
                   />
                 </FormField>
-
-                <FormField label="BOQ Item Reference">
+                <FormField label="Measurement Date" error={errors.date} required>
                   <Input
-                    value={form.boq_item_ref}
-                    onChange={(e) => handleFormChange('boq_item_ref', e.target.value)}
-                    placeholder="BOQ-CONC-003"
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => handleFormChange('date', e.target.value)}
                   />
                 </FormField>
 
-                <FormField label="Work Item Description" required error={errors.item_description}>
+                <FormField label="Work Order Item" error={errors.work_order_item_id} required>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Work Order Item...' },
+                      ...workOrderItems.map(i => ({ value: String(i.id), label: `${i.item_code} - ${i.description || i.item_name}` }))
+                    ]}
+                    value={form.work_order_item_id}
+                    onChange={(v) => {
+                      handleFormChange('work_order_item_id', v);
+                      const wi = workOrderItems.find(i => String(i.id) === String(v));
+                      if (wi) {
+                        handleFormChange('item_description', wi.description || wi.item_name);
+                        handleFormChange('boq_item_ref', wi.item_code || wi.boq_item_ref);
+                        handleFormChange('rate', wi.rate || 0);
+                        handleFormChange('uom', wi.uom || wi.unit);
+                      }
+                    }}
+                  />
+                </FormField>
+                <FormField label="Work Item Description" error={errors.item_description} required>
                   <Input
                     value={form.item_description}
                     onChange={(e) => handleFormChange('item_description', e.target.value)}
@@ -571,7 +708,6 @@ export function SiteMeasurementsPage() {
                   <Input
                     value={form.location}
                     onChange={(e) => handleFormChange('location', e.target.value)}
-                    placeholder="e.g. Level 2 Columns C1-C12"
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -629,6 +765,7 @@ export function SiteMeasurementsPage() {
                 </FormField>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>
+          </div>
           </EntityEditModal.Body>
 
           <EntityEditModal.Footer
