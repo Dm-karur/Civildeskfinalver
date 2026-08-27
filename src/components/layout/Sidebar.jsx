@@ -233,7 +233,6 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
       '/alerts',
       '/notifications',
       '/planning',
-      '/procurement',
       '/materials/delivery-challans',
       '/materials/consumption',
       '/materials/ledger',
@@ -293,7 +292,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
             return false;
           }
           // Hide specific parent menus by name
-          if (item.item_name && ['Project Planning', 'Procurement', 'Client Billing & Receivables', 'Communication', 'Client Portal'].includes(item.item_name.trim())) {
+          if (item.item_name && ['Project Planning', 'Client Billing & Receivables', 'Communication', 'Client Portal'].includes(item.item_name.trim())) {
             return false;
           }
           // Hide parent menus that have no visible children after filtering
