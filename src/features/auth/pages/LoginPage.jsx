@@ -9,7 +9,7 @@ import loginImage from '../../../assets/loginpageimage.jpg';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, logout } = useAuth();
+  const { login, logout, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -19,11 +19,12 @@ export function LoginPage() {
   });
   const [errors, setErrors] = useState({});
 
-  // Clear any existing session when the login page loads
-  // This prevents the backend from auto-authenticating with stale cookies
+  // Clear any existing session when the login page loads only if the user is authenticated
   useEffect(() => {
-    logout().catch(() => { });
-  }, []);
+    if (isAuthenticated) {
+      logout().catch(() => { });
+    }
+  }, [isAuthenticated, logout]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
