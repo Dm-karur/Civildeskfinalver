@@ -297,30 +297,6 @@ export function ClientsTable({
                               ref={menuRef}
                               className="absolute right-0 top-7 z-50 w-44 bg-surface border border-border rounded-sm shadow-xl p-1 text-[11px] animate-in fade-in zoom-in-95 duration-100"
                             >
-                              <button
-                                onClick={() => {
-                                  setSelectedClient(client);
-                                  setOpenMenuId(null);
-                                }}
-                                className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-surface-muted flex items-center gap-2 text-text-primary"
-                              >
-                                <Eye className="w-3.5 h-3.5 text-primary" />
-                                <span>View Details</span>
-                              </button>
-                              
-                              <button
-                                onClick={() => {
-                                  setEditingClient(client);
-                                  setOpenMenuId(null);
-                                }}
-                                className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-surface-muted flex items-center gap-2 text-text-primary"
-                              >
-                                <Edit className="w-3.5 h-3.5 text-text-secondary" />
-                                <span>Edit Client</span>
-                              </button>
-
-                              <div className="border-t border-border my-1"></div>
-
                               {/* Quick Status Submenu */}
                               <div className="px-2 py-1 text-[9px] uppercase font-bold text-text-secondary">
                                 Quick Status Change:

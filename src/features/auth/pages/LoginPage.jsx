@@ -19,12 +19,13 @@ export function LoginPage() {
   });
   const [errors, setErrors] = useState({});
 
-  // Clear any existing session when the login page loads only if the user is authenticated
+  // Clear any existing session when the login page loads only if the user was authenticated on mount
   useEffect(() => {
     if (isAuthenticated) {
       logout().catch(() => { });
     }
-  }, [isAuthenticated, logout]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
