@@ -254,27 +254,6 @@ export function ClientsTable({
                     </td>
                     <td className="px-2 py-1">
                       <div className="flex items-center justify-center gap-0.5">
-                        {/* View Eye Button */}
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => setSelectedClient(client)}
-                          className="h-6 w-6 p-0" 
-                          title="View Client Details"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                        </Button>
-
-                        {/* Edit Button */}
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => setEditingClient(client)}
-                          className="h-6 w-6 p-0" 
-                          title="Edit Client"
-                        >
-                          <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                        </Button>
 
                         {/* Three Dots More Actions Menu */}
                         <div className="relative">
@@ -295,7 +274,11 @@ export function ClientsTable({
                           {isMenuOpen && (
                             <div 
                               ref={menuRef}
-                              className="absolute right-0 top-7 z-50 w-44 bg-surface border border-border rounded-sm shadow-xl p-1 text-[11px] animate-in fade-in zoom-in-95 duration-100"
+                              className={`absolute right-0 z-50 w-44 bg-surface border border-border rounded-sm shadow-xl p-1 text-[11px] animate-in fade-in zoom-in-95 duration-100 ${
+                                index >= filteredClients.length - 3 && filteredClients.length > 3
+                                  ? 'bottom-full mb-1 origin-bottom-right'
+                                  : 'top-7 origin-top-right'
+                              }`}
                             >
                               {/* Quick Status Submenu */}
                               <div className="px-2 py-1 text-[9px] uppercase font-bold text-text-secondary">
