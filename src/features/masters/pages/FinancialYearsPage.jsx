@@ -390,35 +390,32 @@ export function FinancialYearsPage() {
                 <FormField label="Workflow Status" required error={errors.status_id}>
                   <Select
                     value={form.status_id}
-                    onChange={(e) => handleFormChange('status_id', e.target.value)}
-                  >
-                    <option value="">Select a status</option>
-                    {statuses.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(val) => handleFormChange('status_id', val)}
+                    options={statuses.map((s) => ({ value: String(s.id), label: s.status_name || s.name }))}
+                    placeholder="Select a status"
+                  />
                 </FormField>
 
                 <FormField label="Is Current Year" error={errors.is_current}>
                   <Select
-                    value={form.is_current}
-                    onChange={(e) => handleFormChange('is_current', e.target.value)}
-                  >
-                    <option value="0">No</option>
-                    <option value="1">Yes (Set as Current)</option>
-                  </Select>
+                    value={String(form.is_current)}
+                    onChange={(val) => handleFormChange('is_current', val)}
+                    options={[
+                      { value: '0', label: 'No' },
+                      { value: '1', label: 'Yes (Set as Current)' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Active Status" error={errors.is_active}>
                   <Select
-                    value={form.is_active}
-                    onChange={(e) => handleFormChange('is_active', e.target.value)}
-                  >
-                    <option value="1">Active</option>
-                    <option value="0">Inactive</option>
-                  </Select>
+                    value={String(form.is_active)}
+                    onChange={(val) => handleFormChange('is_active', val)}
+                    options={[
+                      { value: '1', label: 'Active' },
+                      { value: '0', label: 'Inactive' }
+                    ]}
+                  />
                 </FormField>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>

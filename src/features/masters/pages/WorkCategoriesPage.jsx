@@ -385,45 +385,33 @@ export function WorkCategoriesPage() {
                 <FormField label="Parent Category" error={errors.parent_id}>
                   <Select
                     value={form.parent_id}
-                    onChange={(e) => handleFormChange('parent_id', e.target.value)}
-                  >
-                    <option value="">None (Set as Root)</option>
-                    {parentCategories
-                      .filter((c) => !editingItem || c.id !== editingItem.id) // Avoid self-parent nesting
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.code} - {c.name}
-                        </option>
-                      ))}
-                  </Select>
+                    onChange={(val) => handleFormChange('parent_id', val)}
+                    options={[
+                      { value: '', label: 'None (Set as Root)' },
+                      ...parentCategories
+                        .filter((c) => !editingItem || c.id !== editingItem.id)
+                        .map((c) => ({ value: String(c.id), label: `${c.category_code || c.code} - ${c.category_name || c.name}` }))
+                    ]}
+                    placeholder="None (Set as Root)"
+                  />
                 </FormField>
 
                 <FormField label="Work Stage" required error={errors.work_stage_id}>
                   <Select
                     value={form.work_stage_id}
-                    onChange={(e) => handleFormChange('work_stage_id', e.target.value)}
-                  >
-                    <option value="">Select work stage</option>
-                    {stages.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(val) => handleFormChange('work_stage_id', val)}
+                    options={stages.map((s) => ({ value: String(s.id), label: s.stage_name || s.name }))}
+                    placeholder="Select work stage"
+                  />
                 </FormField>
 
                 <FormField label="Progress Method" required error={errors.progress_method_id}>
                   <Select
                     value={form.progress_method_id}
-                    onChange={(e) => handleFormChange('progress_method_id', e.target.value)}
-                  >
-                    <option value="">Select progress method</option>
-                    {methods.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(val) => handleFormChange('progress_method_id', val)}
+                    options={methods.map((m) => ({ value: String(m.id), label: m.method_name || m.name }))}
+                    placeholder="Select progress method"
+                  />
                 </FormField>
 
                 <FormField label="Display Order" error={errors.display_order}>
@@ -438,12 +426,13 @@ export function WorkCategoriesPage() {
 
                 <FormField label="Active Status" error={errors.is_active}>
                   <Select
-                    value={form.is_active}
-                    onChange={(e) => handleFormChange('is_active', e.target.value)}
-                  >
-                    <option value="1">Active</option>
-                    <option value="0">Inactive</option>
-                  </Select>
+                    value={String(form.is_active)}
+                    onChange={(val) => handleFormChange('is_active', val)}
+                    options={[
+                      { value: '1', label: 'Active' },
+                      { value: '0', label: 'Inactive' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Description" className="md:col-span-2" error={errors.description}>

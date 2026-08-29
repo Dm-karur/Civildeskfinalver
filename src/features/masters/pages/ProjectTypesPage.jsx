@@ -60,7 +60,7 @@ export function ProjectTypesPage() {
       const typesList = resTypes?.data?.project_types ?? resTypes?.project_types ?? (Array.isArray(resTypes) ? resTypes : []);
       setProjectTypes(Array.isArray(typesList) ? typesList : []);
 
-      // Handle Billing Methods Master
+      // Handle Billing Methods
       const billingList = resMasters?.data?.billing_methods ?? resMasters?.billing_methods ?? [];
       setBillingMethods(Array.isArray(billingList) ? billingList : []);
     } catch (err) {
@@ -371,15 +371,10 @@ export function ProjectTypesPage() {
                 <FormField label="Billing Method" required error={errors.billing_method_id}>
                   <Select
                     value={form.billing_method_id}
-                    onChange={(e) => handleFormChange('billing_method_id', e.target.value)}
-                  >
-                    <option value="">Select a billing method</option>
-                    {billingMethods.map((bm) => (
-                      <option key={bm.id} value={bm.id}>
-                        {bm.name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(val) => handleFormChange('billing_method_id', val)}
+                    options={billingMethods.map((bm) => ({ value: String(bm.id), label: bm.method_name || bm.name }))}
+                    placeholder="Select a billing method"
+                  />
                 </FormField>
 
                 <FormField label="Default Duration (Days)" error={errors.default_duration_days}>
@@ -404,12 +399,13 @@ export function ProjectTypesPage() {
 
                 <FormField label="Status" error={errors.is_active}>
                   <Select
-                    value={form.is_active}
-                    onChange={(e) => handleFormChange('is_active', e.target.value)}
-                  >
-                    <option value="1">Active</option>
-                    <option value="0">Inactive</option>
-                  </Select>
+                    value={String(form.is_active)}
+                    onChange={(val) => handleFormChange('is_active', val)}
+                    options={[
+                      { value: '1', label: 'Active' },
+                      { value: '0', label: 'Inactive' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Description" className="md:col-span-2" error={errors.description}>

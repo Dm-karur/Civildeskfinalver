@@ -384,15 +384,10 @@ export function UnitsOfMeasurementPage() {
                 <FormField label="Unit Type" required error={errors.unit_type_id}>
                   <Select
                     value={form.unit_type_id}
-                    onChange={(e) => handleFormChange('unit_type_id', e.target.value)}
-                  >
-                    <option value="">Select unit type</option>
-                    {unitTypes.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(val) => handleFormChange('unit_type_id', val)}
+                    options={unitTypes.map((t) => ({ value: String(t.id), label: t.unit_type_name || t.name }))}
+                    placeholder="Select unit type"
+                  />
                 </FormField>
 
                 <FormField label="Decimal Places" error={errors.decimal_places}>
@@ -418,12 +413,13 @@ export function UnitsOfMeasurementPage() {
 
                 <FormField label="Active Status" error={errors.is_active}>
                   <Select
-                    value={form.is_active}
-                    onChange={(e) => handleFormChange('is_active', e.target.value)}
-                  >
-                    <option value="1">Active</option>
-                    <option value="0">Inactive</option>
-                  </Select>
+                    value={String(form.is_active)}
+                    onChange={(val) => handleFormChange('is_active', val)}
+                    options={[
+                      { value: '1', label: 'Active' },
+                      { value: '0', label: 'Inactive' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Description" className="md:col-span-2" error={errors.description}>
