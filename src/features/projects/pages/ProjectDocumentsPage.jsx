@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, projectDocumentsApi, sitesApi, mastersApi } from '../../../api/apiservice';
+import { projectsApi, projectDocumentsApi, sitesApi, mastersApi, request } from '../../../api/apiservice';
 
 const DOCUMENT_CATEGORIES = [
   { id: 'all', name: 'All Documents' },
@@ -192,18 +192,19 @@ export function ProjectDocumentsPage() {
       }
 
       if (editingDoc?.id) {
-        // Many PHP frameworks use POST with _method=PATCH for multipart/form-data updates
-        // but if the backend accepts standard PATCH with form-data, we'll try that.
-        // Wait, standard HTML forms don't support PATCH with files. Let's append _method to POST!
-        // But projectDocumentsApi.update calls request.patch. Axios PATCH can send FormData.
-        await projectDocumentsApi.update(editingDoc.id, payload);
+        // Laravel requires POST with _method=PATCH to correctly parse multipart/form-data
+        payload.append('_method', 'PATCH');
+        const res = await request.post(`/project-documents/${encodeURIComponent(editingDoc.id)}`, payload);
+        const updated = res?.data?.data ?? res?.data ?? res ?? Object.fromEntries(payload.entries());
+        setDocuments(prev => prev.map(d => String(d.id) === String(editingDoc.id) ? { ...d, ...updated } : d));
         toast.success('Document updated successfully.');
       } else {
-        await projectDocumentsApi.create(payload);
+        const res = await projectDocumentsApi.create(payload);
+        const created = res?.data?.data ?? res?.data ?? res ?? Object.fromEntries(payload.entries());
+        setDocuments(prev => [created, ...prev]);
         toast.success('Document uploaded successfully.');
       }
 
-      await fetchDocuments();
       setIsAddOpen(false);
       setEditingDoc(null);
     } catch (error) {
@@ -226,12 +227,30 @@ export function ProjectDocumentsPage() {
     if (!deleteDoc?.id) return;
     try {
       await projectDocumentsApi.remove(deleteDoc.id);
+      setDocuments(prev => prev.filter(d => String(d.id) !== String(deleteDoc.id)));
       toast.success('Document deleted.');
-      await fetchDocuments();
     } catch (error) {
       toast.error(error?.response?.data?.message || 'Failed to delete document.');
     } finally {
       setDeleteDoc(null);
+    }
+  };
+
+  const handleDownload = async (doc) => {
+    if (!doc?.id) return;
+    toast.info(`Downloading ${doc.original_file_name || 'document'}...`);
+    try {
+      const blob = await projectDocumentsApi.download(doc.id);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', doc.original_file_name || `document-${doc.id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error?.message || 'Failed to download document.');
     }
   };
 
@@ -505,7 +524,7 @@ export function ProjectDocumentsPage() {
                               size="sm"
                               className="h-6 w-6 p-0"
                               title="Download File"
-                              onClick={() => toast.success(`Downloading ${doc.original_file_name}...`)}
+                              onClick={() => handleDownload(doc)}
                             >
                               <Download className="w-3.5 h-3.5 text-text-secondary hover:text-emerald-600" />
                             </Button>
@@ -598,7 +617,7 @@ export function ProjectDocumentsPage() {
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0"
-                        onClick={() => toast.success(`Downloading ${doc.original_file_name}...`)}
+                        onClick={() => handleDownload(doc)}
                       >
                         <Download className="w-3.5 h-3.5 text-emerald-600" />
                       </Button>
