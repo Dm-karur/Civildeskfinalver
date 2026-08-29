@@ -74,12 +74,32 @@ export function AttendanceExceptionsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  // Load Projects and Exceptions
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+  }, []);
+
+  const fetchExceptions = async () => {
+    setLoading(true);
+    try {
+      const res = await request.get('/labour-attendance/exceptions');
+      // Similar to extractArray utility from earlier pages
+      const data = res?.data?.exceptions ?? res?.exceptions ?? (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
+      setExceptions(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to load exceptions:", error);
+      toast.error("Could not load exceptions from server.");
+      setExceptions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExceptions();
   }, []);
 
   // Form Handlers
@@ -164,41 +184,55 @@ export function AttendanceExceptionsPage() {
       };
 
       if (editingItem?.id) {
-        try { await request.patch(`/labour-attendance/exceptions/${editingItem.id}`, newException); } catch(e){}
-        setExceptions(prev => prev.map(e => e.id === editingItem.id ? newException : e));
+        await request.patch(`/labour-attendance/exceptions/${editingItem.id}`, newException);
         toast.success('Attendance exception updated.');
       } else {
-        try { await request.post('/labour-attendance/exceptions', newException); } catch(e){}
-        setExceptions(prev => [newException, ...prev]);
+        await request.post('/labour-attendance/exceptions', newException);
         toast.success('Attendance exception logged.');
       }
+      
+      // Refresh the list from the server to ensure DB consistency
+      await fetchExceptions();
 
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save exception.');
+    } catch (error) {
+      console.error(error);
+      const errMsg = error?.response?.data?.message || error?.message || 'Failed to save exception.';
+      toast.error(errMsg);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleApprove = (item) => {
-    setExceptions(prev => prev.map(e => e.id === item.id ? { ...e, status: 'Regularized' } : e));
-    toast.success(`Attendance regularized for ${item.worker_name}. Wage credited.`);
+  const handleApprove = async (item) => {
+    try {
+      await request.patch(`/labour-attendance/exceptions/${item.id}`, { status: 'Regularized' });
+      await fetchExceptions();
+      toast.success(`Attendance regularized for ${item.worker_name}. Wage credited.`);
+    } catch (error) {
+      toast.error('Failed to approve exception.');
+    }
   };
 
-  const handleReject = (item) => {
-    setExceptions(prev => prev.map(e => e.id === item.id ? { ...e, status: 'Rejected' } : e));
-    toast.success(`Exception rejected for ${item.worker_name}. Deduction applied.`);
+  const handleReject = async (item) => {
+    try {
+      await request.patch(`/labour-attendance/exceptions/${item.id}`, { status: 'Rejected' });
+      await fetchExceptions();
+      toast.success(`Exception rejected for ${item.worker_name}. Deduction applied.`);
+    } catch (error) {
+      toast.error('Failed to reject exception.');
+    }
   };
 
   const confirmDelete = async () => {
     if (!deleteItem?.id) return;
     try {
-      try { await request.delete(`/labour-attendance/exceptions/${deleteItem.id}`); } catch(e){}
-      setExceptions(prev => prev.filter(e => e.id !== deleteItem.id));
+      await request.delete(`/labour-attendance/exceptions/${deleteItem.id}`);
+      await fetchExceptions();
       toast.success('Exception record deleted.');
-    } catch {
+    } catch (error) {
+      console.error(error);
       toast.error('Failed to delete exception.');
     } finally {
       setDeleteItem(null);

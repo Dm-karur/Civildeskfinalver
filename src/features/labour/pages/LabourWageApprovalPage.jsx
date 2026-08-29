@@ -233,14 +233,8 @@ export function LabourWageApprovalPage() {
 
     try {
       if (editingItem?.id) {
-        // Backend doesn't support PATCH for wage batches (immutable). 
-        // We persist the visual edits locally and merge them in loadBatches.
-        const localEditsStr = localStorage.getItem('wage_batch_edits');
-        const localEdits = localEditsStr ? JSON.parse(localEditsStr) : {};
-        localEdits[editingItem.id] = newBatch;
-        localStorage.setItem('wage_batch_edits', JSON.stringify(localEdits));
-        
-        toast.success('Wage batch updated (Local Override).');
+        await request.put(`/labour-wages/${editingItem.id}`, newBatch);
+        toast.success('Wage batch updated.');
       } else {
         await wagesApi.create(newBatch);
         toast.success('Wage batch submitted for approval.');

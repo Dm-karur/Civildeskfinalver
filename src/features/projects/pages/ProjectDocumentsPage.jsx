@@ -121,13 +121,14 @@ export function ProjectDocumentsPage() {
   };
 
   const handleOpenEdit = (doc) => {
+    const docCatId = doc.category_id || doc.project_document_category_id || doc.document_type_id;
     setForm({
       project_id: String(doc.project_id || '1'),
       site_id: String(doc.site_id || ''),
       document_title: doc.document_title || '',
       document_number: doc.document_number || '',
       document_type_id: String(doc.document_type_id || '1'),
-      category_id: doc.category_id || 'drawings',
+      category_id: docCatId ? String(docCatId) : 'drawings',
       revision_number: doc.revision_number || 'R0',
       document_date: doc.document_date ? doc.document_date.split(' ')[0] : '',
       expiry_date: doc.expiry_date ? doc.expiry_date.split(' ')[0] : '',
@@ -159,10 +160,6 @@ export function ProjectDocumentsPage() {
 
     setSaving(true);
     try {
-      const payload = new FormData();
-      payload.append('project_id', form.project_id);
-      if (form.site_id) payload.append('site_id', form.site_id);
-      
       // Safely map string fallback categories to integers to satisfy backend validation
       const CATEGORY_MAP = { 'drawings': 1, 'contracts': 2, 'approvals': 3, 'qc': 4, 'safety': 5 };
       let docTypeId = form.category_id;
@@ -171,36 +168,62 @@ export function ProjectDocumentsPage() {
       } else if (isNaN(docTypeId)) {
          docTypeId = 1;
       }
+      docTypeId = Number(docTypeId) || 1;
       
-      payload.append('document_type_id', docTypeId);
-      payload.append('category_id', docTypeId);
-      payload.append('project_document_category_id', docTypeId); // Fallback for database field
-      
-      payload.append('document_title', form.document_title);
-      payload.append('document_number', form.document_number);
-      payload.append('revision_number', form.revision_number || 'R0');
-      if (form.document_date) payload.append('document_date', form.document_date);
-      if (form.expiry_date) payload.append('expiry_date', form.expiry_date);
-      payload.append('original_file_name', form.original_file_name || `${form.document_number}.${form.file_extension}`);
-      payload.append('file_extension', form.file_extension || 'pdf');
-      payload.append('status_name', form.status_name || 'Approved');
-      payload.append('remarks', form.remarks || '');
-      
+      let payload;
       if (form.file) {
-        payload.append('file', form.file); // Assuming the backend field is 'file'
-        payload.append('document_file', form.file); // Fallback for 'document_file'
+        payload = new FormData();
+        payload.append('project_id', form.project_id);
+        if (form.site_id) payload.append('site_id', form.site_id);
+        payload.append('document_type_id', docTypeId);
+        payload.append('category_id', docTypeId);
+        payload.append('project_document_category_id', docTypeId);
+        payload.append('document_title', form.document_title);
+        payload.append('document_number', form.document_number);
+        payload.append('revision_number', form.revision_number || 'R0');
+        if (form.document_date) payload.append('document_date', form.document_date);
+        if (form.expiry_date) payload.append('expiry_date', form.expiry_date);
+        payload.append('original_file_name', form.original_file_name || `${form.document_number}.${form.file_extension}`);
+        payload.append('file_extension', form.file_extension || 'pdf');
+        payload.append('status_name', form.status_name || 'Approved');
+        payload.append('remarks', form.remarks || '');
+        payload.append('file', form.file);
+        payload.append('document_file', form.file);
+      } else {
+        payload = {
+          project_id: form.project_id,
+          site_id: form.site_id || null,
+          document_type_id: docTypeId,
+          category_id: docTypeId,
+          project_document_category_id: docTypeId,
+          document_title: form.document_title,
+          document_number: form.document_number,
+          revision_number: form.revision_number || 'R0',
+          document_date: form.document_date || null,
+          expiry_date: form.expiry_date || null,
+          original_file_name: form.original_file_name || `${form.document_number}.${form.file_extension}`,
+          file_extension: form.file_extension || 'pdf',
+          status_name: form.status_name || 'Approved',
+          remarks: form.remarks || '',
+        };
       }
 
       if (editingDoc?.id) {
-        // Laravel requires POST with _method=PATCH to correctly parse multipart/form-data
-        payload.append('_method', 'PATCH');
-        const res = await request.post(`/project-documents/${encodeURIComponent(editingDoc.id)}`, payload);
-        const updated = res?.data?.data ?? res?.data ?? res ?? Object.fromEntries(payload.entries());
-        setDocuments(prev => prev.map(d => String(d.id) === String(editingDoc.id) ? { ...d, ...updated } : d));
+        if (form.file) {
+          // Laravel requires POST with _method=PATCH to correctly parse multipart/form-data
+          payload.append('_method', 'PATCH');
+          const res = await request.post(`/project-documents/${encodeURIComponent(editingDoc.id)}`, payload);
+          const updated = res?.data?.document ?? res?.data?.data ?? res?.data ?? res ?? Object.fromEntries(payload.entries());
+          setDocuments(prev => prev.map(d => String(d.id) === String(editingDoc.id) ? { ...d, ...updated } : d));
+        } else {
+          const res = await projectDocumentsApi.update(editingDoc.id, payload);
+          const updated = res?.data?.document ?? res?.data?.data ?? res?.data ?? res ?? payload;
+          setDocuments(prev => prev.map(d => String(d.id) === String(editingDoc.id) ? { ...d, ...updated } : d));
+        }
         toast.success('Document updated successfully.');
       } else {
         const res = await projectDocumentsApi.create(payload);
-        const created = res?.data?.data ?? res?.data ?? res ?? Object.fromEntries(payload.entries());
+        const created = res?.data?.data ?? res?.data ?? res ?? (form.file ? Object.fromEntries(payload.entries()) : payload);
         setDocuments(prev => [created, ...prev]);
         toast.success('Document uploaded successfully.');
       }
