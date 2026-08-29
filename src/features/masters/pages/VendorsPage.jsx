@@ -75,7 +75,7 @@ export function VendorsPage() {
       const vendorList = resVendors?.data?.material_suppliers ?? resVendors?.material_suppliers ?? (Array.isArray(resVendors) ? resVendors : []);
       setVendors(Array.isArray(vendorList) ? vendorList : []);
 
-      const statusList = resMasters?.data?.supplier_statuses ?? resMasters?.supplier_statuses ?? [];
+      const statusList = resMasters?.data?.masters?.supplier_statuses ?? resMasters?.masters?.supplier_statuses ?? resMasters?.data?.supplier_statuses ?? resMasters?.supplier_statuses ?? [];
       setStatuses(Array.isArray(statusList) ? statusList : []);
     } catch (err) {
       toast.error('Failed to load vendor/supplier data.');
@@ -495,28 +495,26 @@ export function VendorsPage() {
                 <FormField label="Vendor Rating (1-5)" error={errors.rating}>
                   <Select
                     value={form.rating}
-                    onChange={(e) => handleFormChange('rating', e.target.value)}
-                  >
-                    <option value="5">5 Stars (Excellent)</option>
-                    <option value="4">4 Stars (Good)</option>
-                    <option value="3">3 Stars (Standard)</option>
-                    <option value="2">2 Stars (Below Standard)</option>
-                    <option value="1">1 Star (Poor)</option>
-                  </Select>
+                    onChange={(val) => handleFormChange('rating', val)}
+                    options={[
+                      { value: '5', label: '5 Stars (Excellent)' },
+                      { value: '4', label: '4 Stars (Good)' },
+                      { value: '3', label: '3 Stars (Standard)' },
+                      { value: '2', label: '2 Stars (Below Standard)' },
+                      { value: '1', label: '1 Star (Poor)' },
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Workflow Status" required error={errors.status_id}>
                   <Select
                     value={form.status_id}
-                    onChange={(e) => handleFormChange('status_id', e.target.value)}
-                  >
-                    <option value="">Select status</option>
-                    {statuses.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.status_name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(val) => handleFormChange('status_id', val)}
+                    options={[
+                      { value: '', label: 'Select status' },
+                      ...statuses.map((s) => ({ value: String(s.id), label: s.status_name }))
+                    ]}
+                  />
                 </FormField>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>

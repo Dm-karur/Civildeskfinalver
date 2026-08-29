@@ -59,7 +59,7 @@ export function ExpenseCategoriesPage() {
       const catList = resCategories?.data?.expense_categories ?? resCategories?.expense_categories ?? (Array.isArray(resCategories) ? resCategories : []);
       setCategories(Array.isArray(catList) ? catList : []);
 
-      const scopeList = resMasters?.data?.expense_scopes ?? resMasters?.expense_scopes ?? [];
+      const scopeList = resMasters?.data?.masters?.expense_scopes ?? resMasters?.masters?.expense_scopes ?? resMasters?.data?.expense_scopes ?? resMasters?.expense_scopes ?? [];
       setScopes(Array.isArray(scopeList) ? scopeList : []);
     } catch (err) {
       toast.error('Failed to load expense category data.');
@@ -273,22 +273,27 @@ export function ExpenseCategoriesPage() {
                     <td className="px-3 py-2 text-center">
                       <span
                         className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                          item.default_taxable ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
+                          Number(item.default_taxable) === 1 ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
                         }`}
                       >
-                        {item.default_taxable ? 'Taxable' : 'No'}
+                        {Number(item.default_taxable) === 1 ? 'Taxable' : 'No'}
                       </span>
                     </td>
                     <td className="px-3 py-2 hidden md:table-cell text-text-secondary text-[11px] truncate">
-                      {item.parent_name ? `${item.parent_code} - ${item.parent_name}` : 'Root / None'}
+                      {item.parent_id 
+                        ? (() => {
+                            const parent = categories.find((c) => c.id === item.parent_id);
+                            return parent ? `${parent.category_code} - ${parent.category_name}` : 'Root / None';
+                          })()
+                        : 'Root / None'}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <span
                         className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                          item.is_active ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
+                          Number(item.is_active) === 1 ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
                         }`}
                       >
-                        {item.is_active ? 'Active' : 'Inactive'}
+                        {Number(item.is_active) === 1 ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-3 py-2">
@@ -355,51 +360,47 @@ export function ExpenseCategoriesPage() {
                 <FormField label="Parent Category" error={errors.parent_id}>
                   <Select
                     value={form.parent_id}
-                    onChange={(e) => handleFormChange('parent_id', e.target.value)}
-                  >
-                    <option value="">None (Set as Root)</option>
-                    {categories
-                      .filter((c) => !editingItem || c.id !== editingItem.id) // Avoid self-parent nesting
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.category_code} - {c.category_name}
-                        </option>
-                      ))}
-                  </Select>
+                    onChange={(val) => handleFormChange('parent_id', val)}
+                    options={[
+                      { value: '', label: 'None (Set as Root)' },
+                      ...categories
+                        .filter((c) => !editingItem || c.id !== editingItem.id) // Avoid self-parent nesting
+                        .map((c) => ({ value: String(c.id), label: `${c.category_code} - ${c.category_name}` }))
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Expense Scope" required error={errors.expense_scope_id}>
                   <Select
                     value={form.expense_scope_id}
-                    onChange={(e) => handleFormChange('expense_scope_id', e.target.value)}
-                  >
-                    <option value="">Select scope</option>
-                    {scopes.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.expense_scope_name || s.name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(val) => handleFormChange('expense_scope_id', val)}
+                    options={[
+                      { value: '', label: 'Select scope' },
+                      ...scopes.map((s) => ({ value: String(s.id), label: s.expense_scope_name || s.name }))
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Taxable Status" error={errors.default_taxable}>
                   <Select
                     value={form.default_taxable}
-                    onChange={(e) => handleFormChange('default_taxable', e.target.value)}
-                  >
-                    <option value="0">Non-Taxable</option>
-                    <option value="1">Taxable by Default</option>
-                  </Select>
+                    onChange={(val) => handleFormChange('default_taxable', val)}
+                    options={[
+                      { value: '0', label: 'Non-Taxable' },
+                      { value: '1', label: 'Taxable by Default' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Requires Document" error={errors.requires_document}>
                   <Select
                     value={form.requires_document}
-                    onChange={(e) => handleFormChange('requires_document', e.target.value)}
-                  >
-                    <option value="0">Optional Document</option>
-                    <option value="1">Mandatory Bill Attachment</option>
-                  </Select>
+                    onChange={(val) => handleFormChange('requires_document', val)}
+                    options={[
+                      { value: '0', label: 'Optional Document' },
+                      { value: '1', label: 'Mandatory Bill Attachment' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Display Order" error={errors.display_order}>
@@ -415,11 +416,12 @@ export function ExpenseCategoriesPage() {
                 <FormField label="Active Status" error={errors.is_active}>
                   <Select
                     value={form.is_active}
-                    onChange={(e) => handleFormChange('is_active', e.target.value)}
-                  >
-                    <option value="1">Active</option>
-                    <option value="0">Inactive</option>
-                  </Select>
+                    onChange={(val) => handleFormChange('is_active', val)}
+                    options={[
+                      { value: '1', label: 'Active' },
+                      { value: '0', label: 'Inactive' }
+                    ]}
+                  />
                 </FormField>
 
                 <FormField label="Description" className="md:col-span-2" error={errors.description}>
