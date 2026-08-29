@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, request } from '../../../api/apiservice';
+import { projectsApi, request, mastersApi } from '../../../api/apiservice';
 import clsx from 'clsx';
 
 const MILESTONE_PHASES = [
@@ -66,20 +66,31 @@ export function ProjectMilestonesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [phases, setPhases] = useState(MILESTONE_PHASES);
 
-  // Load Projects
+  // Load Projects and Data
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [projRes, mileRes] = await Promise.all([
+      const [projRes, mileRes, mastersRes, stagesRes] = await Promise.all([
         projectsApi.list().catch(() => ({ data: { projects: [] } })),
-        request.get('/project-milestones').catch(() => ({ data: { project_milestones: [] } }))
+        request.get('/project-milestones', { params: { per_page: 1000, all: true } }).catch(() => ({ data: { project_milestones: [] } })),
+        mastersApi.all().catch(() => ({ data: {} })),
+        request.get('/execution-stages').catch(() => null)
       ]);
       const pData = projRes?.data?.projects || projRes?.projects || (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pData) ? pData : []);
       
-      const mData = mileRes?.data?.project_milestones || mileRes?.project_milestones || (Array.isArray(mileRes?.data) ? mileRes.data : []);
+      const mData = mileRes?.data?.project_milestones ?? mileRes?.data?.milestones ?? mileRes?.project_milestones ?? mileRes?.milestones ?? mileRes?.data?.data ?? mileRes?.data ?? mileRes ?? [];
       setMilestones(Array.isArray(mData) ? mData : []);
+
+      const rawStages = stagesRes?.data?.execution_stages ?? stagesRes?.data?.data ?? stagesRes?.data ?? mastersRes?.data?.execution_stages ?? mastersRes?.data?.project_phases ?? mastersRes?.data?.milestone_phases ?? mastersRes?.data?.phases ?? mastersRes?.data?.stages ?? [];
+      if (Array.isArray(rawStages) && rawStages.length > 0) {
+        setPhases([
+          { id: 'all', name: 'All Phases' },
+          ...rawStages.map(s => ({ id: String(s.id), name: s.name || s.stage_name || s.phase_name || s.title }))
+        ]);
+      }
     } catch (err) {
       toast.error('Failed to fetch data.');
       setProjects([]);
@@ -98,6 +109,7 @@ export function ProjectMilestonesPage() {
     setForm({
       ...EMPTY_FORM,
       project_id: selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1'),
+      phase_id: phases.length > 1 ? phases[1].id : 'foundation',
       milestone_code: `MS-0${milestones.length + 1}`,
       target_date: new Date().toISOString().split('T')[0],
     });
@@ -144,16 +156,27 @@ export function ProjectMilestonesPage() {
     setSaving(true);
     try {
       const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const phaseObj = MILESTONE_PHASES.find(p => p.id === form.phase_id);
+      const phaseObj = phases.find(p => String(p.id) === String(form.phase_id));
+
+      const PHASE_MAP = { 'foundation': 1, 'superstructure': 2, 'mep': 3, 'finishing': 4, 'handover': 5 };
+      let mappedPhaseId = form.phase_id;
+      if (isNaN(mappedPhaseId) && PHASE_MAP[mappedPhaseId]) {
+         mappedPhaseId = PHASE_MAP[mappedPhaseId];
+      } else if (isNaN(mappedPhaseId)) {
+         mappedPhaseId = 1;
+      }
 
       const newM = {
-        id: editingMilestone?.id || Date.now(),
         project_id: Number(form.project_id),
         project_code: selectedProj?.project_code || 'PRJ-2026-001',
         project_name: selectedProj?.project_name || 'Civil Project',
         milestone_code: form.milestone_code,
         milestone_name: form.milestone_name,
-        phase_id: form.phase_id,
+        phase_id: mappedPhaseId,
+        project_phase_id: mappedPhaseId,
+        milestone_phase_id: mappedPhaseId,
+        execution_stage_id: mappedPhaseId, // added for backend
+        stage_id: mappedPhaseId, // fallback
         phase_name: phaseObj?.name || 'General Phase',
         weightage_percent: Number(form.weightage_percent || 0),
         target_date: form.target_date || null,
@@ -165,18 +188,30 @@ export function ProjectMilestonesPage() {
       };
 
       if (editingMilestone?.id) {
-        await request.patch(`/project-milestones/${encodeURIComponent(editingMilestone.id)}`, newM);
+        const res = await request.patch(`/project-milestones/${encodeURIComponent(editingMilestone.id)}`, newM);
+        const updated = res?.data?.data ?? res?.data ?? res ?? newM;
+        setMilestones(prev => prev.map(m => String(m.id) === String(editingMilestone.id) ? { ...m, ...updated } : m));
         toast.success('Milestone updated successfully.');
       } else {
-        await request.post('/project-milestones', newM);
+        const res = await request.post('/project-milestones', newM);
+        const created = res?.data?.data ?? res?.data ?? res ?? { ...newM, id: Date.now() };
+        setMilestones(prev => [created, ...prev]);
         toast.success('Milestone created successfully.');
       }
 
       setIsAddOpen(false);
       setEditingMilestone(null);
-      await fetchData();
     } catch (err) {
-      toast.error(err.message || 'Failed to save milestone.');
+      console.error('Milestone upload error:', err);
+      let errMsg = err.message || 'Failed to save milestone.';
+      const validationErrors = err.errors || err.response?.data?.errors;
+      if (validationErrors && typeof validationErrors === 'object') {
+        const firstError = Array.isArray(Object.values(validationErrors)[0]) 
+          ? Object.values(validationErrors)[0][0] 
+          : Object.values(validationErrors)[0];
+        errMsg = `${errMsg}: ${firstError}`;
+      }
+      toast.error(errMsg);
     } finally {
       setSaving(false);
     }
@@ -186,8 +221,8 @@ export function ProjectMilestonesPage() {
     if (!deleteMilestone?.id) return;
     try {
       await request.delete(`/project-milestones/${encodeURIComponent(deleteMilestone.id)}`);
+      setMilestones(prev => prev.filter(m => String(m.id) !== String(deleteMilestone.id)));
       toast.success('Milestone deleted.');
-      await fetchData();
     } catch (err) {
       toast.error(err.message || 'Failed to delete milestone.');
     } finally {
@@ -199,7 +234,12 @@ export function ProjectMilestonesPage() {
   const filtered = useMemo(() => {
     return milestones.filter(m => {
       if (selectedProjectId !== 'all' && String(m.project_id) !== String(selectedProjectId)) return false;
-      if (activePhase !== 'all' && m.phase_id !== activePhase) return false;
+      if (activePhase !== 'all') {
+        const PHASE_MAP = { 'foundation': '1', 'superstructure': '2', 'mep': '3', 'finishing': '4', 'handover': '5' };
+        const expectedId = PHASE_MAP[activePhase] || activePhase;
+        const mPhaseId = String(m.phase_id || m.execution_stage_id || m.project_phase_id || m.stage_id);
+        if (mPhaseId !== expectedId && mPhaseId !== activePhase) return false;
+      }
       if (statusFilter !== 'all' && m.status !== statusFilter) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -325,7 +365,7 @@ export function ProjectMilestonesPage() {
 
         {/* Phase Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-none">
-          {MILESTONE_PHASES.map(phase => (
+          {phases.map(phase => (
             <button
               key={phase.id}
               onClick={() => setActivePhase(phase.id)}
@@ -649,7 +689,7 @@ export function ProjectMilestonesPage() {
 
                 <FormField label="Execution Phase / Stage" required>
                   <Select
-                    options={MILESTONE_PHASES.filter(p => p.id !== 'all').map(p => ({ value: p.id, label: p.name }))}
+                    options={phases.filter(p => p.id !== 'all').map(p => ({ value: p.id, label: p.name }))}
                     value={form.phase_id}
                     onChange={(v) => handleFormChange('phase_id', v)}
                   />
