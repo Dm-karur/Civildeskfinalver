@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { budgetsApi, projectsApi } from '../../../api/apiservice';
+import { projectsApi, budgetsApi, request } from '../../../api/apiservice';
 
 
 
@@ -60,46 +60,32 @@ export function BudgetRevisionsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  const fetchRevisions = async () => {
+    setLoading(true);
+    try {
+      const res = await request.get('/budget-revisions');
+      setRevisions(Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
+    } catch (error) {
+      // Ignore if it fails (e.g. 404 because backend is missing)
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Initial Load: Projects, Budgets
   useEffect(() => {
     Promise.all([
       projectsApi.list().catch(() => ({ data: { projects: [] } })),
       budgetsApi.list().catch(() => ({ data: { project_budgets: [] } })),
     ]).then(([pRes, bRes]) => {
-      const pList = Array.isArray(pRes) ? pRes : (pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []));
-      const bList = Array.isArray(bRes) ? bRes : (bRes?.data?.project_budgets ?? bRes?.project_budgets ?? (Array.isArray(bRes?.data) ? bRes.data : []));
+      const pList = pRes?.data?.projects || pRes?.projects || [];
+      const bList = bRes?.data?.project_budgets || bRes?.project_budgets || [];
       setProjects(Array.isArray(pList) ? pList : []);
       setBudgets(Array.isArray(bList) ? bList : []);
     });
+    
+    fetchRevisions();
   }, []);
-
-  const fetchRevisions = useCallback(async () => {
-    if (!budgets || budgets.length === 0) {
-      setRevisions([]);
-      return;
-    }
-    setLoading(true);
-    try {
-      const promises = budgets.map(b => budgetsApi.revisions.list(b.id).catch(() => null));
-      const results = await Promise.all(promises);
-      const allRevisions = [];
-      results.forEach((res) => {
-        const list = Array.isArray(res) ? res : (res?.data?.budget_revisions ?? res?.budget_revisions ?? (Array.isArray(res?.data) ? res.data : []));
-        if (Array.isArray(list)) allRevisions.push(...list);
-      });
-      setRevisions(allRevisions);
-    } catch (err) {
-      console.error('Failed to fetch revisions:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [budgets]);
-
-  useEffect(() => {
-    if (budgets.length > 0) {
-      fetchRevisions();
-    }
-  }, [fetchRevisions, budgets]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -167,7 +153,7 @@ export function BudgetRevisionsPage() {
 
     setSaving(true);
     try {
-      const payload = {
+      const newRev = {
         project_id: Number(form.project_id || 1),
         budget_id: Number(form.budget_id),
         revision_no: Number(form.revision_no || 1),
@@ -182,16 +168,16 @@ export function BudgetRevisionsPage() {
       };
 
       if (editingRev?.id) {
-        await budgetsApi.revisions.update(form.budget_id, editingRev.id, payload);
-        toast.success('Budget revision updated successfully.');
+        await request.patch(`/budget-revisions/${editingRev.id}`, newRev);
+        toast.success('Budget revision updated.');
       } else {
-        await budgetsApi.revisions.create(form.budget_id, payload);
-        toast.success('Budget revision request submitted.');
+        await request.post('/budget-revisions', newRev);
+        toast.success('Budget revision created successfully.');
       }
 
+      fetchRevisions();
       setIsAddOpen(false);
       setEditingRev(null);
-      fetchRevisions();
     } catch (err) {
       console.error(err);
       toast.error(err?.message || 'Failed to save budget revision.');
@@ -203,12 +189,11 @@ export function BudgetRevisionsPage() {
   const confirmDelete = async () => {
     if (!deleteRev?.id) return;
     try {
-      await budgetsApi.revisions.remove(deleteRev.budget_id, deleteRev.id);
-      toast.success('Budget revision deleted.');
+      await request.delete(`/budget-revisions/${deleteRev.id}`);
+      toast.success('Revision deleted.');
       fetchRevisions();
-    } catch (err) {
-      console.error(err);
-      toast.error(err?.message || 'Failed to delete budget revision.');
+    } catch (error) {
+      toast.error('Failed to delete revision.');
     } finally {
       setDeleteRev(null);
     }

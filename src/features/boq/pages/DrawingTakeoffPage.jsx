@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, request } from '../../../api/apiservice';
 
 const DRAWING_CATEGORIES = [
   { id: 'all', name: 'All Drawing Disciplines' },
@@ -50,18 +50,8 @@ const EMPTY_FORM = {
 
 export function DrawingTakeoffPage() {
   const [projects, setProjects] = useState([]);
-  const [takeoffs, setTakeoffs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_boq_takeoffs');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [takeoffs, setTakeoffs] = useState([]);
 
-  useEffect(() => {
-    localStorage.setItem('mock_boq_takeoffs', JSON.stringify(takeoffs));
-  }, [takeoffs]);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -82,11 +72,25 @@ export function DrawingTakeoffPage() {
   const [saving, setSaving] = useState(false);
 
   // Load Projects
+  const fetchTakeoffs = async () => {
+    setLoading(true);
+    try {
+      const res = await request.get('/boq-takeoffs');
+      setTakeoffs(Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
+    } catch (error) {
+      // Ignore if it fails (e.g. 404 because backend is missing)
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
+      const list = res?.data?.projects || res?.projects || [];
       setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
+    }).catch(() => {});
+    
+    fetchTakeoffs();
   }, []);
 
   // Form Handlers
@@ -199,13 +203,14 @@ export function DrawingTakeoffPage() {
       };
 
       if (editingTakeoff?.id) {
-        setTakeoffs(prev => prev.map(item => item.id === editingTakeoff.id ? newTakeoff : item));
-        toast.success('Takeoff sheet updated.');
+        await request.patch(`/boq-takeoffs/${editingTakeoff.id}`, newTakeoff);
+        toast.success('Takeoff updated successfully.');
       } else {
-        setTakeoffs(prev => [newTakeoff, ...prev]);
-        toast.success('Takeoff sheet created successfully.');
+        await request.post('/boq-takeoffs', newTakeoff);
+        toast.success('Takeoff record created successfully.');
       }
 
+      fetchTakeoffs();
       setIsAddOpen(false);
       setEditingTakeoff(null);
     } catch {
@@ -215,11 +220,17 @@ export function DrawingTakeoffPage() {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTakeoff?.id) return;
-    setTakeoffs(prev => prev.filter(t => t.id !== deleteTakeoff.id));
-    toast.success('Takeoff sheet deleted.');
-    setDeleteTakeoff(null);
+    try {
+      await request.delete(`/boq-takeoffs/${deleteTakeoff.id}`);
+      toast.success('Takeoff deleted successfully.');
+      fetchTakeoffs();
+    } catch (error) {
+      toast.error('Failed to delete takeoff.');
+    } finally {
+      setDeleteTakeoff(null);
+    }
   };
 
   // Filtered List

@@ -94,12 +94,17 @@ export function ProjectTeamPage() {
         const list = res?.data?.team_members ?? res?.data?.data ?? [];
         setTeamMembers(Array.isArray(list) ? list : []);
       } else {
-        // Consolidated across all projects
-        const promises = projects.map(p =>
-          projectsApi.teamMembers.list(p.id).then(r => (r?.data?.team_members ?? []).map(m => ({ ...m, project_code: p.project_code, project_name: p.project_name }))).catch(() => [])
-        );
-        const results = await Promise.all(promises);
-        setTeamMembers(results.flat());
+        const results = [];
+        for (const p of projects) {
+          try {
+            const r = await projectsApi.teamMembers.list(p.id);
+            const list = r?.data?.team_members ?? [];
+            results.push(...list.map(m => ({ ...m, project_code: p.project_code, project_name: p.project_name })));
+          } catch (e) {
+            // ignore individual project fetch failures
+          }
+        }
+        setTeamMembers(results);
       }
     } catch {
       setTeamMembers([]);
@@ -164,7 +169,7 @@ export function ProjectTeamPage() {
       const payload = {
         project_id: Number(form.project_id),
         user_id: Number(form.user_id),
-        team_role_id: Number(form.team_role_id),
+        team_role_id: form.team_role_id ? Number(form.team_role_id) : null,
         responsibility: form.responsibility || null,
         assignment_start: form.assignment_start || null,
         assignment_end: form.assignment_end || null,
@@ -183,7 +188,7 @@ export function ProjectTeamPage() {
 
       setIsAddOpen(false);
       setEditingMember(null);
-      fetchTeamMembers();
+      await fetchTeamMembers();
     } catch (err) {
       setErrors(err?.errors ?? {});
       toast.error(err?.message || 'Failed to save team member.');
@@ -556,7 +561,7 @@ export function ProjectTeamPage() {
             <Pagination
               currentPage={page}
               totalPages={totalPages}
-              totalItems={filtered.length}
+              totalResults={filtered.length}
               itemsPerPage={perPage}
               onPageChange={setPage}
               onItemsPerPageChange={() => {}}
@@ -598,7 +603,7 @@ export function ProjectTeamPage() {
 
                 <FormField label="Team Role" required error={errors.team_role_id}>
                   <Select
-                    options={teamRoles.map(r => ({ value: String(r.id), label: r.name || r.role_name || r.code }))}
+                    options={teamRoles.map(r => ({ value: String(r.id), label: r.role_name || r.team_role_name || r.name || r.code || `Role #${r.id}` }))}
                     value={form.team_role_id}
                     onChange={(v) => handleFormChange('team_role_id', v)}
                   />

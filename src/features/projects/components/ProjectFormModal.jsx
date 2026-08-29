@@ -104,11 +104,11 @@ export function ProjectFormModal({ isOpen, project = null, onClose, onSaveSucces
         priority_id: Number(form.priority_id),
         branch_id: nullableNumber(form.branch_id),
         financial_year_id: nullableNumber(form.financial_year_id),
-        contract_value: Number(form.contract_value || 0),
-        approved_budget: Number(form.approved_budget || 0),
-        retention_percentage: Number(form.retention_percentage || 0),
-        tax_percentage: Number(form.tax_percentage || 0),
-        progress_percentage: 0,
+        contract_value: Number(form.contract_value || 0).toFixed(2),
+        approved_budget: Number(form.approved_budget || 0).toFixed(2),
+        retention_percentage: Number(form.retention_percentage || 0).toFixed(2),
+        tax_percentage: Number(form.tax_percentage || 0).toFixed(2),
+        progress_percentage: Number(0).toFixed(2),
       };
       if (isEditing) {
         await projectsApi.update(project.id, payload);
@@ -154,16 +154,18 @@ export function ProjectFormModal({ isOpen, project = null, onClose, onSaveSucces
           </EntityEditModal.Section>
           <EntityEditModal.Section title="Schedule and value">
             <EntityEditModal.Grid>
-              <FormField label="Planned Start"><Input type="date" value={form.planned_start_date} onChange={(e) => change('planned_start_date', e.target.value)} /></FormField>
+              <FormField label="Planned Start" error={errors.planned_start_date}><Input type="date" value={form.planned_start_date} onChange={(e) => change('planned_start_date', e.target.value)} /></FormField>
               <FormField label="Expected Completion" error={errors.expected_completion_date}><Input type="date" value={form.expected_completion_date} onChange={(e) => change('expected_completion_date', e.target.value)} /></FormField>
-              <FormField label="Contract Value"><Input type="number" min="0" step="0.01" value={form.contract_value} onChange={(e) => change('contract_value', e.target.value)} /></FormField>
-              <FormField label="Approved Budget"><Input type="number" min="0" step="0.01" value={form.approved_budget} onChange={(e) => change('approved_budget', e.target.value)} /></FormField>
-              <FormField label="Retention %"><Input type="number" min="0" max="100" step="0.01" value={form.retention_percentage} onChange={(e) => change('retention_percentage', e.target.value)} /></FormField>
-              <FormField label="Tax %"><Input type="number" min="0" max="100" step="0.01" value={form.tax_percentage} onChange={(e) => change('tax_percentage', e.target.value)} /></FormField>
+              <FormField label="Contract Value" error={errors.contract_value}><Input type="number" min="0" step="0.01" value={form.contract_value} onChange={(e) => change('contract_value', e.target.value)} /></FormField>
+              <FormField label="Approved Budget" error={errors.approved_budget}><Input type="number" min="0" step="0.01" value={form.approved_budget} onChange={(e) => change('approved_budget', e.target.value)} /></FormField>
+              <FormField label="Retention %" error={errors.retention_percentage}><Input type="number" min="0" max="100" step="0.01" value={form.retention_percentage} onChange={(e) => change('retention_percentage', e.target.value)} /></FormField>
+              <FormField label="Tax %" error={errors.tax_percentage}><Input type="number" min="0" max="100" step="0.01" value={form.tax_percentage} onChange={(e) => change('tax_percentage', e.target.value)} /></FormField>
             </EntityEditModal.Grid>
           </EntityEditModal.Section>
           <EntityEditModal.Section title="Description" noBorder>
-            <Textarea value={form.description} onChange={(e) => change('description', e.target.value)} rows={3} />
+            <FormField error={errors.description}>
+              <Textarea value={form.description} onChange={(e) => change('description', e.target.value)} rows={3} />
+            </FormField>
           </EntityEditModal.Section>
         </EntityEditModal.Body>
         <EntityEditModal.Footer formId="project-create-form" submitLabel={isEditing ? 'Update Project' : 'Create Project'} onCancel={onClose} isSubmitting={saving || loadingMasters} />

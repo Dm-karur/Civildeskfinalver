@@ -16,28 +16,16 @@ import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
 import { FormField } from '../../../components/composite/FormField';
+import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, boqApi } from '../../../api/apiservice';
-
-
+import { projectsApi, boqApi, request } from '../../../api/apiservice';
 
 export function ConvertTakeoffPage() {
   const [projects, setProjects] = useState([]);
   const [boqs, setBoqs] = useState([]);
   const [sections, setSections] = useState([]);
-  const [allTakeoffs, setAllTakeoffs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_boq_takeoffs');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('mock_boq_takeoffs', JSON.stringify(allTakeoffs));
-  }, [allTakeoffs]);
+  const [allTakeoffs, setAllTakeoffs] = useState([]);
 
   const items = useMemo(() => {
     return allTakeoffs
@@ -78,17 +66,26 @@ export function ConvertTakeoffPage() {
   });
   const [saving, setSaving] = useState(false);
 
+  const fetchTakeoffs = async () => {
+    setLoading(true);
+    try {
+      const res = await request.get('/boq-takeoffs');
+      const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setAllTakeoffs(data.filter(t => t.status === 'approved' && !t.is_converted));
+    } catch (error) {
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load Projects and BOQs
   useEffect(() => {
-    Promise.all([
-      projectsApi.list().catch(() => ({ data: { projects: [] } })),
-      boqApi.list().catch(() => ({ data: { project_boqs: [] } })),
-    ]).then(([pRes, bRes]) => {
-      const pList = pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []);
-      const bList = bRes?.data?.project_boqs ?? bRes?.project_boqs ?? (Array.isArray(bRes?.data) ? bRes.data : []);
-      setProjects(Array.isArray(pList) ? pList : []);
-      setBoqs(Array.isArray(bList) ? bList : []);
-    });
+    projectsApi.list().then(res => {
+      const list = res?.data?.projects || res?.projects || [];
+      setProjects(Array.isArray(list) ? list : []);
+    }).catch(() => {});
+    
+    fetchTakeoffs();
   }, []);
 
   // Filtered List
@@ -151,36 +148,16 @@ export function ConvertTakeoffPage() {
     if (!convertingItem) return;
     setSaving(true);
     try {
-      // Create BOQ item in backend if available
-      try {
-        await boqApi.items.create(Number(form.boq_id || 1), {
-          project_id: Number(form.project_id || 1),
-          boq_id: Number(form.boq_id || 1),
-          section_id: Number(form.section_id || 1),
-          item_code: form.item_code,
-          item_name: form.item_name,
-          quantity: Number(form.quantity),
-          rate: Number(form.rate),
-          amount: Number(form.amount),
-          wastage_percentage: Number(form.wastage_percentage),
-          specification: form.specification,
-        });
-      } catch {
-        // Fallback
-      }
-
-      setAllTakeoffs(prev => prev.map(i => {
-        if (i.id === convertingItem.id) {
-          return {
-            ...i,
-            conversion_status: 'Converted to BOQ',
-            mapped_boq: `BOQ-00${form.boq_id}`,
-          };
-        }
-        return i;
-      }));
-
+      const payload = {
+        takeoff_ids: [convertingItem.id],
+        boq_section_name: form.section_name,
+        boq_sub_section: form.sub_section
+      };
+      
+      await request.post('/boq-takeoffs/convert', payload);
+      
       toast.success(`Successfully converted ${convertingItem.takeoff_code} to BOQ line item.`);
+      fetchTakeoffs();
       setConvertingItem(null);
     } catch {
       toast.error('Failed to convert takeoff to BOQ.');

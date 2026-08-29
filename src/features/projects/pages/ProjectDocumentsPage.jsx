@@ -43,9 +43,9 @@ const EMPTY_FORM = {
   document_date: '',
   expiry_date: '',
   original_file_name: '',
-  file_extension: 'pdf',
   status_name: 'Approved',
   remarks: '',
+  file: null,
 };
 
 export function ProjectDocumentsPage() {
@@ -146,21 +146,28 @@ export function ProjectDocumentsPage() {
 
     setSaving(true);
     try {
-      const payload = {
-        project_id: Number(form.project_id),
-        document_title: form.document_title,
-        document_number: form.document_number,
-        category_id: form.category_id,
-        revision_number: form.revision_number || 'R0',
-        document_date: form.document_date || null,
-        expiry_date: form.expiry_date || null,
-        original_file_name: form.original_file_name || `${form.document_number}.${form.file_extension}`,
-        file_extension: form.file_extension || 'pdf',
-        status_name: form.status_name || 'Approved',
-        remarks: form.remarks || '',
-      };
+      const payload = new FormData();
+      payload.append('project_id', form.project_id);
+      payload.append('document_title', form.document_title);
+      payload.append('document_number', form.document_number);
+      payload.append('category_id', form.category_id);
+      payload.append('revision_number', form.revision_number || 'R0');
+      if (form.document_date) payload.append('document_date', form.document_date);
+      if (form.expiry_date) payload.append('expiry_date', form.expiry_date);
+      payload.append('original_file_name', form.original_file_name || `${form.document_number}.${form.file_extension}`);
+      payload.append('file_extension', form.file_extension || 'pdf');
+      payload.append('status_name', form.status_name || 'Approved');
+      payload.append('remarks', form.remarks || '');
+      
+      if (form.file) {
+        payload.append('file', form.file); // Assuming the backend field is 'file'
+      }
 
       if (editingDoc?.id) {
+        // Many PHP frameworks use POST with _method=PATCH for multipart/form-data updates
+        // but if the backend accepts standard PATCH with form-data, we'll try that.
+        // Wait, standard HTML forms don't support PATCH with files. Let's append _method to POST!
+        // But projectDocumentsApi.update calls request.patch. Axios PATCH can send FormData.
         await projectDocumentsApi.update(editingDoc.id, payload);
         toast.success('Document updated successfully.');
       } else {
@@ -172,7 +179,13 @@ export function ProjectDocumentsPage() {
       setIsAddOpen(false);
       setEditingDoc(null);
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Failed to save document.');
+      console.error('Upload Error:', error);
+      let errMsg = error?.response?.data?.message || error?.message || 'Failed to save document.';
+      if (error?.response?.data?.errors) {
+        const firstError = Object.values(error.response.data.errors)[0];
+        errMsg = `${errMsg}: ${firstError}`;
+      }
+      toast.error(errMsg);
     } finally {
       setSaving(false);
     }
@@ -711,19 +724,19 @@ export function ProjectDocumentsPage() {
                   />
                 </FormField>
 
-                <FormField label="File Extension / Format">
-                  <Select
-                    options={[
-                      { value: 'pdf', label: 'PDF Document (.pdf)' },
-                      { value: 'dwg', label: 'AutoCAD Drawing (.dwg)' },
-                      { value: 'dxf', label: 'CAD Exchange (.dxf)' },
-                      { value: 'xlsx', label: 'Excel Spreadsheet (.xlsx)' },
-                      { value: 'docx', label: 'Word Document (.docx)' },
-                      { value: 'png', label: 'Image (.png / .jpg)' },
-                    ]}
-                    value={form.file_extension}
-                    onChange={(v) => handleFormChange('file_extension', v)}
+                <FormField label="Upload Document" required={!editingDoc} error={errors.file}>
+                  <Input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        handleFormChange('file', file);
+                        handleFormChange('original_file_name', file.name);
+                        handleFormChange('file_extension', file.name.split('.').pop().toLowerCase());
+                      }
+                    }}
                   />
+                  {editingDoc && <div className="text-xs text-text-muted mt-1">Leave empty to keep existing file.</div>}
                 </FormField>
 
                 <FormField label="Approval Status">

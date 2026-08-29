@@ -176,7 +176,19 @@ export const sitesApi = {
 };
 export const siteZonesApi = { ...crud('/site-zones') };
 export const workLocationsApi = { ...crud('/work-locations') };
-export const projectDocumentsApi = { ...crud('/project-documents') };
+export const projectDocumentsApi = {
+    list: (params) => request.get('/project-documents', params),
+    get: (id, params) => request.get(`/project-documents/${enc(id)}`, params),
+    create: (payload) => request.upload('/project-documents', payload),
+    upload: (payload) => request.upload('/project-documents', payload),
+    update: (id, payload) => request.patch(`/project-documents/${enc(id)}`, payload),
+    replace: (id, payload) => request.put(`/project-documents/${enc(id)}`, payload),
+    download: (id) => request.download(`/project-documents/${enc(id)}/download`),
+    remove: (id) => request.delete(`/project-documents/${enc(id)}`),
+};
+export const projectMilestonesApi = {
+    ...crud('/project-milestones'),
+};
 
 export const boqApi = {
     ...crud('/project-boqs'),
@@ -241,12 +253,20 @@ export const attendanceApi = {
     approve: (id, payload) => action('/labour-attendance', id, 'approve', payload),
     reject: (id, payload) => action('/labour-attendance', id, 'reject', payload),
     lock: (id, payload) => action('/labour-attendance', id, 'lock', payload),
+    exceptions: {
+        ...crud('/labour-attendance/exceptions'),
+        submit: (id, payload) => action('/labour-attendance/exceptions', id, 'submit', payload),
+        approve: (id, payload) => action('/labour-attendance/exceptions', id, 'approve', payload),
+        reject: (id, payload) => action('/labour-attendance/exceptions', id, 'reject', payload),
+    },
 };
 
 export const wagesApi = {
     list: (params) => request.get('/labour-wages', params),
     get: (id) => request.get(`/labour-wages/${enc(id)}`),
     create: (payload) => request.post('/labour-wages', payload),
+    update: (id, payload) => request.patch(`/labour-wages/${enc(id)}`, payload),
+    replace: (id, payload) => request.put(`/labour-wages/${enc(id)}`, payload),
     calculate: (id, payload) => action('/labour-wages', id, 'calculate', payload),
     updateLine: (id, lineId, payload) => request.patch(`/labour-wages/${enc(id)}/lines/${enc(lineId)}`, payload),
     submit: (id, payload) => action('/labour-wages', id, 'submit', payload),
@@ -262,6 +282,24 @@ export const labourPaymentsApi = {
     approve: (id, payload) => action('/labour-payments', id, 'approve', payload),
     markPaid: (id, payload) => action('/labour-payments', id, 'mark-paid', payload),
     cancel: (id, payload) => action('/labour-payments', id, 'cancel', payload),
+};
+
+export const labourContractorBillsApi = {
+    masters: () => request.get('/labour-contractor-bills/masters'),
+    ...crud('/labour-contractor-bills'),
+    addEntry: (id, payload) => request.post(`/labour-contractor-bills/${enc(id)}/entries`, payload),
+    updateEntry: (id, entryId, payload) => request.patch(`/labour-contractor-bills/${enc(id)}/entries/${enc(entryId)}`, payload),
+    removeEntry: (id, entryId) => request.delete(`/labour-contractor-bills/${enc(id)}/entries/${enc(entryId)}`),
+    submit: (id, payload) => action('/labour-contractor-bills', id, 'submit', payload),
+    verify: (id, payload) => action('/labour-contractor-bills', id, 'verify', payload),
+    reject: (id, payload) => action('/labour-contractor-bills', id, 'reject', payload),
+    price: (id, payload) => action('/labour-contractor-bills', id, 'price', payload),
+    addCharge: (id, payload) => request.post(`/labour-contractor-bills/${enc(id)}/charges`, payload),
+    updateCharge: (id, chargeId, payload) => request.patch(`/labour-contractor-bills/${enc(id)}/charges/${enc(chargeId)}`, payload),
+    removeCharge: (id, chargeId) => request.delete(`/labour-contractor-bills/${enc(id)}/charges/${enc(chargeId)}`),
+    approve: (id, payload) => action('/labour-contractor-bills', id, 'approve', payload),
+    recordPayment: (id, payload) => request.post(`/labour-contractor-bills/${enc(id)}/payments`, payload),
+    printUrl: (id) => `${api.defaults.baseURL}/labour-contractor-bills/${enc(id)}/print`,
 };
 
 export const materialsApi = {
@@ -348,7 +386,6 @@ export const dailyReportsApi = {
         remove: (reportId, photoId) => request.delete(`/daily-site-reports/${enc(reportId)}/photos/${enc(photoId)}`),
     },
 };
-export const dailyOpsApi = dailyReportsApi;
 
 const subcontractDocument = (type, hasItems = true) => ({
     ...crud(`/subcontracts/${type}`),

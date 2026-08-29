@@ -21,6 +21,17 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { boqApi, projectsApi } from '../../../api/apiservice';
 
+const extractArray = (res) => {
+  if (Array.isArray(res)) return res;
+  if (res?.data && Array.isArray(res.data)) return res.data;
+  if (res?.data?.boq_sections && Array.isArray(res.data.boq_sections)) return res.data.boq_sections;
+  if (res?.data?.sections && Array.isArray(res.data.sections)) return res.data.sections;
+  if (res?.data?.data && Array.isArray(res.data.data)) return res.data.data;
+  if (res?.sections && Array.isArray(res.sections)) return res.sections;
+  if (res?.boq_sections && Array.isArray(res.boq_sections)) return res.boq_sections;
+  return [];
+};
+
 
 
 const EMPTY_FORM = {
@@ -74,22 +85,36 @@ export function BoqSectionsPage() {
     try {
       if (selectedBoqId !== 'all') {
         const res = await boqApi.sections.list(Number(selectedBoqId));
-        const list = res?.data?.boq_sections ?? res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
-        setSections(Array.isArray(list) ? list : []);
+        const list = extractArray(res);
+        const b = boqs.find(boq => String(boq.id) === String(selectedBoqId));
+        const enhancedList = list.map(s => ({
+           ...s,
+           boq_name: s.boq_name || b?.boq_name,
+           boq_code: s.boq_code || b?.boq_code,
+           project_id: s.project_id || b?.project_id,
+           boq_id: s.boq_id || b?.id
+        }));
+        setSections(enhancedList);
       } else {
         const boqsToFetch = boqs.filter(b => selectedProjectId === 'all' || String(b.project_id) === String(selectedProjectId));
         if (boqsToFetch.length === 0) {
           setSections([]);
         } else {
-          const promises = boqsToFetch.map(b => boqApi.sections.list(Number(b.id)).catch(() => null));
-          const results = await Promise.all(promises);
           let allSections = [];
-          results.forEach(res => {
-            if (res) {
-              const list = res?.data?.boq_sections ?? res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
-              if (Array.isArray(list)) allSections = [...allSections, ...list];
-            }
-          });
+          for (const b of boqsToFetch) {
+            try {
+              const res = await boqApi.sections.list(Number(b.id));
+              const list = extractArray(res);
+              const enhancedList = list.map(s => ({
+                 ...s,
+                 boq_name: s.boq_name || b.boq_name,
+                 boq_code: s.boq_code || b.boq_code,
+                 project_id: s.project_id || b.project_id,
+                 boq_id: s.boq_id || b.id
+              }));
+              allSections = [...allSections, ...enhancedList];
+            } catch (e) {}
+          }
           setSections(allSections);
         }
       }
@@ -185,10 +210,7 @@ export function BoqSectionsPage() {
           await boqApi.sections.create(payload.boq_id, payload);
           toast.success('BOQ section added successfully.');
         }
-        
-        if (String(payload.boq_id) === String(selectedBoqId)) {
-          fetchSections();
-        }
+        fetchSections();
         
         setIsAddOpen(false);
         setEditingSection(null);

@@ -301,9 +301,8 @@ export function LabourCategoriesPage() {
                     </td>
                     <td className="px-3 py-2 text-center">
                       <span
-                        className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                          item.is_active ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
-                        }`}
+                        className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${item.is_active ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
+                          }`}
                       >
                         {item.is_active ? 'Active' : 'Inactive'}
                       </span>

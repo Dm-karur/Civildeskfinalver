@@ -158,6 +158,16 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
 
       if (isEditing) {
         await sitesApi.update(site.id, payload);
+        
+        // The backend explicitly unsets site_status_id in the update method.
+        // If the user changed the status, we must call the change-status API.
+        if (String(site.site_status_id) !== String(payload.site_status_id)) {
+          await sitesApi.changeStatus(site.id, {
+            site_status_id: payload.site_status_id,
+            change_reason: 'Status updated via Site Register form'
+          });
+        }
+        
         toast.success('Site updated successfully.');
       } else {
         await sitesApi.create(payload);

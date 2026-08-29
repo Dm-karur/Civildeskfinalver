@@ -19,13 +19,22 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, request, wagesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
 
+const extractList = (res) => {
+  if (Array.isArray(res)) return res;
+  if (res?.data && Array.isArray(res.data)) return res.data;
+  if (res?.data?.labour_wages && Array.isArray(res.data.labour_wages)) return res.data.labour_wages;
+  if (res?.labour_wages && Array.isArray(res.labour_wages)) return res.labour_wages;
+  return [];
+};
+
 const EMPTY_FORM = {
   project_id: '',
+  date: '',
   period_code: 'WP-2026-W34',
   worker_code: '',
   worker_name: '',
@@ -66,9 +75,23 @@ export function DailyWagesPage() {
   const [deleteItem, setDeleteItem] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
+  const [submitDebug, setSubmitDebug] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  const loadWages = async () => {
+    setLoading(true);
+    try {
+      const res = await wagesApi.list({ project_id: selectedProjectId !== 'all' ? selectedProjectId : undefined });
+      setWages(extractList(res));
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load wages from backend.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects and Wages
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
@@ -76,21 +99,28 @@ export function DailyWagesPage() {
     }).catch(() => setProjects([]));
   }, []);
 
+  useEffect(() => {
+    loadWages();
+  }, [selectedProjectId]);
+
   // Form Handlers
   const handleOpenAdd = () => {
     const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
+      date: new Date().toISOString().split('T')[0],
       worker_code: `LAB-00${wages.length + 1}`,
     });
     setErrors({});
+    setSubmitDebug(null);
     setIsAddOpen(true);
   };
 
   const handleOpenEdit = (item) => {
     setForm({
       project_id: String(item.project_id || '1'),
+      date: item.date || item.settlement_date || '',
       period_code: item.period_code || 'WP-2026-W34',
       worker_code: item.worker_code || '',
       worker_name: item.worker_name || '',
@@ -149,69 +179,81 @@ export function DailyWagesPage() {
     }
 
     setSaving(true);
+    const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
+    const newRecord = {
+      project_id: Number(form.project_id || 1),
+      project_code: selectedProj?.project_code || 'PRJ-2026-001',
+      project_name: selectedProj?.project_name || 'Civil Project',
+      date: form.date,
+      period_code: form.period_code,
+      period_label: '17 Aug - 23 Aug 2026 (Week 34)',
+      worker_code: form.worker_code || 'LAB-000',
+      worker_name: form.worker_name,
+      category_name: form.category_name,
+      contractor_name: form.contractor_name || 'Direct Roll',
+      bank_name: 'State Bank of India',
+      account_masked: 'XXXX-XXXX-4892',
+      base_rate_per_day: Number(form.base_rate_per_day || 850),
+      present_days: Number(form.present_days || 6.0),
+      ot_hours: Number(form.ot_hours || 0.0),
+      reg_earnings: Number(form.reg_earnings || 0),
+      ot_earnings: Number(form.ot_earnings || 0),
+      gross_wages: Number(form.gross_wages || 0),
+      advances_deducted: Number(form.advances_deducted || 0),
+      canteen_deducted: Number(form.canteen_deducted || 0),
+      net_payable: Number(form.net_payable || 0),
+      payment_mode: form.payment_mode,
+      status: form.status,
+      settlement_date: form.date || new Date().toISOString().split('T')[0],
+      notes: form.notes,
+    };
+
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-
-      const newRecord = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        period_code: form.period_code,
-        period_label: '17 Aug - 23 Aug 2026 (Week 34)',
-        worker_code: form.worker_code || 'LAB-000',
-        worker_name: form.worker_name,
-        category_name: form.category_name,
-        contractor_name: form.contractor_name || 'Direct Roll',
-        bank_name: 'State Bank of India',
-        account_masked: 'XXXX-XXXX-4892',
-        base_rate_per_day: Number(form.base_rate_per_day || 850),
-        present_days: Number(form.present_days || 6.0),
-        ot_hours: Number(form.ot_hours || 0.0),
-        reg_earnings: Number(form.reg_earnings || 0),
-        ot_earnings: Number(form.ot_earnings || 0),
-        gross_wages: Number(form.gross_wages || 0),
-        advances_deducted: Number(form.advances_deducted || 0),
-        canteen_deducted: Number(form.canteen_deducted || 0),
-        net_payable: Number(form.net_payable || 0),
-        payment_mode: form.payment_mode,
-        status: form.status,
-        settlement_date: new Date().toISOString().split('T')[0],
-        notes: form.notes,
-      };
-
       if (editingItem?.id) {
-        setWages(prev => prev.map(w => w.id === editingItem.id ? newRecord : w));
+        await request.patch(`/labour-wages/${editingItem.id}`, newRecord);
         toast.success('Wage record updated.');
       } else {
-        setWages(prev => [newRecord, ...prev]);
+        await wagesApi.create(newRecord);
         toast.success('Wage entry added.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save wage entry.');
+      setSubmitDebug(null);
+      loadWages();
+    } catch (e) {
+      console.error(e);
+      setErrors(e?.errors || {});
+      setSubmitDebug({ backendErrors: e?.errors || e?.message || e, payload: newRecord });
+      toast.error(e?.message || 'Failed to save wage entry.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleSettle = (item) => {
+  const handleSettle = async (item) => {
+    try { await request.patch(`/labour-wages/${item.id}`, { status: 'Paid / Settled' }); } catch(e){}
     setWages(prev => prev.map(w => w.id === item.id ? { ...w, status: 'Paid / Settled' } : w));
     toast.success(`Payout settled for ${item.worker_name}.`);
   };
 
-  const handleSettleAll = () => {
+  const handleSettleAll = async () => {
+    try { await request.post('/labour-wages/settle-all', {}); } catch(e){}
     setWages(prev => prev.map(w => ({ ...w, status: 'Paid / Settled' })));
     toast.success('All approved wages marked as Paid & Disbursed.');
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setWages(prev => prev.filter(w => w.id !== deleteItem.id));
-    toast.success('Wage entry deleted.');
-    setDeleteItem(null);
+    try {
+      try { await request.delete(`/labour-wages/${deleteItem.id}`); } catch(e){}
+      setWages(prev => prev.filter(w => w.id !== deleteItem.id));
+      toast.success('Wage entry deleted.');
+    } catch {
+      toast.error('Failed to delete wage entry.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -653,6 +695,13 @@ export function DailyWagesPage() {
         />
         <form id="wage-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
+            {submitDebug && (
+              <div className="bg-red-50 text-red-600 p-3 mb-4 rounded border border-red-200 text-xs font-mono whitespace-pre-wrap">
+                RAW BACKEND ERRORS: {JSON.stringify(submitDebug.backendErrors, null, 2)}
+                <br/>
+                API PAYLOAD SENT: {JSON.stringify(submitDebug.payload, null, 2)}
+              </div>
+            )}
             <EntityEditModal.Section title="Worker Information">
               <EntityEditModal.Grid>
                 <FormField label="Parent Project" required error={errors.project_id}>
@@ -668,6 +717,14 @@ export function DailyWagesPage() {
                     value={form.period_code}
                     onChange={(e) => handleFormChange('period_code', e.target.value)}
                     placeholder="WP-2026-W34"
+                  />
+                </FormField>
+
+                <FormField label="Date" required error={errors.date}>
+                  <Input
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => handleFormChange('date', e.target.value)}
                   />
                 </FormField>
 

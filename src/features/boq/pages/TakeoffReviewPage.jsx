@@ -18,35 +18,15 @@ import { Textarea } from '../../../components/ui/Textarea';
 import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, request } from '../../../api/apiservice';
 
 
 
 export function TakeoffReviewPage() {
   const [projects, setProjects] = useState([]);
-  const [reviews, setReviews] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_boq_takeoffs');
-      if (saved) {
-        return JSON.parse(saved).map(r => ({
-          ...r,
-          measured_quantity: r.measured_quantity ?? r.calculated_quantity ?? 0,
-          verified_quantity: r.verified_quantity ?? r.calculated_quantity ?? 0,
-          discipline: r.discipline ?? r.drawing_category_id ?? 'structural',
-          status: r.status === 'In Progress' ? 'Pending Audit' : r.status,
-          auditor_name: r.auditor_name ?? 'Pending Assignment',
-          audit_date: r.audit_date ?? '-',
-        }));
-      }
-      return [];
-    } catch {
-      return [];
-    }
-  });
+  const [reviews, setReviews] = useState([]);
 
-  useEffect(() => {
-    localStorage.setItem('mock_boq_takeoffs', JSON.stringify(reviews));
-  }, [reviews]);
+  // Removed localStorage effect
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -65,11 +45,25 @@ export function TakeoffReviewPage() {
   const [viewingReview, setViewingReview] = useState(null);
 
   // Load Projects
+  const fetchReviews = async () => {
+    setLoading(true);
+    try {
+      const res = await request.get('/boq-takeoff-reviews');
+      setReviews(Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
+    } catch (error) {
+      // Ignore if it fails (e.g. 404 because backend is missing)
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
+      const list = res?.data?.projects || res?.projects || [];
       setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
+    }).catch(() => {});
+    
+    fetchReviews();
   }, []);
 
   // Filtered List
@@ -106,30 +100,26 @@ export function TakeoffReviewPage() {
     setAuditNotes(action === 'Verify' ? 'Quantities independently verified against drawing dimensions and IS 1200 standard.' : 'Discrepancy noted in measurements/deductions.');
   };
 
-  const handleConfirmDecision = () => {
+  const handleConfirmDecision = async () => {
     if (!activeItem) return;
     const isVerify = auditAction === 'Verify';
     const vQty = Number(verifiedQty) || activeItem.measured_quantity;
-    const orig = activeItem.measured_quantity;
-    const vPct = orig > 0 ? (((vQty - orig) / orig) * 100).toFixed(1) : 0;
 
-    setReviews(prev => prev.map(r => {
-      if (r.id === activeItem.id) {
-        return {
-          ...r,
-          status: isVerify ? 'Verified' : 'Discrepancy Flagged',
-          verified_quantity: vQty,
-          variance_pct: Number(vPct),
-          auditor_name: 'Er. Ramanathan (Chief QS Auditor)',
-          audit_date: new Date().toISOString().split('T')[0],
-          audit_notes: auditNotes || r.audit_notes,
-        };
-      }
-      return r;
-    }));
-
-    toast.success(`Takeoff ${activeItem.takeoff_code} ${isVerify ? 'Verified & Certified' : 'Discrepancy Flagged'}.`);
-    setActiveItem(null);
+    try {
+      const payload = {
+        status: isVerify ? 'Verified' : 'Discrepancy Flagged',
+        verified_quantity: vQty,
+        audit_notes: auditNotes
+      };
+      
+      await request.post(`/boq-takeoff-reviews/${activeItem.id}/audit`, payload);
+      toast.success(`Takeoff ${activeItem.takeoff_code} ${isVerify ? 'Verified & Certified' : 'Discrepancy Flagged'}.`);
+      fetchReviews();
+    } catch (error) {
+      toast.error('Failed to audit takeoff.');
+    } finally {
+      setActiveItem(null);
+    }
   };
 
   const getStatusVariant = (status) => {

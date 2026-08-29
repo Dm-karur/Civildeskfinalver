@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Layers, Plus, Edit, Trash2, ShieldCheck, ChevronRight, HelpCircle } from 'lucide-react';
+import { Layers, Plus, Edit, Trash2, ShieldCheck, ChevronRight, HelpCircle, Eye } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -44,6 +44,7 @@ export function MaterialCategoriesPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [deletingItem, setDeletingItem] = useState(null);
+  const [viewingItem, setViewingItem] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -60,7 +61,8 @@ export function MaterialCategoriesPage() {
       const catList = resCategories?.data?.material_categories ?? resCategories?.material_categories ?? (Array.isArray(resCategories) ? resCategories : []);
       setCategories(Array.isArray(catList) ? catList : []);
 
-      const storageList = resMasters?.data?.storage_types ?? resMasters?.storage_types ?? [];
+      const mastersData = resMasters?.data?.masters ?? resMasters?.masters ?? {};
+      const storageList = mastersData?.storage_types ?? [];
       setStorageTypes(Array.isArray(storageList) ? storageList : []);
     } catch (err) {
       toast.error('Failed to load material category data.');
@@ -91,10 +93,10 @@ export function MaterialCategoriesPage() {
       category_code: item.category_code || '',
       category_name: item.category_name || '',
       storage_type_id: String(item.storage_type_id || ''),
-      quality_check_required: item.quality_check_required ? '1' : '0',
+      quality_check_required: Number(item.quality_check_required) === 1 ? '1' : '0',
       description: item.description || '',
       display_order: String(item.display_order ?? '0'),
-      is_active: item.is_active ? '1' : '0',
+      is_active: Number(item.is_active) === 1 ? '1' : '0',
     });
     setErrors({});
     setEditingItem(item);
@@ -183,7 +185,7 @@ export function MaterialCategoriesPage() {
   const totalCount = categories.length;
   const rootCount = categories.filter(c => !c.parent_id).length;
   const subCount = totalCount - rootCount;
-  const activeCount = categories.filter(c => c.is_active).length;
+  const activeCount = categories.filter(c => Number(c.is_active) === 1).length;
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
@@ -196,10 +198,8 @@ export function MaterialCategoriesPage() {
       <PageHeader title="Material Categories" breadcrumbs={breadcrumbs} />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-6">
         <KpiCard label="Total Categories" value={totalCount} icon={<Layers />} status="primary" />
-        <KpiCard label="Root Categories" value={rootCount} icon={<ChevronRight />} status="info" />
-        <KpiCard label="Sub-Categories" value={subCount} icon={<Plus />} status="neutral" />
         <KpiCard label="Active Categories" value={activeCount} icon={<ShieldCheck />} status="success" />
       </div>
 
@@ -243,25 +243,24 @@ export function MaterialCategoriesPage() {
             <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
               <tr>
                 <th className="px-3 py-2 w-12 text-center">#</th>
-                <th className="px-3 py-2 w-28">Code</th>
+                <th className="px-3 py-2 w-28">cat code</th>
                 <th className="px-3 py-2 w-48">Category Name</th>
                 <th className="px-3 py-2 w-40">Storage Type</th>
-                <th className="px-3 py-2 w-28 text-center">QC Check</th>
-                <th className="px-3 py-2 hidden md:table-cell">Parent Category</th>
-                <th className="px-3 py-2 w-24 text-center">Status</th>
-                <th className="px-3 py-2 w-20 text-center">Actions</th>
+                <th className="px-3 py-2 w-24 text-center">QC</th>
+                <th className="px-3 py-2 w-24 text-center">status</th>
+                <th className="px-3 py-2 w-24 text-center">actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-text-muted text-[12px]">
+                  <td colSpan={7} className="text-center py-8 text-text-muted text-[12px]">
                     Retrieving material categories...
                   </td>
                 </tr>
               ) : paged.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-text-muted text-[12px]">
+                  <td colSpan={7} className="text-center py-8 text-text-muted text-[12px]">
                     No material categories found.
                   </td>
                 </tr>
@@ -278,31 +277,37 @@ export function MaterialCategoriesPage() {
                       {item.category_name || '—'}
                     </td>
                     <td className="px-3 py-2 text-text-primary text-[11px] truncate">
-                      {item.storage_type_name || '—'}
+                      {storageTypes.find(st => String(st.id) === String(item.storage_type_id))?.storage_type_name || '—'}
                     </td>
                     <td className="px-3 py-2 text-center">
                       <span
                         className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                          item.quality_check_required ? 'bg-warning/10 text-warning' : 'bg-surface-muted text-text-secondary'
+                          (Number(item.quality_check_required) === 1) ? 'bg-warning/10 text-warning' : 'bg-surface-muted text-text-secondary'
                         }`}
                       >
-                        {item.quality_check_required ? 'QC Req' : 'No'}
+                        {(Number(item.quality_check_required) === 1) ? 'req' : 'not req'}
                       </span>
                     </td>
-                    <td className="px-3 py-2 hidden md:table-cell text-text-secondary text-[11px] truncate">
-                      {item.parent_name ? `${item.parent_code} - ${item.parent_name}` : 'Root / None'}
-                    </td>
                     <td className="px-3 py-2 text-center">
                       <span
                         className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                          item.is_active ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
+                          (Number(item.is_active) === 1) ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
                         }`}
                       >
-                        {item.is_active ? 'Active' : 'Inactive'}
+                        {(Number(item.is_active) === 1) ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          title="View"
+                          onClick={() => setViewingItem(item)}
+                        >
+                          <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                        </Button>
                         {hasPermission('materials.manage_master') && (
                           <Button
                             variant="ghost"
@@ -373,72 +378,36 @@ export function MaterialCategoriesPage() {
                   />
                 </FormField>
 
-                <FormField label="Parent Category" error={errors.parent_id}>
-                  <Select
-                    value={form.parent_id}
-                    onChange={(e) => handleFormChange('parent_id', e.target.value)}
-                  >
-                    <option value="">None (Set as Root)</option>
-                    {categories
-                      .filter((c) => !editingItem || c.id !== editingItem.id) // Avoid self-parent nesting
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.category_code} - {c.category_name}
-                        </option>
-                      ))}
-                  </Select>
-                </FormField>
-
                 <FormField label="Storage Type" required error={errors.storage_type_id}>
                   <Select
+                    options={storageTypes.map((t) => ({ value: String(t.id), label: t.storage_type_name || t.name }))}
                     value={form.storage_type_id}
-                    onChange={(e) => handleFormChange('storage_type_id', e.target.value)}
-                  >
-                    <option value="">Select storage type</option>
-                    {storageTypes.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.storage_type_name || t.name}
-                      </option>
-                    ))}
-                  </Select>
-                </FormField>
-
-                <FormField label="Quality Check Required" error={errors.quality_check_required}>
-                  <Select
-                    value={form.quality_check_required}
-                    onChange={(e) => handleFormChange('quality_check_required', e.target.value)}
-                  >
-                    <option value="0">No QC Required</option>
-                    <option value="1">QC Required on Intake</option>
-                  </Select>
-                </FormField>
-
-                <FormField label="Display Order" error={errors.display_order}>
-                  <Input
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={form.display_order}
-                    onChange={(e) => handleFormChange('display_order', e.target.value)}
+                    onChange={(val) => handleFormChange('storage_type_id', val)}
+                    placeholder="Select storage type"
                   />
                 </FormField>
 
-                <FormField label="Active Status" error={errors.is_active}>
+                <FormField label="Quality Check Required" required error={errors.quality_check_required}>
                   <Select
-                    value={form.is_active}
-                    onChange={(e) => handleFormChange('is_active', e.target.value)}
-                  >
-                    <option value="1">Active</option>
-                    <option value="0">Inactive</option>
-                  </Select>
+                    options={[
+                      { value: '0', label: 'No' },
+                      { value: '1', label: 'Yes' }
+                    ]}
+                    value={form.quality_check_required}
+                    onChange={(val) => handleFormChange('quality_check_required', val)}
+                    placeholder="Select option"
+                  />
                 </FormField>
 
-                <FormField label="Description" className="md:col-span-2" error={errors.description}>
-                  <Textarea
-                    placeholder="Summary of scope of materials inside category..."
-                    value={form.description}
-                    onChange={(e) => handleFormChange('description', e.target.value)}
-                    rows={3}
+                <FormField label="Active Status" required error={errors.is_active}>
+                  <Select
+                    options={[
+                      { value: '1', label: 'Active' },
+                      { value: '0', label: 'Inactive' }
+                    ]}
+                    value={form.is_active}
+                    onChange={(val) => handleFormChange('is_active', val)}
+                    placeholder="Select option"
                   />
                 </FormField>
               </EntityEditModal.Grid>
@@ -458,14 +427,79 @@ export function MaterialCategoriesPage() {
 
       {/* Delete Confirmation */}
       <ConfirmDialog
-        isOpen={Boolean(deletingItem)}
+        open={Boolean(deletingItem)}
         title="Delete Material Category"
-        message="Are you sure you want to delete this material category? It cannot be deleted if associated with active materials or subcategories."
-        variant="danger"
+        description="Are you sure you want to delete this material category? It cannot be deleted if associated with active materials or subcategories."
+        destructive
         confirmLabel="Delete"
         onConfirm={confirmDelete}
         onCancel={() => setDeletingItem(null)}
       />
+      {/* View Category Modal */}
+      {viewingItem && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">View Material Category</h3>
+                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.category_code}</span>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setViewingItem(null)}>✕</Button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto text-xs">
+              <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Category Code</span>
+                  <span className="font-mono text-text-primary font-semibold">{viewingItem.category_code}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Category Name</span>
+                  <span className="text-text-primary font-semibold">{viewingItem.category_name}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Storage Type</span>
+                  <span className="text-text-primary">{storageTypes.find(st => String(st.id) === String(viewingItem.storage_type_id))?.storage_type_name || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">QC Check</span>
+                  <span className="text-text-primary">{Number(viewingItem.quality_check_required) === 1 ? 'QC Required' : 'No QC'}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Parent Category</span>
+                  <span className="text-text-primary">
+                    {viewingItem.parent_name ? `${viewingItem.parent_code} - ${viewingItem.parent_name}` : 'Root / None'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Display Order</span>
+                  <span className="text-text-primary">{viewingItem.display_order ?? '0'}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Status</span>
+                  <span className="text-text-primary">{Number(viewingItem.is_active) === 1 ? 'Active' : 'Inactive'}</span>
+                </div>
+              </div>
+
+              {viewingItem.description && (
+                <div className="border border-border rounded-lg p-3 space-y-1">
+                  <span className="font-bold text-text-primary block text-[11px]">Description:</span>
+                  <p className="text-text-secondary bg-surface-muted/30 p-2 rounded border border-border/50">{viewingItem.description}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageContainer>
   );
 }

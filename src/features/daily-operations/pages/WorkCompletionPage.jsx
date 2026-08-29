@@ -19,16 +19,35 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { dailyReportsApi, boqApi, projectsApi, mastersApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
+
+const extractArray = (res) => {
+  if (Array.isArray(res)) return res;
+  if (res?.data && Array.isArray(res.data)) return res.data;
+  
+  if (res?.data && typeof res.data === 'object') {
+    for (const key in res.data) {
+      if (Array.isArray(res.data[key])) return res.data[key];
+    }
+  }
+  
+  if (res && typeof res === 'object') {
+    for (const key in res) {
+      if (Array.isArray(res[key])) return res[key];
+    }
+  }
+  return [];
+};
 
 
 
 const EMPTY_FORM = {
   project_id: '',
+  report_id: '',
   date: '',
-  activity_code: 'ACT-STR-015',
-  activity_name: 'Level 2 Floor Slab Casting',
+  boq_item_id: '',
+  uom_id: '1',
   location: 'Grid C1-C8',
   uom: 'm³',
   planned_qty_today: '20.0',
@@ -44,6 +63,10 @@ const EMPTY_FORM = {
 export function WorkCompletionPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [uoms, setUoms] = useState([]);
+  const [boqItems, setBoqItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -60,6 +83,7 @@ export function WorkCompletionPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [submitDebug, setSubmitDebug] = useState(null);
 
   // Load Projects
   useEffect(() => {
@@ -69,18 +93,114 @@ export function WorkCompletionPage() {
     }).catch(() => setProjects([]));
   }, []);
 
-  const [activities, setActivities] = useState(() => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      const saved = localStorage.getItem('mock_daily-operations_WorkCompletionPage');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+      const projRes = await projectsApi.list();
+      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+      setProjects(Array.isArray(pList) ? pList : []);
 
+      // Fetch masters
+      try {
+        const mRes = await mastersApi.all();
+        let uList = [];
+        if (Array.isArray(mRes)) uList = mRes;
+        else if (Array.isArray(mRes?.data)) uList = mRes.data;
+        else if (Array.isArray(mRes?.data?.units_of_measurement)) uList = mRes.data.units_of_measurement;
+        else if (Array.isArray(mRes?.data?.uoms)) uList = mRes.data.uoms;
+        else if (Array.isArray(mRes?.units_of_measurement)) uList = mRes.units_of_measurement;
+        else if (Array.isArray(mRes?.uoms)) uList = mRes.uoms;
+        
+        if (!uList || uList.length === 0) {
+          uList = [{ id: 1, uom_code: 'Cu.M', uom_name: 'Cubic Metre' }, { id: 2, uom_code: 'Sq.M', uom_name: 'Square Metre' }];
+        }
+        setUoms(uList);
+      } catch(e) {
+        setUoms([{ id: 1, uom_code: 'Cu.M', uom_name: 'Cubic Metre' }, { id: 2, uom_code: 'Sq.M', uom_name: 'Square Metre' }]);
+      }
+
+      if (dailyReportsApi?.list) {
+        const dprRes = await dailyReportsApi.list(selectedProjectId !== 'all' ? { project_id: selectedProjectId } : {});
+        const rList = dprRes?.data?.daily_site_reports ?? dprRes?.data?.reports ?? dprRes?.data?.data ?? [];
+        setReports(Array.isArray(rList) ? rList : []);
+        
+        let allProgress = [];
+        let boqCache = {};
+        for (const r of (Array.isArray(rList) ? rList : [])) {
+          try {
+            if (!boqCache[r.project_id]) {
+              boqCache[r.project_id] = [];
+              const bRes = await boqApi.list({ project_id: r.project_id }).catch(() => null);
+              if (bRes) {
+                const bList = extractArray(bRes);
+                for (const b of bList) {
+                  const iRes = await boqApi.items.list(b.id || b.boq_id).catch(() => null);
+                  if (iRes) boqCache[r.project_id] = [...boqCache[r.project_id], ...extractArray(iRes)];
+                }
+              }
+            }
+
+            const wpRes = await dailyReportsApi.workProgress.list(r.id);
+            const wpList = extractArray(wpRes);
+            const projectItems = boqCache[r.project_id] || [];
+
+            const withMeta = wpList.map(wp => {
+              const boqItem = projectItems.find(i => String(i.id) === String(wp.boq_item_id)) || {};
+              return { 
+                ...wp, 
+                report_id: r.id, 
+                project_id: r.project_id, 
+                date: r.report_date || wp.date, 
+                project_code: r.project_code,
+                boq_item_name: boqItem.item_name || boqItem.name || boqItem.description || wp.boq_item_name || wp.item_name || wp.activity_name || wp.boq_item?.name || wp.boq_item?.item_name || 'Unknown Activity',
+                boq_item_ref: boqItem.item_code || boqItem.code || wp.boq_item_code || wp.item_code || wp.activity_code || wp.boq_item?.code || wp.boq_item?.item_code || 'N/A',
+                location: wp.location_description || wp.location || wp.site_location || '',
+                planned_qty_today: Number(wp.planned_qty_for_day || wp.planned_qty_today || wp.planned_qty || wp.planned || 0).toFixed(2),
+                achieved_qty_today: Number(wp.completed_qty_for_day || wp.achieved_qty_today || wp.achieved_qty || wp.achieved || wp.qty || 0).toFixed(2),
+                cumulative_achieved: Number(wp.cumulative_qty_after || wp.cumulative_achieved || wp.cumulative || 0).toFixed(2),
+                total_scope_qty: Number(wp.total_scope_qty || wp.total_qty || wp.scope_qty || boqItem.quantity || boqItem.qty || wp.boq_item?.quantity || 0).toFixed(2),
+                completion_pct: Number(wp.completion_percentage || wp.completion_pct || wp.percentage || wp.progress || 0).toFixed(1),
+                uom_name: wp.uom_name || boqItem.uom_name || boqItem.uom || wp.uom || wp.unit || 'm³',
+                foreman: wp.foreman || wp.supervisor || 'N/A'
+              };
+            });
+            allProgress = [...allProgress, ...withMeta];
+          } catch(e) { /* ignore individual failures */ }
+        }
+        setActivities(allProgress);
+      }
+    } catch (e) {
+      console.error(e);
+      setActivities([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Initial
   useEffect(() => {
-    localStorage.setItem('mock_daily-operations_WorkCompletionPage', JSON.stringify(activities));
-  }, [activities]);
+    loadData();
+  }, [selectedProjectId]);
+
+  // Fetch BOQ Items when form.project_id changes
+  useEffect(() => {
+    if (form.project_id && form.project_id !== 'all') {
+      boqApi.list({ project_id: form.project_id }).then(async (bRes) => {
+        const bList = extractArray(bRes);
+        let allItems = [];
+        for (const b of bList) {
+          try {
+            const iRes = await boqApi.items.list(b.id || b.boq_id);
+            const list = extractArray(iRes);
+            allItems = [...allItems, ...list];
+          } catch(e) {}
+        }
+        setBoqItems(allItems);
+      }).catch(() => setBoqItems([]));
+    } else {
+      setBoqItems([]);
+    }
+  }, [form.project_id]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -90,20 +210,22 @@ export function WorkCompletionPage() {
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
+      report_id: '',
       date: today,
     });
     setErrors({});
+    setSubmitDebug(null);
     setIsAddOpen(true);
   };
 
   const handleOpenEdit = (item) => {
     setForm({
       project_id: String(item.project_id || '1'),
+      report_id: String(item.report_id || ''),
       date: item.date || '',
-      activity_code: item.activity_code || '',
-      activity_name: item.activity_name || '',
+      boq_item_id: String(item.boq_item_id || ''),
       location: item.location || '',
-      uom: item.uom || 'm³',
+      uom_id: String(item.uom_id || item.uom || '1'),
       planned_qty_today: String(item.planned_qty_today || '20'),
       achieved_qty_today: String(item.achieved_qty_today || '19.5'),
       cumulative_achieved: String(item.cumulative_achieved || '160'),
@@ -127,14 +249,19 @@ export function WorkCompletionPage() {
       }
       return next;
     });
-    setErrors(prev => ({ ...prev, [field]: null }));
+    setErrors(prev => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.activity_name.trim()) errs.activity_name = 'Activity name is required';
-    if (!form.location.trim()) errs.location = 'Location is required';
+    if (!form.report_id) errs.report_id = 'Daily Report is required';
+    if (!form.boq_item_id) errs.boq_item_id = 'BOQ Item is required';
+    if (!form.location?.trim()) errs.location = 'Location is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -142,53 +269,63 @@ export function WorkCompletionPage() {
     }
 
     setSaving(true);
+    let payload = {};
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const cum = Number(form.cumulative_achieved || 0);
-      const tot = Number(form.total_scope_qty || 1);
-
-      const newAct = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
+      const selectedReport = reports.find(r => String(r.id) === String(form.report_id));
+      
+      const selectedBoqItem = boqItems.find(b => String(b.id) === String(form.boq_item_id));
+      payload = {
+        project_id: Number(form.project_id),
+        report_id: Number(form.report_id),
         date: form.date,
-        activity_code: form.activity_code,
-        activity_name: form.activity_name,
-        location: form.location,
-        uom: form.uom,
-        planned_qty_today: Number(form.planned_qty_today || 0),
-        achieved_qty_today: Number(form.achieved_qty_today || 0),
-        cumulative_achieved: cum,
-        total_scope_qty: tot,
-        completion_pct: Number(((cum / tot) * 100).toFixed(1)),
-        status: form.status,
-        foreman: form.foreman,
-        notes: form.notes,
+        boq_item_id: Number(form.boq_item_id),
+        location_description: form.location,
+        uom_id: Number(form.uom_id || 1),
+        planned_qty_for_day: Number(form.planned_qty_today || 0),
+        completed_qty_for_day: Number(form.achieved_qty_today || 0),
+        cumulative_qty_after: Number(form.cumulative_achieved || 0),
+        completion_percentage: Number(form.completion_pct || 0),
+        quality_status_id: 1, // Required by backend
+        work_status_id: 1, // Required by backend
+        remarks: form.notes,
       };
 
       if (editingItem?.id) {
-        setActivities(prev => prev.map(a => a.id === editingItem.id ? newAct : a));
-        toast.success('Work activity output updated.');
+        await dailyReportsApi.workProgress.update(form.report_id, editingItem.id, payload);
+        toast.success('Work completion log updated.');
       } else {
-        setActivities(prev => [newAct, ...prev]);
-        toast.success('Daily activity progress logged.');
+        await dailyReportsApi.workProgress.create(form.report_id, payload);
+        toast.success('Work completion logged.');
       }
 
+      loadData(); // Reload from db
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save activity progress.');
+    } catch (err) {
+      console.error("WORK PROGRESS BACKEND VALIDATION ERRORS:", err?.errors || err);
+      setSubmitDebug({ payload, backendErrors: err?.errors || err });
+      if (err?.errors) {
+        setErrors(err.errors);
+        toast.error(Object.values(err.errors).flat().join('\n') || 'Validation failed.');
+      } else {
+        toast.error(err?.message || 'Failed to save work progress.');
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setActivities(prev => prev.filter(a => a.id !== deleteItem.id));
-    toast.success('Activity log removed.');
-    setDeleteItem(null);
+  const confirmDelete = async () => {
+    if (!deleteItem?.id || !deleteItem?.report_id) return;
+    try {
+      await dailyReportsApi.workProgress.remove(deleteItem.report_id, deleteItem.id);
+      toast.success('Work completion log removed.');
+      loadData();
+    } catch (err) {
+      toast.error('Failed to remove work completion log.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -351,29 +488,22 @@ export function WorkCompletionPage() {
                         {(page - 1) * perPage + idx + 1}
                       </td>
                       <td className="px-3 py-2">
-                        <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                          {a.activity_code}
-                        </span>
-                        <span className="text-[10px] text-text-muted font-mono block pt-0.5">{a.date}</span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={a.activity_name}>
-                            {a.activity_name}
-                          </span>
-                          <span className="text-[10px] text-text-muted truncate">
-                            📍 {a.location}
-                          </span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-text-primary text-[12px] truncate">{a.boq_item_name || a.activity_name}</span>
+                          <span className="text-[10px] text-text-muted font-mono">{a.boq_item_ref || a.activity_code}</span>
                         </div>
                       </td>
+                      <td className="px-3 py-2">
+                        <span className="text-[11px] text-text-secondary">{a.location}</span>
+                      </td>
                       <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
-                        {a.planned_qty_today} {a.uom}
+                        {a.planned_qty_today} {a.uom_name || a.uom}
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
-                        {a.achieved_qty_today} {a.uom}
+                        {a.achieved_qty_today} {a.uom_name || a.uom}
                       </td>
                       <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary">
-                        {a.cumulative_achieved} / {a.total_scope_qty} {a.uom}
+                        {a.cumulative_achieved} / {a.total_scope_qty} {a.uom_name || a.uom}
                       </td>
                       <td className="px-3 py-2 text-center font-mono font-bold text-emerald-600 text-[11px]">
                         {a.completion_pct}%
@@ -401,6 +531,15 @@ export function WorkCompletionPage() {
                           >
                             <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            title="Delete"
+                            onClick={() => setDeleteItem(a)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-red-500" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -417,8 +556,8 @@ export function WorkCompletionPage() {
             <div key={a.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="font-mono text-[10px] font-bold text-primary block">{a.activity_code} • {a.date}</span>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{a.activity_name}</h4>
+                  <span className="font-mono text-[10px] font-bold text-primary block">{a.boq_item_ref || a.activity_code}</span>
+                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{a.boq_item_name || a.activity_name}</h4>
                   <span className="text-[11px] text-text-muted">📍 {a.location}</span>
                 </div>
                 <Badge
@@ -432,17 +571,23 @@ export function WorkCompletionPage() {
               <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Today's Output</span>
-                  <span className="font-mono font-bold text-text-primary text-[11px]">{a.achieved_qty_today} / {a.planned_qty_today} {a.uom}</span>
+                  <span className="font-mono font-bold text-text-primary text-[11px]">{a.achieved_qty_today} / {a.planned_qty_today} {a.uom_name || a.uom}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Cumulative Scope</span>
-                  <span className="font-mono font-bold text-emerald-600 text-[11px]">{a.cumulative_achieved} {a.uom}</span>
+                  <span className="font-mono font-bold text-emerald-600 text-[11px]">{a.cumulative_achieved} {a.uom_name || a.uom}</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
+              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs gap-1">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(a)}>
-                  <Eye className="w-3 h-3 mr-1" /> View Activity
+                  <Eye className="w-3 h-3 mr-1" /> View
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(a)}>
+                  <Edit className="w-3 h-3 mr-1" /> Edit
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-red-600" onClick={() => setDeleteItem(a)}>
+                  <Trash2 className="w-3 h-3 mr-1" /> Delete
                 </Button>
               </div>
             </div>
@@ -472,8 +617,8 @@ export function WorkCompletionPage() {
                   <Target className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.activity_code}</h3>
-                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.activity_name}</span>
+                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.boq_item_ref || viewingItem.activity_code}</h3>
+                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.boq_item_name || viewingItem.activity_name}</span>
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
@@ -481,9 +626,9 @@ export function WorkCompletionPage() {
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Today Achieved Output</span> <span className="font-bold text-primary font-mono text-sm">{viewingItem.achieved_qty_today} {viewingItem.uom}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Planned Target Today</span> <span className="font-mono">{viewingItem.planned_qty_today} {viewingItem.uom}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Cumulative Output</span> <span className="font-mono font-bold text-emerald-600 text-sm">{viewingItem.cumulative_achieved} / {viewingItem.total_scope_qty} {viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Today Achieved Output</span> <span className="font-bold text-primary font-mono text-sm">{viewingItem.achieved_qty_today} {viewingItem.uom_name || viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Planned Target Today</span> <span className="font-mono">{viewingItem.planned_qty_today} {viewingItem.uom_name || viewingItem.uom}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Cumulative Output</span> <span className="font-mono font-bold text-emerald-600 text-sm">{viewingItem.cumulative_achieved} / {viewingItem.total_scope_qty} {viewingItem.uom_name || viewingItem.uom}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Total Scope Completed</span> <span className="font-bold text-emerald-600 font-mono text-sm">{viewingItem.completion_pct}%</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Assigned Foreman</span> <span className="text-text-primary font-medium">{viewingItem.foreman}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Activity Status</span> <span className="font-semibold text-emerald-600">{viewingItem.status}</span></div>
@@ -521,6 +666,18 @@ export function WorkCompletionPage() {
         />
         <form id="act-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
+            {boqItems && boqItems.length > 0 && (
+              <div className="bg-blue-50 text-blue-600 p-3 mb-4 rounded border border-blue-200 text-xs font-mono whitespace-pre-wrap">
+                FIRST BOQ ITEM: {JSON.stringify(boqItems[0], null, 2)}
+              </div>
+            )}
+            {submitDebug && (
+              <div className="bg-red-50 text-red-600 p-3 mb-4 rounded border border-red-200 text-xs font-mono whitespace-pre-wrap">
+                RAW BACKEND ERRORS: {JSON.stringify(submitDebug.backendErrors, null, 2)}
+                <br/>
+                API PAYLOAD SENT: {JSON.stringify(submitDebug.payload, null, 2)}
+              </div>
+            )}
             <EntityEditModal.Section title="Activity Identification">
               <EntityEditModal.Grid>
                 <FormField label="Parent Project" required error={errors.project_id}>
@@ -531,27 +688,47 @@ export function WorkCompletionPage() {
                   />
                 </FormField>
 
-                <FormField label="Activity Code">
-                  <Input
-                    value={form.activity_code}
-                    onChange={(e) => handleFormChange('activity_code', e.target.value)}
-                    placeholder="ACT-STR-018"
+                <FormField label="Link to Daily Report *" required error={errors.report_id}>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Daily Report...' },
+                      ...reports.filter(r => String(r.project_id) === form.project_id).map(r => ({ value: String(r.id), label: `${r.report_date} - ${r.site_name || 'Report'}` }))
+                    ]}
+                    value={form.report_id}
+                    onChange={(v) => handleFormChange('report_id', v)}
+                    disabled={!form.project_id}
                   />
                 </FormField>
 
-                <FormField label="Activity Description" required error={errors.activity_name} className="md:col-span-2">
-                  <Input
-                    value={form.activity_name}
-                    onChange={(e) => handleFormChange('activity_name', e.target.value)}
-                    placeholder="e.g. Level 2 Column Shuttering & Casting"
-                  />
-                </FormField>
+                <div className="md:col-span-2">
+                  <FormField label="BOQ Item *" required error={errors.boq_item_id}>
+                    <Select
+                      options={[
+                        { value: '', label: 'Select BOQ Item...' },
+                        ...boqItems.map(b => ({ value: String(b.id || b.item_id || b.boq_item_id || ''), label: `${b.item_code} - ${b.item_name || b.title || 'Item'}` }))
+                      ]}
+                      value={form.boq_item_id}
+                      onChange={(v) => handleFormChange('boq_item_id', v)}
+                    />
+                  </FormField>
+                </div>
 
-                <FormField label="Work Grid / Location" required error={errors.location} className="md:col-span-2">
+                <FormField label="Work Grid / Location *" required error={errors.location}>
                   <Input
                     value={form.location}
                     onChange={(e) => handleFormChange('location', e.target.value)}
-                    placeholder="e.g. Core 1 Grid C1-C6"
+                    placeholder="e.g. Grid C1-C8"
+                  />
+                </FormField>
+
+                <FormField label="Unit of Measurement *" error={errors.uom_id}>
+                  <Select
+                    options={uoms.map(u => ({ 
+                      value: String(u.id || u.unit_id || u.uom_id || ''), 
+                      label: u.uom_name || u.uom_code || u.name || u.code || u.unit_name || String(u.id || 'Unknown')
+                    }))}
+                    value={form.uom_id}
+                    onChange={(v) => handleFormChange('uom_id', v)}
                   />
                 </FormField>
               </EntityEditModal.Grid>

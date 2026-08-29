@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Calendar, CheckCircle2, Clock, AlertTriangle, Flag, Plus, Edit,
   Trash2, Search, Filter, TrendingUp, IndianRupee, Layers, Eye,
@@ -19,7 +19,8 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, request } from '../../../api/apiservice';
+import clsx from 'clsx';
 
 const MILESTONE_PHASES = [
   { id: 'all', name: 'All Phases' },
@@ -67,14 +68,30 @@ export function ProjectMilestonesPage() {
   const [saving, setSaving] = useState(false);
 
   // Load Projects
-  useEffect(() => {
-    projectsApi.list()
-      .then(res => {
-        const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-        setProjects(Array.isArray(list) ? list : []);
-      })
-      .catch(() => setProjects([]));
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [projRes, mileRes] = await Promise.all([
+        projectsApi.list().catch(() => ({ data: { projects: [] } })),
+        request.get('/project-milestones').catch(() => ({ data: { project_milestones: [] } }))
+      ]);
+      const pData = projRes?.data?.projects || projRes?.projects || (Array.isArray(projRes?.data) ? projRes.data : []);
+      setProjects(Array.isArray(pData) ? pData : []);
+      
+      const mData = mileRes?.data?.project_milestones || mileRes?.project_milestones || (Array.isArray(mileRes?.data) ? mileRes.data : []);
+      setMilestones(Array.isArray(mData) ? mData : []);
+    } catch (err) {
+      toast.error('Failed to fetch data.');
+      setProjects([]);
+      setMilestones([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -148,27 +165,34 @@ export function ProjectMilestonesPage() {
       };
 
       if (editingMilestone?.id) {
-        setMilestones(prev => prev.map(m => m.id === editingMilestone.id ? newM : m));
+        await request.patch(`/project-milestones/${encodeURIComponent(editingMilestone.id)}`, newM);
         toast.success('Milestone updated successfully.');
       } else {
-        setMilestones(prev => [...prev, newM]);
+        await request.post('/project-milestones', newM);
         toast.success('Milestone created successfully.');
       }
 
       setIsAddOpen(false);
       setEditingMilestone(null);
-    } catch {
-      toast.error('Failed to save milestone.');
+      await fetchData();
+    } catch (err) {
+      toast.error(err.message || 'Failed to save milestone.');
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteMilestone?.id) return;
-    setMilestones(prev => prev.filter(m => m.id !== deleteMilestone.id));
-    toast.success('Milestone deleted.');
-    setDeleteMilestone(null);
+    try {
+      await request.delete(`/project-milestones/${encodeURIComponent(deleteMilestone.id)}`);
+      toast.success('Milestone deleted.');
+      await fetchData();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete milestone.');
+    } finally {
+      setDeleteMilestone(null);
+    }
   };
 
   // Filtered List
@@ -323,7 +347,7 @@ export function ProjectMilestonesPage() {
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}
-                totalItems={filtered.length}
+                totalResults={filtered.length}
                 itemsPerPage={perPage}
                 onPageChange={setPage}
                 onItemsPerPageChange={() => {}}
@@ -551,7 +575,7 @@ export function ProjectMilestonesPage() {
             <Pagination
               currentPage={page}
               totalPages={totalPages}
-              totalItems={filtered.length}
+              totalResults={filtered.length}
               itemsPerPage={perPage}
               onPageChange={setPage}
               onItemsPerPageChange={() => {}}

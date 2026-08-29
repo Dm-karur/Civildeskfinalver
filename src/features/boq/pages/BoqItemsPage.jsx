@@ -21,6 +21,21 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { boqApi, projectsApi, mastersApi } from '../../../api/apiservice';
 
+const extractArray = (res) => {
+  if (Array.isArray(res)) return res;
+  if (res?.data && Array.isArray(res.data)) return res.data;
+  if (res?.data?.boq_items && Array.isArray(res.data.boq_items)) return res.data.boq_items;
+  if (res?.data?.items && Array.isArray(res.data.items)) return res.data.items;
+  if (res?.data?.boq_sections && Array.isArray(res.data.boq_sections)) return res.data.boq_sections;
+  if (res?.data?.sections && Array.isArray(res.data.sections)) return res.data.sections;
+  if (res?.data?.data && Array.isArray(res.data.data)) return res.data.data;
+  if (res?.items && Array.isArray(res.items)) return res.items;
+  if (res?.boq_items && Array.isArray(res.boq_items)) return res.boq_items;
+  if (res?.sections && Array.isArray(res.sections)) return res.sections;
+  if (res?.boq_sections && Array.isArray(res.boq_sections)) return res.boq_sections;
+  return [];
+};
+
 
 
 const EMPTY_FORM = {
@@ -45,6 +60,7 @@ export function BoqItemsPage() {
   const [uoms, setUoms] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [formSections, setFormSections] = useState([]);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -72,11 +88,22 @@ export function BoqItemsPage() {
     ]).then(([pRes, bRes, mRes]) => {
       const pList = pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []);
       const bList = bRes?.data?.project_boqs ?? bRes?.project_boqs ?? (Array.isArray(bRes?.data) ? bRes.data : []);
-      const uList = mRes?.data?.units_of_measurement ?? mRes?.units_of_measurement ?? [];
+      
+      let uList = [];
+      if (Array.isArray(mRes)) uList = mRes;
+      else if (Array.isArray(mRes?.data)) uList = mRes.data;
+      else if (Array.isArray(mRes?.data?.units_of_measurement)) uList = mRes.data.units_of_measurement;
+      else if (Array.isArray(mRes?.data?.uoms)) uList = mRes.data.uoms;
+      else if (Array.isArray(mRes?.units_of_measurement)) uList = mRes.units_of_measurement;
+      else if (Array.isArray(mRes?.uoms)) uList = mRes.uoms;
+      
+      if (!uList || uList.length === 0) {
+        uList = [{ id: 1, uom_code: 'Cu.M', uom_name: 'Cubic Metre' }, { id: 2, uom_code: 'Sq.M', uom_name: 'Square Metre' }, { id: 3, uom_code: 'MT', uom_name: 'Metric Tonne' }, { id: 4, uom_code: 'R.M', uom_name: 'Running Metre' }, { id: 5, uom_code: 'Nos', uom_name: 'Numbers' }];
+      }
 
       setProjects(Array.isArray(pList) ? pList : []);
       setBoqs(Array.isArray(bList) ? bList : []);
-      setUoms(Array.isArray(uList) ? uList : [{ id: 1, uom_code: 'Cu.M', uom_name: 'Cubic Metre' }, { id: 2, uom_code: 'Sq.M', uom_name: 'Square Metre' }, { id: 3, uom_code: 'MT', uom_name: 'Metric Tonne' }, { id: 4, uom_code: 'R.M', uom_name: 'Running Metre' }, { id: 5, uom_code: 'Nos', uom_name: 'Numbers' }]);
+      setUoms(uList);
     });
   }, []);
 
@@ -84,8 +111,8 @@ export function BoqItemsPage() {
   useEffect(() => {
     if (selectedBoqId !== 'all') {
       boqApi.sections.list(Number(selectedBoqId)).then(res => {
-        const list = res?.data?.boq_sections ?? res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
-        setSections(Array.isArray(list) ? list : []);
+        const list = extractArray(res);
+        setSections(list);
       }).catch(() => setSections([]));
     } else {
       const boqsToFetch = boqs.filter(b => selectedProjectId === 'all' || String(b.project_id) === String(selectedProjectId));
@@ -97,8 +124,8 @@ export function BoqItemsPage() {
           let allSecs = [];
           results.forEach(res => {
             if (res) {
-              const list = res?.data?.boq_sections ?? res?.data?.sections ?? res?.data?.data ?? res?.sections ?? [];
-              if (Array.isArray(list)) allSecs = [...allSecs, ...list];
+              const list = extractArray(res);
+              allSecs = [...allSecs, ...list];
             }
           });
           setSections(allSecs);
@@ -115,22 +142,36 @@ export function BoqItemsPage() {
         const params = {};
         if (selectedSectionId !== 'all') params.section_id = selectedSectionId;
         const res = await boqApi.items.list(Number(selectedBoqId), params);
-        const list = res?.data?.boq_items ?? res?.data?.items ?? res?.data?.data ?? res?.items ?? [];
-        setItems(Array.isArray(list) ? list : []);
+        const list = extractArray(res);
+        const b = boqs.find(boq => String(boq.id) === String(selectedBoqId));
+        const enhancedList = list.map(itm => ({
+           ...itm,
+           boq_name: itm.boq_name || b?.boq_name,
+           boq_code: itm.boq_code || b?.boq_code,
+           project_id: itm.project_id || b?.project_id,
+           boq_id: itm.boq_id || b?.id
+        }));
+        setItems(enhancedList);
       } else {
         const boqsToFetch = boqs.filter(b => selectedProjectId === 'all' || String(b.project_id) === String(selectedProjectId));
         if (boqsToFetch.length === 0) {
           setItems([]);
         } else {
-          const promises = boqsToFetch.map(b => boqApi.items.list(Number(b.id)).catch(() => null));
-          const results = await Promise.all(promises);
           let allItems = [];
-          results.forEach(res => {
-            if (res) {
-              const list = res?.data?.boq_items ?? res?.data?.items ?? res?.data?.data ?? res?.items ?? [];
-              if (Array.isArray(list)) allItems = [...allItems, ...list];
-            }
-          });
+          for (const b of boqsToFetch) {
+            try {
+              const res = await boqApi.items.list(Number(b.id));
+              const list = extractArray(res);
+              const enhancedList = list.map(itm => ({
+                 ...itm,
+                 boq_name: itm.boq_name || b.boq_name,
+                 boq_code: itm.boq_code || b.boq_code,
+                 project_id: itm.project_id || b.project_id,
+                 boq_id: itm.boq_id || b.id
+              }));
+              allItems = [...allItems, ...enhancedList];
+            } catch (e) {}
+          }
           if (selectedSectionId !== 'all') {
             allItems = allItems.filter(item => String(item.section_id) === String(selectedSectionId));
           }
@@ -147,6 +188,24 @@ export function BoqItemsPage() {
   useEffect(() => {
     fetchItems();
   }, [selectedBoqId, selectedSectionId, selectedProjectId, boqs, fetchItems]);
+
+  // Fetch sections specifically for the modal form when the BOQ changes
+  useEffect(() => {
+    if (form.boq_id) {
+      console.log('Fetching sections for BOQ:', form.boq_id);
+      boqApi.sections.list(Number(form.boq_id)).then(res => {
+        console.log('Sections response:', res);
+        const list = extractArray(res);
+        console.log('Extracted sections list:', list);
+        setFormSections(list);
+      }).catch((e) => {
+        console.error('Failed to fetch sections:', e);
+        setFormSections([]);
+      });
+    } else {
+      setFormSections([]);
+    }
+  }, [form.boq_id]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -279,12 +338,13 @@ export function BoqItemsPage() {
     if (!deleteItem?.id) return;
     try {
       await boqApi.items.remove(deleteItem.boq_id, deleteItem.id);
-    } catch {
-      // Local fallback
+      setItems(prev => prev.filter(i => i.id !== deleteItem.id));
+      toast.success('BOQ item deleted.');
+    } catch (error) {
+      toast.error('Failed to delete BOQ item.');
+    } finally {
+      setDeleteItem(null);
     }
-    setItems(prev => prev.filter(i => i.id !== deleteItem.id));
-    toast.success('BOQ item deleted.');
-    setDeleteItem(null);
   };
 
   // Filtered List
@@ -678,11 +738,9 @@ export function BoqItemsPage() {
                   />
                 </FormField>
 
-                <FormField label="Target Section" required error={errors.section_id}>
+                <FormField label="Target Section *" required error={errors.section_id}>
                   <Select
-                    options={sections
-                      .filter(s => String(s.boq_id) === String(form.boq_id))
-                      .map(s => ({ value: String(s.id), label: `${s.section_code} - ${s.section_name}` }))}
+                    options={formSections.map(s => ({ value: String(s.id), label: `${s.section_code} - ${s.section_name}` }))}
                     value={form.section_id}
                     onChange={(v) => handleFormChange('section_id', v)}
                   />
@@ -710,7 +768,10 @@ export function BoqItemsPage() {
               <EntityEditModal.Grid>
                 <FormField label="Unit of Measurement (UOM)">
                   <Select
-                    options={uoms.map(u => ({ value: String(u.id), label: `${u.uom_code || u.uom_name}` }))}
+                    options={uoms.map(u => ({ 
+                      value: String(u.id || u.unit_id || u.uom_id || ''), 
+                      label: u.uom_name || u.uom_code || u.name || u.code || u.unit_name || String(u.id || 'Unknown')
+                    }))}
                     value={form.uom_id}
                     onChange={(v) => handleFormChange('uom_id', v)}
                   />

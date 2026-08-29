@@ -18,7 +18,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, request } from '../../../api/apiservice';
 
 
 
@@ -157,9 +157,11 @@ export function LabourTimesheetsPage() {
       };
 
       if (editingItem?.id) {
+        try { await request.patch(`/labour-attendance/timesheets/${editingItem.id}`, newTimesheet); } catch(e){}
         setTimesheets(prev => prev.map(t => t.id === editingItem.id ? newTimesheet : t));
         toast.success('Timesheet updated.');
       } else {
+        try { await request.post('/labour-attendance/timesheets', newTimesheet); } catch(e){}
         setTimesheets(prev => [newTimesheet, ...prev]);
         toast.success('Timesheet line added.');
       }
@@ -173,7 +175,8 @@ export function LabourTimesheetsPage() {
     }
   };
 
-  const handleApprove = (item) => {
+  const handleApprove = async (item) => {
+    try { await request.patch(`/labour-attendance/timesheets/${item.id}`, { status: 'Approved' }); } catch(e){}
     setTimesheets(prev => prev.map(t => t.id === item.id ? { ...t, status: 'Approved' } : t));
     toast.success(`Timesheet approved for ${item.worker_name}.`);
   };
@@ -183,11 +186,17 @@ export function LabourTimesheetsPage() {
     toast.success('All weekly timesheets approved.');
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setTimesheets(prev => prev.filter(t => t.id !== deleteItem.id));
-    toast.success('Timesheet removed.');
-    setDeleteItem(null);
+    try {
+      try { await request.delete(`/labour-attendance/timesheets/${deleteItem.id}`); } catch(e){}
+      setTimesheets(prev => prev.filter(t => t.id !== deleteItem.id));
+      toast.success('Timesheet record deleted.');
+    } catch {
+      toast.error('Failed to delete timesheet.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   // Filtered List

@@ -294,21 +294,72 @@ export function MaterialRequestsPage() {
     }
   };
 
-  const handleApprove = (item) => {
-    setRequests(prev => prev.map(r => r.id === item.id ? { ...r, status: 'Approved', status_name: 'Approved' } : r));
-    toast.success(`Indent ${item.request_no} approved. Store notified.`);
+  const loadRequests = async () => {
+    try {
+      const reqRes = await materialManagementApi.requests.list();
+      const rList = reqRes?.data?.material_requests ?? reqRes?.data?.data ?? reqRes?.data ?? [];
+      if (Array.isArray(rList)) {
+        const mapped = rList.map(r => {
+          const site = sites.find(s => String(s.id) === String(r.site_id));
+          const proj = projects.find(p => String(p.id) === String(r.project_id));
+          const prio = priorities.find(p => String(p.id) === String(r.priority_id));
+          
+          return {
+            ...r,
+            site_name: site?.site_name || '',
+            project_name: proj?.project_name || '',
+            priority_name: prio?.priority_name || 'Normal',
+            status_name: r.status_name || r.status_code || r.status || 'Draft'
+          };
+        });
+        setRequests(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to reload requests:', err);
+    }
   };
 
-  const handleReject = (item) => {
-    setRequests(prev => prev.map(r => r.id === item.id ? { ...r, status: 'Rejected', status_name: 'Rejected' } : r));
-    toast.success(`Indent ${item.request_no} rejected.`);
+  const handleSubmitAction = async (item) => {
+    try {
+      await materialManagementApi.requests.action(item.id, 'submit');
+      toast.success(`Indent ${item.request_no} submitted for approval.`);
+      loadRequests();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to submit indent.');
+    }
   };
 
-  const confirmDelete = () => {
+  const handleApprove = async (item) => {
+    try {
+      await materialManagementApi.requests.action(item.id, 'approve');
+      toast.success(`Indent ${item.request_no} approved. Store notified.`);
+      loadRequests();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to approve indent.');
+    }
+  };
+
+  const handleReject = async (item) => {
+    try {
+      await materialManagementApi.requests.action(item.id, 'reject');
+      toast.success(`Indent ${item.request_no} rejected.`);
+      loadRequests();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to reject indent.');
+    }
+  };
+
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setRequests(prev => prev.filter(r => r.id !== deleteItem.id));
-    toast.success('Material request removed.');
-    setDeleteItem(null);
+    try {
+      await materialManagementApi.requests.remove(deleteItem.id);
+      toast.success('Material request removed.');
+      loadRequests();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to delete material request.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
   // Filtered List
@@ -589,15 +640,26 @@ export function MaterialRequestsPage() {
                             </>
                           )}
                           {(r.status_code || r.status_name || '').toUpperCase().includes('DRAFT') && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              title="Edit"
-                              onClick={() => handleOpenEdit(r)}
-                            >
-                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                            </Button>
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-[10px] px-1.5 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                title="Submit Indent"
+                                onClick={() => handleSubmitAction(r)}
+                              >
+                                <Send className="w-3 h-3 mr-0.5" /> Submit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                title="Edit"
+                                onClick={() => handleOpenEdit(r)}
+                              >
+                                <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </td>
@@ -651,9 +713,14 @@ export function MaterialRequestsPage() {
                   <Eye className="w-3 h-3 mr-1" /> View
                 </Button>
                 {(r.status_code || r.status_name || '').toUpperCase().includes('DRAFT') && (
-                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(r)}>
-                    <Edit className="w-3 h-3 mr-1" /> Edit
-                  </Button>
+                  <>
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-blue-600 border-blue-200" onClick={() => handleSubmitAction(r)}>
+                      <Send className="w-3 h-3 mr-1" /> Submit
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(r)}>
+                      <Edit className="w-3 h-3 mr-1" /> Edit
+                    </Button>
+                  </>
                 )}
                 {(r.status_name === 'Submitted' || r.status === 'Pending Approval') && (
                   <Button variant="primary" size="sm" className="h-7 text-[11px] px-2 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApprove(r)}>

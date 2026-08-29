@@ -3,14 +3,14 @@ import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { SearchField } from '../../../components/composite/SearchField';
 
-export function ClientsFilterBar({ 
-  searchQuery, 
-  onSearchChange, 
-  statusFilter, 
-  onStatusChange, 
-  industryFilter, 
+export function ClientsFilterBar({
+  searchQuery,
+  onSearchChange,
+  statusFilter,
+  onStatusChange,
+  industryFilter,
   onIndustryChange,
-  onAddClient 
+  onAddClient
 }) {
   const STATUS_OPTIONS = [
     { value: 'all', label: 'All Status' },
@@ -28,23 +28,24 @@ export function ClientsFilterBar({
   ];
 
   return (
-    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 mb-2.5">
-      <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-        <div className="w-full sm:w-[220px]">
-          <SearchField 
+    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+        <div className="w-full sm:w-[260px]">
+          <SearchField
+            className="max-w-none"
             placeholder="Search code, name, GSTIN..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
-        
+
         <Select
           className="w-full sm:w-[130px]"
           options={STATUS_OPTIONS}
           value={statusFilter}
           onChange={(val) => onStatusChange(val)}
         />
-        
+
         <Select
           className="w-full sm:w-[150px]"
           options={INDUSTRY_OPTIONS}
@@ -52,14 +53,14 @@ export function ClientsFilterBar({
           onChange={(val) => onIndustryChange(val)}
         />
       </div>
-      
+
       <div className="flex items-center gap-2 w-full lg:w-auto justify-end mt-1 lg:mt-0">
         <Button variant="outline" className="h-9 px-3 text-[13px]" leftIcon={<Filter className="w-3.5 h-3.5" />}>
           Filter
         </Button>
-        <Button 
-          variant="primary" 
-          className="h-9 px-3 text-[13px]" 
+        <Button
+          variant="primary"
+          className="h-9 px-3 text-[13px]"
           leftIcon={<Plus className="w-3.5 h-3.5" />}
           onClick={onAddClient}
         >

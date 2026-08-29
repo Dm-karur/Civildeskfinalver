@@ -232,10 +232,6 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
       '/dashboards/finance',
       '/alerts',
       '/notifications',
-      '/projects/milestones',
-      '/projects/documents',
-      '/sites/instructions',
-      '/sites/documents',
       '/planning',
       '/materials/delivery-challans',
       '/materials/consumption',
@@ -281,12 +277,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
       '/masters/banks',
       '/masters/accounts',
       '/masters/cost-heads',
-      '/receivables',
-      '/boq/sections',
-      '/takeoff',
-      '/budgets/revisions',
-      '/budgets/variations',
-      '/budgets/approvals'
+      '/receivables'
     ];
 
     const filterHidden = (items) => {
@@ -301,7 +292,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
             return false;
           }
           // Hide specific parent menus by name
-          if (item.item_name && ['Project Planning', 'Procurement', 'Client Billing & Receivables', 'Communication', 'Client Portal'].includes(item.item_name.trim())) {
+          if (item.item_name && ['Project Planning', 'Client Billing & Receivables', 'Communication', 'Client Portal'].includes(item.item_name.trim())) {
             return false;
           }
           // Hide parent menus that have no visible children after filtering
@@ -321,68 +312,76 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
               if (newItem.children) {
                 newItem.children = filterNavigation(newItem.children);
               }
-              
+
               if (
                 newItem.item_code === 'LABOUR' ||
                 newItem.item_code === 'LABOUR_ATTENDANCE' ||
                 (newItem.item_name && ['labour', 'labour & attendance'].includes(newItem.item_name.toLowerCase().trim()))
               ) {
-                const desiredMenu = [
-                  { original: 'Labour Register', newName: 'Labour master' },
-                  { original: 'Labour Deployment', newName: 'Labour allocation' },
-                  { original: 'Daily Attendance', newName: 'Daily attendance' },
-                  { original: 'Manpower Cost', newName: 'Labour cost' }
+                newItem.item_name = 'Labour & Attendance';
+                newItem.children = [
+                  { item_code: 'LABOUR_REGISTER', item_name: 'Labour Register', route_path: '/labour', icon_key: 'users' },
+                  { item_code: 'LABOUR_DEPLOYMENT', item_name: 'Labour Deployment', route_path: '/labour/deployment', icon_key: 'map-pin' },
+                  { item_code: 'DAILY_ATTENDANCE', item_name: 'Daily Attendance', route_path: '/labour/attendance', icon_key: 'calendar-check' },
+                  { item_code: 'ATTENDANCE_EXCEPTIONS', item_name: 'Attendance Exceptions', route_path: '/labour/attendance-exceptions', icon_key: 'alert-triangle' },
+                  { item_code: 'TIMESHEETS', item_name: 'Timesheets', route_path: '/labour/timesheets', icon_key: 'clock' },
+                  { item_code: 'OVERTIME', item_name: 'Overtime', route_path: '/labour/overtime', icon_key: 'hourglass' },
+                  { item_code: 'LEAVE_MANAGEMENT', item_name: 'Leave Management', route_path: '/labour/leave', icon_key: 'calendar-minus' },
+                  { item_code: 'DAILY_WAGES', item_name: 'Daily Wages', route_path: '/labour/wages', icon_key: 'indian-rupee' },
+                  { item_code: 'MANPOWER_COST', item_name: 'Manpower Cost', route_path: '/labour/manpower-cost', icon_key: 'calculator' },
+                  { item_code: 'WAGE_APPROVAL', item_name: 'Wage Approval', route_path: '/labour/wage-approval', icon_key: 'check-square' },
+                  { item_code: 'LABOUR_REPORTS', item_name: 'Labour Reports', route_path: '/reports/labour', icon_key: 'pie-chart' },
                 ];
-                
-                const filteredChildren = [];
-                
-                // Map the existing backend items to the new names
-                desiredMenu.forEach(mapping => {
-                  const found = (newItem.children || []).find(c => c.item_name && c.item_name.trim().toLowerCase() === mapping.original.toLowerCase());
-                  if (found) {
-                    filteredChildren.push({ ...found, item_name: mapping.newName, children: [] });
-                  } else {
-                    // Fallback in case backend already renamed them
-                    const alreadyRenamed = (newItem.children || []).find(c => c.item_name && c.item_name.trim().toLowerCase() === mapping.newName.toLowerCase());
-                    if (alreadyRenamed) filteredChildren.push({ ...alreadyRenamed, children: [] });
-                  }
-                });
-                
-                newItem.children = filteredChildren;
               }
 
               if (newItem.item_code === 'BOQ_BUDGET' || (newItem.item_name && newItem.item_name.includes('BOQ & Project Budget'))) {
-                 const hasQuantities = newItem.children.find(c => c.route_path && c.route_path.includes('planned-quantities'));
-                 if (!hasQuantities) {
-                   const boqItemsIndex = newItem.children.findIndex(c => c.route_path && c.route_path === '/boq/items');
-                   const insertIdx = boqItemsIndex >= 0 ? boqItemsIndex + 1 : newItem.children.length;
-                   newItem.children.splice(insertIdx, 0, 
-                     { item_code: 'PLANNED_QUANTITIES', item_name: 'Planned Quantities', route_path: '/boq/items/planned-quantities', icon_key: 'layers' },
-                     { item_code: 'PLANNED_RATES', item_name: 'Planned Rates', route_path: '/boq/items/planned-rates', icon_key: 'file-text' }
-                   );
-                 }
+                newItem.item_name = 'BOQ & Project Budget';
+                newItem.children = [
+                  { item_code: 'BOQ_REGISTER', item_name: 'BOQ Register', route_path: '/boq', icon_key: 'file-spreadsheet' },
+                  { item_code: 'BOQ_SECTIONS', item_name: 'BOQ Sections', route_path: '/boq/sections', icon_key: 'layers' },
+                  { item_code: 'BOQ_ITEMS', item_name: 'BOQ Items', route_path: '/boq/items', icon_key: 'clipboard-list' },
+                  { item_code: 'BUDGET_SUMMARY', item_name: 'Budget Summary', route_path: '/budgets', icon_key: 'wallet' },
+                  { item_code: 'BUDGET_REVISIONS', item_name: 'Budget Revisions', route_path: '/budgets/revisions', icon_key: 'history' },
+                  { item_code: 'VARIATION_ORDERS', item_name: 'Variation Orders', route_path: '/budgets/variations', icon_key: 'trending-up' },
+                  { item_code: 'CHANGE_APPROVAL', item_name: 'Change Approval', route_path: '/budgets/approvals', icon_key: 'check-square' },
+                  { item_code: 'DRAWING_TAKEOFF', item_name: 'Drawing Quantity Takeoff', route_path: '/takeoff', icon_key: 'pen-tool' },
+                  { item_code: 'TAKEOFF_REVIEW', item_name: 'Takeoff Review', route_path: '/takeoff/review', icon_key: 'eye' },
+                  { item_code: 'CONVERT_TAKEOFF', item_name: 'Convert Takeoff to BOQ', route_path: '/takeoff/convert', icon_key: 'refresh-cw' }
+                ];
               }
 
               // Rework Project Menu
               if (newItem.item_code === 'PROJECTS' || (newItem.item_name && newItem.item_name.toLowerCase().trim() === 'projects')) {
-                // Completely overwrite the children with exactly the 9 requested items
+                newItem.item_name = 'Projects '; // Rename menu as requested
+                // Completely overwrite the children with exactly the 7 requested items
                 newItem.children = [
-                  { item_code: 'CLIENT_MASTER', item_name: 'Client master', route_path: '/project-masters/clients', icon_key: 'users' },
-                  { item_code: 'PROJECT_MASTER', item_name: 'Project master', route_path: '/projects', icon_key: 'folder-kanban' },
-                  { item_code: 'PROJECT_TYPE_STATUS', item_name: 'Project type/status', route_path: '/project-masters/project-types', icon_key: 'layers' },
-                  { item_code: 'PROJECT_TEAM', item_name: 'Project team', route_path: '/projects/team', icon_key: 'users' },
-                  { item_code: 'FINANCIAL_YEAR', item_name: 'Financial year', route_path: '/project-masters/financial-years', icon_key: 'wallet' },
-                  { item_code: 'UNITS', item_name: 'Units', route_path: '/project-masters/units', icon_key: 'file-spreadsheet' },
-                  { item_code: 'WORK_STAGES', item_name: 'Work stages', route_path: '/project-masters/work-stages', icon_key: 'layers' },
-                  { item_code: 'PROGRESS_METHODS', item_name: 'Progress methods', route_path: '/project-masters/progress-methods', icon_key: 'bar-chart-3' },
-                  { item_code: 'WORK_CATEGORIES', item_name: 'Work categories', route_path: '/project-masters/work-categories', icon_key: 'folder-cog' }
+                  { item_code: 'PROJECT_REGISTER', item_name: 'Project Register', route_path: '/projects', icon_key: 'folder-kanban' },
+                  { item_code: 'PROJECT_CLIENTS', item_name: 'Project Clients', route_path: '/projects/clients', icon_key: 'users' },
+                  { item_code: 'PROJECT_TEAM', item_name: 'Project Team', route_path: '/projects/team', icon_key: 'users-cog' },
+                  { item_code: 'PROJECT_OVERVIEW', item_name: 'Project Overview', route_path: '/projects/overview', icon_key: 'layout-dashboard' },
+                  { item_code: 'PROJECT_DOCUMENTS', item_name: 'Project Documents', route_path: '/projects/documents', icon_key: 'file-text' },
+                  { item_code: 'PROJECT_MILESTONES', item_name: 'Project Milestones', route_path: '/projects/milestones', icon_key: 'flag' },
+                  { item_code: 'PROJECT_STATUS_HISTORY', item_name: 'Project Status History', route_path: '/projects/status-history', icon_key: 'history' }
+                ];
+              }
+
+              // Rework Sites Menu
+              if (newItem.item_code === 'SITES_LOCATIONS' || newItem.item_code === 'SITES' || (newItem.item_name && newItem.item_name.toLowerCase().includes('sites'))) {
+                // Completely overwrite the children with exactly the 6 requested items
+                newItem.children = [
+                  { item_code: 'SITE_REGISTER', item_name: 'Site Register', route_path: '/sites', icon_key: 'map-pin' },
+                  { item_code: 'LOCATIONS_ZONES', item_name: 'Locations / Zones', route_path: '/sites/zones', icon_key: 'layers' },
+                  { item_code: 'WORK_LOCATIONS', item_name: 'Work Locations', route_path: '/sites/work-locations', icon_key: 'building' },
+                  { item_code: 'SITE_TEAM', item_name: 'Site Team Assignment', route_path: '/sites/team', icon_key: 'users' },
+                  { item_code: 'SITE_INSTRUCTIONS', item_name: 'Site Instructions', route_path: '/sites/instructions', icon_key: 'clipboard-list' },
+                  { item_code: 'SITE_DOCUMENTS', item_name: 'Site Documents', route_path: '/sites/documents', icon_key: 'file-text' }
                 ];
               }
 
               return newItem;
             });
           };
-          
+
           const renamedItems = filterNavigation(items);
           setNavigation(filterHidden(renamedItems));
         }

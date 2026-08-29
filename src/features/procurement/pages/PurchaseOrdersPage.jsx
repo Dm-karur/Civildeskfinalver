@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, materialManagementApi } from '../../../api/apiservice';
+import { projectsApi, materialManagementApi, materialsApi, sitesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -51,6 +51,9 @@ export function PurchaseOrdersPage() {
   const [projects, setProjects] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [suppliers, setSuppliers] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [sites, setSites] = useState([]);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -68,15 +71,53 @@ export function PurchaseOrdersPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  // Memoized dropdown options
+  const supplierOptions = useMemo(() => {
+    const list = suppliers.map(s => ({ value: String(s.supplier_name), label: `${s.supplier_code || 'SUP'} - ${s.supplier_name}` }));
+    if (form.supplier_name && !list.some(opt => opt.value === form.supplier_name)) {
+      list.unshift({ value: form.supplier_name, label: form.supplier_name });
+    }
+    return list;
+  }, [suppliers, form.supplier_name]);
+
+  const materialOptions = useMemo(() => {
+    const list = materials.map(m => ({ value: String(m.material_name), label: `${m.material_code || 'MAT'} - ${m.material_name}` }));
+    if (form.material_name && !list.some(opt => opt.value === form.material_name)) {
+      list.unshift({ value: form.material_name, label: form.material_name });
+    }
+    return list;
+  }, [materials, form.material_name]);
+
+  const siteOptions = useMemo(() => {
+    const list = sites.map(s => ({ value: String(s.site_name), label: s.site_name }));
+    if (form.site_name && !list.some(opt => opt.value === form.site_name)) {
+      list.unshift({ value: form.site_name, label: form.site_name });
+    }
+    return list;
+  }, [sites, form.site_name]);
+
   // Load Projects & API Data safely
   useEffect(() => {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
-      materialManagementApi.purchaseOrders?.list ? materialManagementApi.purchaseOrders.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([projRes, poRes]) => {
+      materialManagementApi.purchaseOrders?.list ? materialManagementApi.purchaseOrders.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+      materialsApi.suppliers?.list ? materialsApi.suppliers.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+      materialsApi.catalogue?.list ? materialsApi.catalogue.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+      sitesApi.list ? sitesApi.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+    ]).then(([projRes, poRes, supRes, matRes, sitesRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
+
+      const supList = supRes?.data?.material_suppliers ?? supRes?.material_suppliers ?? (Array.isArray(supRes) ? supRes : supRes?.data ?? []);
+      setSuppliers(Array.isArray(supList) ? supList : []);
+
+      const matList = matRes?.data?.materials ?? matRes?.materials ?? (Array.isArray(matRes) ? matRes : matRes?.data ?? []);
+      setMaterials(Array.isArray(matList) ? matList : []);
+
+      const sList = sitesRes?.data?.sites ?? sitesRes?.sites ?? (Array.isArray(sitesRes) ? sitesRes : []);
+      setSites(Array.isArray(sList) ? sList : []);
+
       const poList = poRes?.data?.material_purchase_orders ?? poRes?.data?.orders ?? poRes?.data?.data ?? [];
       if (Array.isArray(poList) && poList.length > 0) {
         const normalized = poList.map((po, idx) => ({
@@ -106,7 +147,9 @@ export function PurchaseOrdersPage() {
         }));
         setOrders(normalized);
       }
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch((e) => {
+      console.error(e);
+    }).finally(() => setLoading(false));
   }, []);
 
   
@@ -652,10 +695,17 @@ export function PurchaseOrdersPage() {
                 </FormField>
 
                 <FormField label="Supplier Vendor Name" required error={errors.supplier_name} className="md:col-span-2">
-                  <Input
+                  <Select
+                    options={supplierOptions}
                     value={form.supplier_name}
-                    onChange={(e) => handleFormChange('supplier_name', e.target.value)}
-                    placeholder="e.g. UltraTech Cement Distributors Ltd"
+                    onChange={(val) => {
+                      handleFormChange('supplier_name', val);
+                      // Auto-populate supplier GSTIN from selected supplier if found
+                      const selectedSup = suppliers.find(s => String(s.supplier_name) === String(val));
+                      if (selectedSup) {
+                        handleFormChange('supplier_gstin', selectedSup.gstin || '');
+                      }
+                    }}
                   />
                 </FormField>
 
@@ -680,10 +730,21 @@ export function PurchaseOrdersPage() {
             <EntityEditModal.Section title="Order Quantities & Pricing">
               <EntityEditModal.Grid>
                 <FormField label="Material Item" required error={errors.material_name}>
-                  <Input
+                  <Select
+                    options={materialOptions}
                     value={form.material_name}
-                    onChange={(e) => handleFormChange('material_name', e.target.value)}
-                    placeholder="e.g. OPC 53 Grade Cement"
+                    onChange={(val) => {
+                      handleFormChange('material_name', val);
+                      // Auto-populate UOM and material code if selected
+                      const selectedMat = materials.find(m => String(m.material_name) === String(val));
+                      if (selectedMat) {
+                        handleFormChange('material_code', selectedMat.material_code || '');
+                        handleFormChange('uom', selectedMat.uom || 'Nos');
+                        if (selectedMat.standard_rate) {
+                          handleFormChange('unit_rate', String(selectedMat.standard_rate));
+                        }
+                      }
+                    }}
                   />
                 </FormField>
 
@@ -720,10 +781,10 @@ export function PurchaseOrdersPage() {
                 </FormField>
 
                 <FormField label="Delivery Site Location" className="md:col-span-2">
-                  <Input
+                  <Select
+                    options={siteOptions}
                     value={form.site_name}
-                    onChange={(e) => handleFormChange('site_name', e.target.value)}
-                    placeholder="e.g. Main Central Godown Bay 1"
+                    onChange={(val) => handleFormChange('site_name', val)}
                   />
                 </FormField>
 
