@@ -162,22 +162,24 @@ export function ProjectDocumentsPage() {
     try {
       // Safely map string fallback categories to integers to satisfy backend validation
       const CATEGORY_MAP = { 'drawings': 1, 'contracts': 2, 'approvals': 3, 'qc': 4, 'safety': 5 };
-      let docTypeId = form.category_id;
-      if (isNaN(docTypeId) && CATEGORY_MAP[docTypeId]) {
-         docTypeId = CATEGORY_MAP[docTypeId];
-      } else if (isNaN(docTypeId)) {
-         docTypeId = 1;
-      }
-      docTypeId = Number(docTypeId) || 1;
       
+      let docTypeId = 1;
+      let projCatId = 1;
+      
+      if (CATEGORY_MAP[form.category_id]) {
+        projCatId = CATEGORY_MAP[form.category_id];
+      } else {
+        docTypeId = Number(form.category_id) || 1;
+        projCatId = 1; // Fallback to 1 to satisfy CodeIgniter's strict category validation
+      }
+
       let payload;
       if (form.file) {
         payload = new FormData();
         payload.append('project_id', form.project_id);
         if (form.site_id) payload.append('site_id', form.site_id);
         payload.append('document_type_id', docTypeId);
-        payload.append('category_id', docTypeId);
-        payload.append('project_document_category_id', docTypeId);
+        payload.append('project_document_category_id', projCatId);
         payload.append('document_title', form.document_title);
         payload.append('document_number', form.document_number);
         payload.append('revision_number', form.revision_number || 'R0');
@@ -186,6 +188,9 @@ export function ProjectDocumentsPage() {
         payload.append('original_file_name', form.original_file_name || `${form.document_number}.${form.file_extension}`);
         payload.append('file_extension', form.file_extension || 'pdf');
         payload.append('status_name', form.status_name || 'Approved');
+        payload.append('client_document_status_id', form.status_name === 'Approved' ? 2 : 1);
+        payload.append('project_document_status_id', form.status_name === 'Approved' ? 2 : 1);
+        payload.append('status_id', form.status_name === 'Approved' ? 2 : 1);
         payload.append('remarks', form.remarks || '');
         payload.append('file', form.file);
         payload.append('document_file', form.file);
@@ -194,8 +199,7 @@ export function ProjectDocumentsPage() {
           project_id: form.project_id,
           site_id: form.site_id || null,
           document_type_id: docTypeId,
-          category_id: docTypeId,
-          project_document_category_id: docTypeId,
+          project_document_category_id: projCatId,
           document_title: form.document_title,
           document_number: form.document_number,
           revision_number: form.revision_number || 'R0',
@@ -204,6 +208,9 @@ export function ProjectDocumentsPage() {
           original_file_name: form.original_file_name || `${form.document_number}.${form.file_extension}`,
           file_extension: form.file_extension || 'pdf',
           status_name: form.status_name || 'Approved',
+          client_document_status_id: form.status_name === 'Approved' ? 2 : 1,
+          project_document_status_id: form.status_name === 'Approved' ? 2 : 1,
+          status_id: form.status_name === 'Approved' ? 2 : 1,
           remarks: form.remarks || '',
         };
       }
@@ -230,6 +237,7 @@ export function ProjectDocumentsPage() {
 
       setIsAddOpen(false);
       setEditingDoc(null);
+      await fetchDocuments();
     } catch (error) {
       console.error('Upload Error:', error);
       let errMsg = error?.message || 'Failed to save document.';
@@ -280,6 +288,9 @@ export function ProjectDocumentsPage() {
   // Filtered List
   const filtered = useMemo(() => {
     return documents.filter(doc => {
+      // Exclude documents that have a site_id (those belong to Site Documents)
+      if (doc.site_id) return false;
+
       if (selectedProjectId !== 'all' && String(doc.project_id) !== String(selectedProjectId)) return false;
       
       if (activeCategory !== 'all') {

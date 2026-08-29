@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { sitesApi, projectsApi, projectDocumentsApi } from '../../../api/apiservice';
+import { sitesApi, projectsApi, projectDocumentsApi, request } from '../../../api/apiservice';
 
 const SITE_DOC_CATEGORIES = [
   { id: 'all', name: 'All Field Documents' },
@@ -88,7 +88,7 @@ export function SiteDocumentsPage() {
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { per_page: 1000, all: true };
       if (selectedSiteId !== 'all') params.site_id = selectedSiteId;
       if (selectedProjectId !== 'all') params.project_id = selectedProjectId;
       const res = await projectDocumentsApi.list(params);
@@ -167,39 +167,76 @@ export function SiteDocumentsPage() {
       const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
       const selectedSite = sites.find(s => String(s.id) === String(form.site_id));
       const catObj = SITE_DOC_CATEGORIES.find(c => c.id === form.category_id);
+      const docTypeId = 2; // Site Documents
 
-      const newDoc = {
-        id: editingDoc?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        site_id: Number(form.site_id || 1),
-        site_name: selectedSite?.site_name || 'Main Job Site',
-        location_name: form.location_name || 'General Site Area',
-        document_title: form.document_title,
-        document_number: form.document_number,
-        category_id: form.category_id,
-        category_name: catObj?.name || 'Site Field Document',
-        document_date: form.document_date || null,
-        original_file_name: form.original_file_name || `${form.document_number}.${form.file_extension}`,
-        file_extension: form.file_extension || 'pdf',
-        file_size_bytes: 2097152, // 2 MB
-        status_name: form.status_name || 'Verified',
-        remarks: form.remarks || '',
-      };
+      let payload;
+      
+      const catIdMap = { 'photos': 1, 'dsr': 2, 'testing': 3, 'challans': 4, 'safety': 5, 'possession': 6 };
+      let catId = Number(form.category_id);
+      if (isNaN(catId)) catId = catIdMap[form.category_id] || 1;
+
+      if (form.file) {
+        payload = new FormData();
+        Object.entries(form).forEach(([key, val]) => {
+          if (key !== 'file' && val !== null && val !== undefined && key !== 'category_id') {
+            payload.append(key, val);
+          }
+        });
+        payload.append('document_type_id', 2);
+        payload.append('category_id', catId);
+        payload.append('project_document_category_id', catId);
+        payload.append('client_document_status_id', form.status_name === 'Verified' ? 2 : 1);
+        payload.append('project_document_status_id', form.status_name === 'Verified' ? 2 : 1);
+        payload.append('status_id', form.status_name === 'Verified' ? 2 : 1);
+        payload.append('document_file', form.file);
+      } else {
+        payload = {
+          project_id: form.project_id,
+          site_id: form.site_id || null,
+          document_type_id: 2,
+          category_id: catId,
+          project_document_category_id: catId,
+          location_name: form.location_name || '',
+          document_title: form.document_title,
+          document_number: form.document_number,
+          revision_number: 'R0',
+          document_date: form.document_date || null,
+          original_file_name: form.original_file_name || `${form.document_number}.${form.file_extension}`,
+          file_extension: form.file_extension || 'pdf',
+          status_name: form.status_name || 'Verified',
+          client_document_status_id: form.status_name === 'Verified' ? 2 : 1,
+          project_document_status_id: form.status_name === 'Verified' ? 2 : 1,
+          status_id: form.status_name === 'Verified' ? 2 : 1,
+          remarks: form.remarks || '',
+        };
+      }
 
       if (editingDoc?.id) {
-        setDocuments(prev => prev.map(d => d.id === editingDoc.id ? newDoc : d));
+        if (form.file) {
+          payload.append('_method', 'PATCH');
+          const res = await request.post(`/project-documents/${encodeURIComponent(editingDoc.id)}`, payload);
+          const updated = res?.data?.document ?? res?.data?.data ?? res?.data ?? res ?? Object.fromEntries(payload.entries());
+          setDocuments(prev => prev.map(d => String(d.id) === String(editingDoc.id) ? { ...d, ...updated } : d));
+        } else {
+          const res = await projectDocumentsApi.update(editingDoc.id, payload);
+          const updated = res?.data?.document ?? res?.data?.data ?? res?.data ?? res ?? payload;
+          setDocuments(prev => prev.map(d => String(d.id) === String(editingDoc.id) ? { ...d, ...updated } : d));
+        }
         toast.success('Site document updated.');
       } else {
-        setDocuments(prev => [newDoc, ...prev]);
+        const res = await projectDocumentsApi.create(payload);
+        const created = res?.data?.data ?? res?.data ?? res ?? (form.file ? Object.fromEntries(payload.entries()) : payload);
+        setDocuments(prev => [created, ...prev]);
         toast.success('Site document archived successfully.');
       }
 
       setIsAddOpen(false);
       setEditingDoc(null);
-    } catch {
-      toast.error('Failed to save document.');
+      await fetchDocuments();
+    } catch (error) {
+      console.error('Upload Error:', error);
+      let errMsg = error?.message || 'Failed to save document.';
+      toast.error(errMsg);
     } finally {
       setSaving(false);
     }
@@ -215,6 +252,9 @@ export function SiteDocumentsPage() {
   // Filtered List
   const filtered = useMemo(() => {
     return documents.filter(doc => {
+      // Exclude documents that do NOT have a site_id (those belong to Project Documents)
+      if (!doc.site_id) return false;
+
       if (selectedProjectId !== 'all' && String(doc.project_id) !== String(selectedProjectId)) return false;
       if (selectedSiteId !== 'all' && String(doc.site_id) !== String(selectedSiteId)) return false;
       if (activeCategory !== 'all' && doc.category_id !== activeCategory) return false;
