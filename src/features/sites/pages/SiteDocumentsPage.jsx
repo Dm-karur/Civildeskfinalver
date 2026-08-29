@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { UnderDevelopment } from '../../masters/pages/UnderDevelopment';
 import {
   FileText, Upload, Download, Eye, Edit, Trash2, Search, Filter,
   FileCode, FileSpreadsheet, Image, File, CheckCircle2, Clock,
@@ -49,6 +50,16 @@ const EMPTY_FORM = {
 };
 
 export function SiteDocumentsPage() {
+  return (
+    <UnderDevelopment 
+      title="Site Documents" 
+      featureName="Site Documents" 
+    />
+  );
+}
+
+// Keeping the original code for future development as requested
+function SiteDocumentsPage_OLD() {
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
   const [documents, setDocuments] = useState([]);
