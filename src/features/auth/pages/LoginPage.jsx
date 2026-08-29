@@ -77,6 +77,7 @@ export function LoginPage() {
       console.error('Login error:', err);
       const errorMessage = err?.message || 'Please check your credentials and try again.';
       toast.error('Failed to log in', { description: errorMessage });
+      setFormData(prev => ({ ...prev, password: '' }));
     } finally {
       setIsLoading(false);
     }

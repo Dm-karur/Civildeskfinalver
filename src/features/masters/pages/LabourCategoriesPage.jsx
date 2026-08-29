@@ -102,7 +102,7 @@ export function LabourCategoriesPage() {
       overtime_multiplier: item.overtime_multiplier !== null && item.overtime_multiplier !== undefined ? String(item.overtime_multiplier) : '1.5',
       description: item.description || '',
       display_order: String(item.display_order ?? '0'),
-      is_active: item.is_active ? '1' : '0',
+      is_active: String(item.is_active) === '1' ? '1' : '0',
     });
     setErrors({});
     setEditingItem(item);
@@ -191,7 +191,7 @@ export function LabourCategoriesPage() {
 
   // Metrics
   const totalCount = categories.length;
-  const activeCount = categories.filter(c => c.is_active).length;
+  const activeCount = categories.filter(c => String(c.is_active) === '1').length;
   const inactiveCount = totalCount - activeCount;
 
   return (
@@ -301,10 +301,10 @@ export function LabourCategoriesPage() {
                     </td>
                     <td className="px-3 py-2 text-center">
                       <span
-                        className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${item.is_active ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
+                        className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${String(item.is_active) === '1' ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary'
                           }`}
                       >
-                        {item.is_active ? 'Active' : 'Inactive'}
+                        {String(item.is_active) === '1' ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-3 py-2">

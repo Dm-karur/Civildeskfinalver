@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  Eye, 
-  Edit, 
-  MoreVertical, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
+import {
+  Eye,
+  Edit,
+  MoreVertical,
+  CheckCircle2,
+  XCircle,
+  Clock,
   AlertCircle,
   Ban,
   HelpCircle,
@@ -50,12 +50,12 @@ const STATUS_MAP = {
   'BLACKLISTED': { code: 'BLACKLISTED', label: 'Blacklisted', variant: 'error', icon: Ban },
 };
 
-export function ClientsTable({ 
-  searchQuery = '', 
-  statusFilter = 'all', 
+export function ClientsTable({
+  searchQuery = '',
+  statusFilter = 'all',
   industryFilter = 'all',
   isAddOpen = false,
-  setIsAddOpen = () => {}
+  setIsAddOpen = () => { }
 }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +89,7 @@ export function ClientsTable({
         const list = res?.data || res || [];
         if (Array.isArray(list) && list.length > 0) setLiveStatuses(list);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Close actions menu on outside click
@@ -168,7 +168,7 @@ export function ClientsTable({
     const StatusIcon = statusConfig.icon;
 
     return (
-      <Badge 
+      <Badge
         variant={statusConfig.variant}
         className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center gap-0.5 leading-none font-sans"
       >
@@ -179,13 +179,13 @@ export function ClientsTable({
   };
 
   const renderPagination = () => (
-    <Pagination 
+    <Pagination
       currentPage={1}
       totalPages={Math.max(1, Math.ceil(filteredClients.length / 10))}
       totalItems={filteredClients.length}
       itemsPerPage={10}
-      onPageChange={() => {}}
-      onItemsPerPageChange={() => {}}
+      onPageChange={() => { }}
+      onItemsPerPageChange={() => { }}
     />
   );
 
@@ -254,12 +254,33 @@ export function ClientsTable({
                     </td>
                     <td className="px-2 py-1">
                       <div className="flex items-center justify-center gap-0.5">
+                        {/* View Eye Button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedClient(client)}
+                          className="h-6 w-6 p-0"
+                          title="View Client Details"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                        </Button>
+
+                        {/* Edit Button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingClient(client)}
+                          className="h-6 w-6 p-0"
+                          title="Edit Client"
+                        >
+                          <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                        </Button>
 
                         {/* Three Dots More Actions Menu */}
                         <div className="relative">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               setOpenMenuId(isMenuOpen ? null : client.id);
@@ -272,13 +293,9 @@ export function ClientsTable({
 
                           {/* Dropdown Menu Popup */}
                           {isMenuOpen && (
-                            <div 
+                            <div
                               ref={menuRef}
-                              className={`absolute right-0 z-50 w-44 bg-surface border border-border rounded-sm shadow-xl p-1 text-[11px] animate-in fade-in zoom-in-95 duration-100 ${
-                                index >= filteredClients.length - 3 && filteredClients.length > 3
-                                  ? 'bottom-full mb-1 origin-bottom-right'
-                                  : 'top-7 origin-top-right'
-                              }`}
+                              className="absolute right-0 top-7 z-50 w-44 bg-surface border border-border rounded-sm shadow-xl p-1 text-[11px] animate-in fade-in zoom-in-95 duration-100"
                             >
                               {/* Quick Status Submenu */}
                               <div className="px-2 py-1 text-[9px] uppercase font-bold text-text-secondary">
@@ -330,9 +347,9 @@ export function ClientsTable({
 
       {/* Full Detail Modal */}
       {selectedClient && (
-        <ClientDetailModal 
-          client={selectedClient} 
-          onClose={() => setSelectedClient(null)} 
+        <ClientDetailModal
+          client={selectedClient}
+          onClose={() => setSelectedClient(null)}
         />
       )}
 

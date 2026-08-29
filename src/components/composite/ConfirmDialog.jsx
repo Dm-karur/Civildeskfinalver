@@ -5,24 +5,30 @@ import { cn } from '../../utils/cn';
 
 export function ConfirmDialog({
   open,
+  isOpen,
   title,
   description,
+  message,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   destructive = false,
+  variant,
   loading = false,
   onConfirm,
   onCancel,
   className
 }) {
+  const isDialogActive = open || isOpen;
+  const dialogMessage = description || message;
+  const isDestructive = destructive || variant === 'danger';
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape' && open) {
+      if (e.key === 'Escape' && isDialogActive) {
         onCancel();
       }
     };
     document.addEventListener('keydown', handleEscape);
-    if (open) {
+    if (isDialogActive) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -31,9 +37,9 @@ export function ConfirmDialog({
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
     };
-  }, [open, onCancel]);
+  }, [isDialogActive, onCancel]);
 
-  if (!open) return null;
+  if (!isDialogActive) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">
@@ -56,7 +62,7 @@ export function ConfirmDialog({
           <div className="flex items-start gap-4">
             <div className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-1",
-              destructive ? "bg-error/10 text-error" : "bg-primary/10 text-primary"
+              isDestructive ? "bg-error/10 text-error" : "bg-primary/10 text-primary"
             )}>
               <AlertTriangle className="w-5 h-5" />
             </div>
@@ -66,7 +72,7 @@ export function ConfirmDialog({
                 {title}
               </h3>
               <p className="mt-2 text-sm text-text-secondary">
-                {description}
+                {dialogMessage}
               </p>
             </div>
             
@@ -84,7 +90,7 @@ export function ConfirmDialog({
             {cancelLabel}
           </Button>
           <Button 
-            variant={destructive ? "destructive" : "primary"} 
+            variant={isDestructive ? "destructive" : "primary"} 
             onClick={onConfirm} 
             loading={loading}
             className="w-full sm:w-auto"
