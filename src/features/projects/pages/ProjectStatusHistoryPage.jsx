@@ -64,6 +64,7 @@ export function ProjectStatusHistoryPage() {
 
   // Fetch status history
   useEffect(() => {
+    let active = true;
     const formatLogs = (logs) => {
       return logs.map(log => {
         const proj = projects.find(p => String(p.id) === String(log.project_id));
@@ -78,25 +79,34 @@ export function ProjectStatusHistoryPage() {
     if (selectedProjectId !== 'all') {
       projectsApi.statusHistory(Number(selectedProjectId))
         .then(res => {
+          if (!active) return;
           const list = res?.data?.status_history ?? res?.data?.status_logs ?? res?.data?.data ?? [];
           if (Array.isArray(list)) setStatusLogs(formatLogs(list));
         })
         .catch(() => {});
     } else if (projects.length > 0) {
-      // Fetch for all projects (Consolidated)
-      const promises = projects.map(p => projectsApi.statusHistory(Number(p.id)));
-      Promise.allSettled(promises).then(results => {
+      // Fetch sequentially to prevent overloading single-threaded local dev servers
+      const fetchSequentially = async () => {
         let allLogs = [];
-        results.forEach(res => {
-          if (res.status === 'fulfilled') {
-            const list = res.value?.data?.status_history ?? res.value?.data?.status_logs ?? [];
+        for (const p of projects) {
+          if (!active) break;
+          try {
+            const res = await projectsApi.statusHistory(Number(p.id));
+            const list = res?.data?.status_history ?? res?.data?.status_logs ?? [];
             if (Array.isArray(list)) allLogs = [...allLogs, ...list];
+          } catch (e) {
+            // skip failed project
           }
-        });
-        allLogs.sort((a, b) => new Date(b.changed_at) - new Date(a.changed_at));
-        setStatusLogs(formatLogs(allLogs));
-      });
+        }
+        if (active) {
+          allLogs.sort((a, b) => new Date(b.changed_at) - new Date(a.changed_at));
+          setStatusLogs(formatLogs(allLogs));
+        }
+      };
+      fetchSequentially();
     }
+    
+    return () => { active = false; };
   }, [selectedProjectId, projects]);
 
   const handleOpenChangeStatus = () => {
@@ -293,8 +303,8 @@ export function ProjectStatusHistoryPage() {
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}
-                totalItems={filtered.length}
-                itemsPerPage={perPage}
+                totalResults={filtered.length}
+                pageSize={perPage}
                 onPageChange={setPage}
                 onItemsPerPageChange={() => {}}
               />
