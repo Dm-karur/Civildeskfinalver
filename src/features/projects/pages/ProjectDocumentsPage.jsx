@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, projectDocumentsApi, sitesApi } from '../../../api/apiservice';
+import { projectsApi, projectDocumentsApi, sitesApi, mastersApi } from '../../../api/apiservice';
 
 const DOCUMENT_CATEGORIES = [
   { id: 'all', name: 'All Documents' },
@@ -66,23 +66,34 @@ export function ProjectDocumentsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState(DOCUMENT_CATEGORIES);
 
-  // Load Projects
+  // Load Projects and Masters
   useEffect(() => {
-    projectsApi.list()
-      .then(res => {
-        const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-        setProjects(Array.isArray(list) ? list : []);
-      })
-      .catch(() => setProjects([]));
+    Promise.all([
+      projectsApi.list().catch(() => ({ data: { projects: [] } })),
+      mastersApi.all().catch(() => ({ data: {} }))
+    ]).then(([pRes, mRes]) => {
+      const pList = pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []);
+      setProjects(Array.isArray(pList) ? pList : []);
+      
+      const cats = mRes?.data?.document_types ?? mRes?.data?.project_document_types ?? mRes?.data?.project_document_categories ?? mRes?.data?.document_categories ?? mRes?.document_types ?? mRes?.project_document_categories ?? [];
+      if (Array.isArray(cats) && cats.length > 0) {
+        setCategories([
+          { id: 'all', name: 'All Documents' },
+          ...cats.map(c => ({ id: String(c.id), name: c.name || c.category_name || c.code }))
+        ]);
+      }
+    });
   }, []);
 
   // Fetch Documents
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const res = await projectDocumentsApi.list(selectedProjectId !== 'all' ? { project_id: selectedProjectId } : {});
-      const list = res?.data?.project_documents ?? res?.data?.data ?? res?.data ?? [];
+      const params = selectedProjectId !== 'all' ? { project_id: selectedProjectId, per_page: 1000, all: true } : { per_page: 1000, all: true };
+      const res = await projectDocumentsApi.list(params);
+      const list = res?.data?.project_documents ?? res?.data?.documents ?? res?.project_documents ?? res?.documents ?? res?.data?.data ?? res?.data ?? res ?? [];
       setDocuments(Array.isArray(list) ? list : []);
     } catch (error) {
       setDocuments([]);
@@ -101,6 +112,8 @@ export function ProjectDocumentsPage() {
     setForm({
       ...EMPTY_FORM,
       project_id: selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1'),
+      category_id: categories.length > 1 ? categories[1].id : 'drawings',
+      document_type_id: categories.length > 1 ? categories[1].id : '1',
       document_date: new Date().toISOString().split('T')[0],
     });
     setErrors({});
@@ -148,9 +161,23 @@ export function ProjectDocumentsPage() {
     try {
       const payload = new FormData();
       payload.append('project_id', form.project_id);
+      if (form.site_id) payload.append('site_id', form.site_id);
+      
+      // Safely map string fallback categories to integers to satisfy backend validation
+      const CATEGORY_MAP = { 'drawings': 1, 'contracts': 2, 'approvals': 3, 'qc': 4, 'safety': 5 };
+      let docTypeId = form.category_id;
+      if (isNaN(docTypeId) && CATEGORY_MAP[docTypeId]) {
+         docTypeId = CATEGORY_MAP[docTypeId];
+      } else if (isNaN(docTypeId)) {
+         docTypeId = 1;
+      }
+      
+      payload.append('document_type_id', docTypeId);
+      payload.append('category_id', docTypeId);
+      payload.append('project_document_category_id', docTypeId); // Fallback for database field
+      
       payload.append('document_title', form.document_title);
       payload.append('document_number', form.document_number);
-      payload.append('category_id', form.category_id);
       payload.append('revision_number', form.revision_number || 'R0');
       if (form.document_date) payload.append('document_date', form.document_date);
       if (form.expiry_date) payload.append('expiry_date', form.expiry_date);
@@ -161,6 +188,7 @@ export function ProjectDocumentsPage() {
       
       if (form.file) {
         payload.append('file', form.file); // Assuming the backend field is 'file'
+        payload.append('document_file', form.file); // Fallback for 'document_file'
       }
 
       if (editingDoc?.id) {
@@ -180,9 +208,12 @@ export function ProjectDocumentsPage() {
       setEditingDoc(null);
     } catch (error) {
       console.error('Upload Error:', error);
-      let errMsg = error?.response?.data?.message || error?.message || 'Failed to save document.';
-      if (error?.response?.data?.errors) {
-        const firstError = Object.values(error.response.data.errors)[0];
+      let errMsg = error?.message || 'Failed to save document.';
+      const validationErrors = error?.errors || error?.response?.data?.errors;
+      if (validationErrors && typeof validationErrors === 'object') {
+        const firstError = Array.isArray(Object.values(validationErrors)[0]) 
+          ? Object.values(validationErrors)[0][0] 
+          : Object.values(validationErrors)[0];
         errMsg = `${errMsg}: ${firstError}`;
       }
       toast.error(errMsg);
@@ -208,7 +239,14 @@ export function ProjectDocumentsPage() {
   const filtered = useMemo(() => {
     return documents.filter(doc => {
       if (selectedProjectId !== 'all' && String(doc.project_id) !== String(selectedProjectId)) return false;
-      if (activeCategory !== 'all' && doc.category_id !== activeCategory) return false;
+      
+      if (activeCategory !== 'all') {
+        const CATEGORY_MAP = { 'drawings': '1', 'contracts': '2', 'approvals': '3', 'qc': '4', 'safety': '5' };
+        const expectedId = CATEGORY_MAP[activeCategory] || activeCategory;
+        const docCatId = String(doc.category_id || doc.document_type_id || doc.project_document_category_id);
+        if (docCatId !== expectedId && docCatId !== activeCategory) return false;
+      }
+      
       if (search) {
         const q = search.toLowerCase();
         const title = (doc.document_title || '').toLowerCase();
@@ -334,7 +372,7 @@ export function ProjectDocumentsPage() {
 
         {/* Category Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-none">
-          {DOCUMENT_CATEGORIES.map(cat => (
+          {categories.map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
@@ -674,7 +712,7 @@ export function ProjectDocumentsPage() {
 
                 <FormField label="Document Category" required>
                   <Select
-                    options={DOCUMENT_CATEGORIES.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.name }))}
+                    options={categories.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.name }))}
                     value={form.category_id}
                     onChange={(v) => handleFormChange('category_id', v)}
                   />
