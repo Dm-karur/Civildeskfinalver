@@ -237,7 +237,6 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
       '/sites/instructions',
       '/sites/documents',
       '/planning',
-      '/procurement',
       '/materials/delivery-challans',
       '/materials/consumption',
       '/materials/ledger',

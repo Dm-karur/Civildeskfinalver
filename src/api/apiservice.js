@@ -296,6 +296,24 @@ export const materialManagementApi = {
     ledger: (params) => request.get('/material-management/ledger', params),
 };
 
+export const procurementApi = {
+    purchaseOrders: materialDocument('purchase-orders'),
+    requisitions: materialDocument('requests'),
+    receipts: {
+        ...materialDocument('receipts'),
+        inspect: (id, payload) => action('/material-management/receipts', id, 'inspect', payload),
+        post: (id, payload) => action('/material-management/receipts', id, 'post', payload),
+    },
+    transactions: {
+        ...materialDocument('transactions'),
+        post: (id, payload) => action('/material-management/transactions', id, 'post', payload),
+    },
+    rfq: crud('/procurement/rfq'),
+    quotations: crud('/procurement/quotations'),
+    invoices: crud('/procurement/vendor-invoices'),
+    returns: crud('/procurement/returns'),
+};
+
 const dailyEntry = (type) => ({
     list: (reportId, params) => request.get(`/daily-site-reports/${enc(reportId)}/${type}`, params),
     get: (reportId, id) => request.get(`/daily-site-reports/${enc(reportId)}/${type}/${enc(id)}`),

@@ -33,6 +33,19 @@ const EMPTY_MEMBER_FORM = {
   is_active: true,
 };
 
+const DEFAULT_SITE_TEAM_ROLES = [
+  { id: 1, name: 'Project Manager', code: 'PROJECT_MANAGER' },
+  { id: 2, name: 'Site Engineer', code: 'SITE_ENGINEER' },
+  { id: 3, name: 'Supervisor', code: 'SUPERVISOR' },
+  { id: 4, name: 'Planning Engineer', code: 'PLANNING_ENGINEER' },
+  { id: 5, name: 'Quantity Surveyor', code: 'QUANTITY_SURVEYOR' },
+  { id: 6, name: 'Safety Officer', code: 'SAFETY_OFFICER' },
+  { id: 7, name: 'Store Keeper', code: 'STORE_KEEPER' },
+  { id: 8, name: 'Accounts', code: 'ACCOUNTS' },
+  { id: 9, name: 'Viewer', code: 'VIEWER' },
+  { id: 10, name: 'Other', code: 'OTHER' },
+];
+
 export function SiteTeamPage() {
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
@@ -40,7 +53,7 @@ export function SiteTeamPage() {
   const [selectedSiteId, setSelectedSiteId] = useState('all');
   const [teamMembers, setTeamMembers] = useState([]);
   const [users, setUsers] = useState([]);
-  const [teamRoles, setTeamRoles] = useState([]);
+  const [teamRoles, setTeamRoles] = useState(DEFAULT_SITE_TEAM_ROLES);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -66,12 +79,18 @@ export function SiteTeamPage() {
       const pList = pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []);
       const sList = sRes?.data?.sites ?? sRes?.sites ?? (Array.isArray(sRes?.data) ? sRes.data : []);
       const uList = uRes?.data?.users ?? uRes?.users ?? (Array.isArray(uRes?.data) ? uRes.data : []);
-      const rolesList = mRes?.data?.project_team_roles ?? [];
+      const rolesList = mRes?.data?.project_team_roles ?? mRes?.data?.team_roles ?? mRes?.project_team_roles ?? [];
 
       setProjects(Array.isArray(pList) ? pList : []);
       setSites(Array.isArray(sList) ? sList : []);
       setUsers(Array.isArray(uList) ? uList : []);
-      setTeamRoles(Array.isArray(rolesList) ? rolesList : []);
+      if (Array.isArray(rolesList) && rolesList.length > 0) {
+        setTeamRoles(rolesList.map(r => ({
+          ...r,
+          name: r.name || r.role_name || r.code || `Role #${r.id}`,
+          role_name: r.role_name || r.name || r.code,
+        })));
+      }
     });
   }, []);
 

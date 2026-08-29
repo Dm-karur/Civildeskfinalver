@@ -29,12 +29,25 @@ const EMPTY_MEMBER_FORM = {
   is_active: true,
 };
 
+const DEFAULT_PROJECT_TEAM_ROLES = [
+  { id: 1, name: 'Project Manager', code: 'PROJECT_MANAGER' },
+  { id: 2, name: 'Site Engineer', code: 'SITE_ENGINEER' },
+  { id: 3, name: 'Supervisor', code: 'SUPERVISOR' },
+  { id: 4, name: 'Planning Engineer', code: 'PLANNING_ENGINEER' },
+  { id: 5, name: 'Quantity Surveyor', code: 'QUANTITY_SURVEYOR' },
+  { id: 6, name: 'Safety Officer', code: 'SAFETY_OFFICER' },
+  { id: 7, name: 'Store Keeper', code: 'STORE_KEEPER' },
+  { id: 8, name: 'Accounts', code: 'ACCOUNTS' },
+  { id: 9, name: 'Viewer', code: 'VIEWER' },
+  { id: 10, name: 'Other', code: 'OTHER' },
+];
+
 export function ProjectTeamPage() {
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('all');
   const [teamMembers, setTeamMembers] = useState([]);
   const [users, setUsers] = useState([]);
-  const [teamRoles, setTeamRoles] = useState([]);
+  const [teamRoles, setTeamRoles] = useState(DEFAULT_PROJECT_TEAM_ROLES);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -58,11 +71,17 @@ export function ProjectTeamPage() {
     ]).then(([pRes, uRes, mRes]) => {
       const pList = pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []);
       const uList = uRes?.data?.users ?? uRes?.users ?? (Array.isArray(uRes?.data) ? uRes.data : []);
-      const rolesList = mRes?.data?.project_team_roles ?? [];
+      const rolesList = mRes?.data?.project_team_roles ?? mRes?.data?.team_roles ?? mRes?.project_team_roles ?? [];
 
       setProjects(Array.isArray(pList) ? pList : []);
       setUsers(Array.isArray(uList) ? uList : []);
-      setTeamRoles(Array.isArray(rolesList) ? rolesList : []);
+      if (Array.isArray(rolesList) && rolesList.length > 0) {
+        setTeamRoles(rolesList.map(r => ({
+          ...r,
+          name: r.name || r.role_name || r.code || `Role #${r.id}`,
+          role_name: r.role_name || r.name || r.code,
+        })));
+      }
     });
   }, []);
 
@@ -191,7 +210,8 @@ export function ProjectTeamPage() {
       if (search) {
         const q = search.toLowerCase();
         const name = `${m.first_name || ''} ${m.last_name || ''} ${m.name || ''}`.toLowerCase();
-        const role = (m.role_name || m.team_role_name || '').toLowerCase();
+        const roleObj = teamRoles.find(r => String(r.id) === String(m.team_role_id));
+        const role = (m.role_name || m.team_role_name || roleObj?.name || roleObj?.role_name || '').toLowerCase();
         const resp = (m.responsibility || '').toLowerCase();
         const email = (m.email || '').toLowerCase();
         if (!name.includes(q) && !role.includes(q) && !resp.includes(q) && !email.includes(q)) return false;
@@ -199,7 +219,7 @@ export function ProjectTeamPage() {
       if (roleFilter !== 'all' && String(m.team_role_id) !== String(roleFilter)) return false;
       return true;
     });
-  }, [teamMembers, search, roleFilter]);
+  }, [teamMembers, search, roleFilter, teamRoles]);
 
   // Metrics
   const primaryLeads = useMemo(() => teamMembers.filter(m => m.is_primary).length, [teamMembers]);
@@ -278,7 +298,7 @@ export function ProjectTeamPage() {
               <Select
                 options={[
                   { value: 'all', label: 'All Team Roles' },
-                  ...teamRoles.map(r => ({ value: String(r.id), label: r.role_name }))
+                  ...teamRoles.map(r => ({ value: String(r.id), label: r.name || r.role_name || r.code }))
                 ]}
                 value={roleFilter}
                 onChange={setRoleFilter}
@@ -343,7 +363,8 @@ export function ProjectTeamPage() {
                 ) : (
                   paged.map((member, idx) => {
                     const memberName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.name || '—';
-                    const roleName = member.role_name || member.team_role_name || 'Team Member';
+                    const roleObj = teamRoles.find(r => String(r.id) === String(member.team_role_id));
+                    const roleName = member.role_name || member.team_role_name || roleObj?.name || roleObj?.role_name || 'Team Member';
                     const projectName = member.project_name || projects.find(p => p.id === member.project_id)?.project_name || '—';
                     const projectCode = member.project_code || projects.find(p => p.id === member.project_id)?.project_code || '';
                     const startDate = member.assignment_start ? member.assignment_start.split(' ')[0] : '—';
@@ -460,7 +481,8 @@ export function ProjectTeamPage() {
           ) : (
             paged.map((member, idx) => {
               const memberName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.name || '—';
-              const roleName = member.role_name || member.team_role_name || 'Team Member';
+              const roleObj = teamRoles.find(r => String(r.id) === String(member.team_role_id));
+              const roleName = member.role_name || member.team_role_name || roleObj?.name || roleObj?.role_name || 'Team Member';
               const projectName = member.project_name || projects.find(p => p.id === member.project_id)?.project_name || '—';
 
               return (
@@ -576,7 +598,7 @@ export function ProjectTeamPage() {
 
                 <FormField label="Team Role" required error={errors.team_role_id}>
                   <Select
-                    options={teamRoles.map(r => ({ value: String(r.id), label: r.role_name }))}
+                    options={teamRoles.map(r => ({ value: String(r.id), label: r.name || r.role_name || r.code }))}
                     value={form.team_role_id}
                     onChange={(v) => handleFormChange('team_role_id', v)}
                   />
