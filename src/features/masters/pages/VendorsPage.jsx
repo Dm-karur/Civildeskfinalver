@@ -195,11 +195,12 @@ export function VendorsPage() {
     }
   };
 
-  const confirmDelete = async () => {
-    if (!deletingItem?.id) return;
+  const handleDelete = async () => {
+    if (!deletingItem) return;
+    setSaving(true);
     try {
       await materialsApi.suppliers.remove(deletingItem.id);
-      toast.success('Vendor profile deleted.');
+      toast.success('Vendor deleted successfully.');
       setDeletingItem(null);
       fetchData();
     } catch (err) {
@@ -731,6 +732,18 @@ export function VendorsPage() {
           </div>
         </div>
       </EntityEditModal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={Boolean(deletingItem)}
+        title="Delete Vendor"
+        description={`Are you sure you want to delete vendor "${deletingItem?.supplier_name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        destructive={true}
+        loading={saving}
+        onConfirm={handleDelete}
+        onCancel={() => setDeletingItem(null)}
+      />
     </PageContainer>
   );
 }
