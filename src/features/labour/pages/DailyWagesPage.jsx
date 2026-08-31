@@ -5,6 +5,7 @@ import {
   ShieldCheck, Check, AlertCircle, Sparkles, Printer,
   CreditCard, ArrowDownRight, ArrowUpRight, FileSpreadsheet
 } from 'lucide-react';
+import { UnderConstructionPage } from '../../masters/pages/UnderConstructionPage';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -21,8 +22,6 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, request, wagesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
-
-
 
 const extractList = (res) => {
   if (Array.isArray(res)) return res;
@@ -55,6 +54,16 @@ const EMPTY_FORM = {
 };
 
 export function DailyWagesPage() {
+  return (
+    <UnderConstructionPage 
+      title="Daily Wages" 
+      moduleName="Labour" 
+      description="Manual entry of Daily Wages is not supported by the current backend schema. Wages are automatically calculated from Daily Attendance under the 'Wage Approvals' module." 
+    />
+  );
+}
+
+export function DailyWagesPage_Future() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
   const [wages, setWages] = useState([]);

@@ -4,6 +4,7 @@ import {
   Eye, Edit, Trash2, Plus, ArrowLeft, ArrowRight, Check,
   Calendar, Layers, ShieldCheck, Printer, FileSpreadsheet
 } from 'lucide-react';
+import { UnderConstructionPage } from '../../masters/pages/UnderConstructionPage';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -41,6 +42,17 @@ const EMPTY_FORM = {
 };
 
 export function LabourTimesheetsPage() {
+  return (
+    <UnderConstructionPage 
+      title="Weekly Timesheets" 
+      moduleName="Labour" 
+      description="The Timesheets module is currently under development. It will be wired up to the backend soon." 
+    />
+  );
+}
+
+// Preserved for future use once the backend endpoints are ready
+export function LabourTimesheetsPage_Future() {
   const [timesheets, setTimesheets] = useState([]);
   const [projects, setProjects] = useState([]);
   const [currentWeekLabel, setCurrentWeekLabel] = useState('Week 34 (17 Aug - 23 Aug 2026)');

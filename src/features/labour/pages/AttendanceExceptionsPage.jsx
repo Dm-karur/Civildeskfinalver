@@ -63,7 +63,6 @@ export function AttendanceExceptionsPage() {
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const perPage = 10;
@@ -216,7 +215,7 @@ export function AttendanceExceptionsPage() {
       const errMsg = error?.message || 'Failed to save exception.';
       
       // Extract validation errors which might be nested differently depending on CI4 response
-      const rawData = error?.original?.response?.data || {};
+      const rawData = error?.response?.data || error?.original?.response?.data || {};
       const validationMsgs = rawData.messages || rawData.errors || error?.errors || {};
       const msgList = Object.values(validationMsgs).filter(Boolean);
       const errDetails = msgList.length > 0 ? ' - Missing: ' + msgList.join(', ') : '';
@@ -265,8 +264,7 @@ export function AttendanceExceptionsPage() {
   const filtered = useMemo(() => {
     return exceptions.filter(e => {
       if (selectedProjectId !== 'all' && String(e.project_id) !== String(selectedProjectId)) return false;
-      if (categoryFilter !== 'all' && e.exception_id !== categoryFilter && !(e.exception_type || '').toLowerCase().includes(categoryFilter.toLowerCase())) return false;
-      if (statusFilter !== 'all' && e.status !== statusFilter) return false;
+      if (categoryFilter !== 'all' && String(e.exception_category_id) !== String(categoryFilter) && !(e.exception_type || '').toLowerCase().includes(String(categoryFilter).toLowerCase())) return false;
       if (search) {
         const q = search.toLowerCase();
         const code = (e.worker_code || '').toLowerCase();
@@ -278,7 +276,7 @@ export function AttendanceExceptionsPage() {
       }
       return true;
     });
-  }, [exceptions, selectedProjectId, categoryFilter, statusFilter, search]);
+  }, [exceptions, selectedProjectId, categoryFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -361,20 +359,6 @@ export function AttendanceExceptionsPage() {
               />
             </div>
 
-            <div className="w-full sm:w-40">
-              <Select
-                options={[
-                  { value: 'all', label: 'All Status' },
-                  { value: 'Pending Approval', label: 'Pending Approval' },
-                  { value: 'Regularized', label: 'Regularized' },
-                  { value: 'Rejected', label: 'Rejected' },
-                ]}
-                value={statusFilter}
-                onChange={setStatusFilter}
-                className="text-xs h-8"
-              />
-            </div>
-
             <div className="w-full sm:w-52">
               <SearchField
                 placeholder="Search worker, code, reason..."
@@ -420,20 +404,19 @@ export function AttendanceExceptionsPage() {
                   <th className="px-3 py-2">Exception Flag & Reason</th>
                   <th className="px-3 py-2 text-center w-32 hidden md:table-cell">Recorded Punches</th>
                   <th className="px-3 py-2 text-right w-24">Credits (Reg/OT)</th>
-                  <th className="px-3 py-2 text-center w-28">Status</th>
                   <th className="px-3 py-2 text-center w-28">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {loading ? (
                   <tr>
-                    <td colSpan="8" className="text-center py-8 text-text-muted text-[12px]">
+                    <td colSpan="7" className="text-center py-8 text-text-muted text-[12px]">
                       Loading attendance exceptions...
                     </td>
                   </tr>
                 ) : paged.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="text-center py-8 text-text-muted text-[12px]">
+                    <td colSpan="7" className="text-center py-8 text-text-muted text-[12px]">
                       No attendance exceptions found. All punch records verified.
                     </td>
                   </tr>
@@ -477,14 +460,6 @@ export function AttendanceExceptionsPage() {
                         <td className="px-3 py-2 text-right font-mono text-[11px]">
                           <span className="font-bold text-primary">{e.hours_credited}h</span>
                           {e.ot_credited > 0 && <span className="text-emerald-600 font-semibold block text-[10px]">+{e.ot_credited}h OT</span>}
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <Badge
-                            variant={getStatusVariant(e.status)}
-                            className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
-                          >
-                            {e.status}
-                          </Badge>
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex items-center justify-center gap-1">
@@ -549,12 +524,6 @@ export function AttendanceExceptionsPage() {
                   <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{e.worker_name}</h4>
                   <span className="text-[10px] font-mono text-text-muted">{e.incident_date}</span>
                 </div>
-                <Badge
-                  variant={getStatusVariant(e.status)}
-                  className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
-                >
-                  {e.status}
-                </Badge>
               </div>
 
               <div className="p-2 bg-red-500/5 border border-red-500/20 rounded text-xs space-y-1">
@@ -612,7 +581,6 @@ export function AttendanceExceptionsPage() {
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Exception Type</span> <span className="font-semibold text-red-600">{viewingItem.exception_type}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Resolution Status</span> <span className="font-semibold text-emerald-600">{viewingItem.status}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Recorded Gate Punches</span> <span className="font-mono">{viewingItem.recorded_in} to {viewingItem.recorded_out}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Adjusted Timings</span> <span className="font-mono font-bold text-primary">{viewingItem.adjusted_in} to {viewingItem.adjusted_out}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Regular Hours Credit</span> <span className="font-mono font-bold">{viewingItem.hours_credited} Hours</span></div>

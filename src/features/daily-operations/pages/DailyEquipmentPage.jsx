@@ -134,14 +134,14 @@ export function DailyEquipmentPage() {
       equipment_code: item.equipment_code || '',
       equipment_name: item.equipment_name || '',
       operator_name: item.operator_name || '',
-      running_hours: String(item.running_hours || '8.0'),
-      idle_hours: String(item.idle_hours || '0.5'),
-      breakdown_hours: String(item.breakdown_hours || '0.0'),
-      fuel_consumed_litres: String(item.fuel_consumed_litres || '35'),
-      assigned_work: item.assigned_work || '',
+      running_hours: String(item.working_hours ?? item.running_hours ?? '8.0'),
+      idle_hours: String(item.idle_hours ?? '0.5'),
+      breakdown_hours: String(item.breakdown_hours ?? '0.0'),
+      fuel_consumed_litres: String(item.fuel_consumed ?? item.fuel_consumed_litres ?? '35'),
+      assigned_work: item.work_description ?? item.assigned_work ?? '',
       location: item.location || '',
       status: item.status || 'Operational (Normal)',
-      notes: item.notes || '',
+      notes: item.remarks ?? item.notes ?? '',
     });
     setErrors({});
     setEditingItem(item);
@@ -177,7 +177,7 @@ export function DailyEquipmentPage() {
         work_description: form.assigned_work,
         location: form.location,
         status: form.status,
-        notes: form.notes,
+        remarks: form.notes,
         // Backend mapping fields that throw 'Select a valid controlled value' if missing
         ownership_type_id: 1, // 1 = Owned
         status_id: 1, // 1 = Working

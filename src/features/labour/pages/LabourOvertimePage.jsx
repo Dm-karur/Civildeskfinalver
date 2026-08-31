@@ -4,6 +4,7 @@ import {
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
   ShieldCheck, Check, AlertCircle, Sparkles, Moon, Sun, AlertTriangle
 } from 'lucide-react';
+import { UnderConstructionPage } from '../../masters/pages/UnderConstructionPage';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -19,7 +20,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, request } from '../../../api/apiservice';
+import { projectsApi, labourApi, request } from '../../../api/apiservice';
 
 const OT_REASONS = [
   { id: 'all', name: 'All Overtime Reasons' },
@@ -35,6 +36,7 @@ const OT_REASONS = [
 const EMPTY_FORM = {
   project_id: '',
   slip_code: '',
+  worker_id: '',
   worker_code: '',
   worker_name: '',
   category_name: 'General Helper',
@@ -54,8 +56,20 @@ const EMPTY_FORM = {
 };
 
 export function LabourOvertimePage() {
+  return (
+    <UnderConstructionPage 
+      title="Labour Overtime" 
+      moduleName="Labour" 
+      description="The Overtime module is currently under development. It will be wired up to the backend soon." 
+    />
+  );
+}
+
+// Preserved for future use once the backend endpoints are ready
+export function LabourOvertimePage_Future() {
   const [projects, setProjects] = useState([]);
   const [slips, setSlips] = useState([]);
+  const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -80,6 +94,11 @@ export function LabourOvertimePage() {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+
+    labourApi.workers.list().then(res => {
+      const list = res?.data?.labour_workers ?? res?.data?.data ?? [];
+      setWorkers(Array.isArray(list) ? list : []);
+    }).catch(() => setWorkers([]));
   }, []);
 
   // Form Handlers
@@ -152,14 +171,17 @@ export function LabourOvertimePage() {
       const hrs = Number(form.ot_hours || 0);
       const rate = Number(form.hourly_rate || 150);
 
+      const selectedWorker = workers.find(w => String(w.id) === String(form.worker_id));
+      
       const newSlip = {
         id: editingItem?.id || Date.now(),
         project_id: Number(form.project_id || 1),
         project_code: selectedProj?.project_code || 'PRJ-2026-001',
         project_name: selectedProj?.project_name || 'Civil Project',
         slip_code: form.slip_code,
-        worker_code: form.worker_code || 'LAB-000',
-        worker_name: form.worker_name,
+        worker_id: form.worker_id,
+        worker_code: selectedWorker?.worker_code || form.worker_code || 'LAB-000',
+        worker_name: selectedWorker?.worker_name || form.worker_name,
         category_name: form.category_name,
         contractor_name: form.contractor_name || 'Direct Roll',
         ot_date: form.ot_date,
@@ -617,11 +639,11 @@ export function LabourOvertimePage() {
                   />
                 </FormField>
 
-                <FormField label="Worker Name" required error={errors.worker_name}>
-                  <Input
-                    value={form.worker_name}
-                    onChange={(e) => handleFormChange('worker_name', e.target.value)}
-                    placeholder="e.g. K. Selvam"
+                <FormField label="Worker" required error={errors.worker_id}>
+                  <Select
+                    options={workers.map(w => ({ value: String(w.id), label: `${w.worker_code} - ${w.worker_name}` }))}
+                    value={form.worker_id}
+                    onChange={(v) => handleFormChange('worker_id', v)}
                   />
                 </FormField>
 

@@ -4,6 +4,7 @@ import {
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
   ShieldCheck, Check, AlertCircle, Sparkles, UserCheck, Calendar
 } from 'lucide-react';
+import { UnderConstructionPage } from '../../masters/pages/UnderConstructionPage';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -49,6 +50,17 @@ const EMPTY_FORM = {
 };
 
 export function LabourLeavePage() {
+  return (
+    <UnderConstructionPage 
+      title="Labour Leave Management" 
+      moduleName="Labour" 
+      description="The Leave Management module is currently under development. It will be wired up to the backend soon." 
+    />
+  );
+}
+
+// Preserved for future use once the backend endpoints are ready
+export function LabourLeavePage_Future() {
   const [projects, setProjects] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(false);
