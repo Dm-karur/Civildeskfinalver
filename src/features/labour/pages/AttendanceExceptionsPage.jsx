@@ -19,27 +19,29 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, request } from '../../../api/apiservice';
+import { projectsApi, request, labourApi } from '../../../api/apiservice';
 
 const EXCEPTION_CATEGORIES = [
   { id: 'all', name: 'All Exception Types' },
-  { id: 'missing_punch', name: 'Missing Gate Punch-Out' },
-  { id: 'late_arrival', name: 'Late Arrival (> 30 mins)' },
-  { id: 'early_departure', name: 'Early Site Departure' },
-  { id: 'absent_streak', name: 'Continuous Absence Streak' },
-  { id: 'ot_dispute', name: 'Overtime Hours Discrepancy' },
+  { id: 1, name: 'Missing Gate Punch-Out' },
+  { id: 2, name: 'Late Arrival (> 30 mins)' },
+  { id: 3, name: 'Early Site Departure' },
+  { id: 4, name: 'Continuous Absence Streak' },
+  { id: 5, name: 'Overtime Hours Discrepancy' },
 ];
 
 
 
 const EMPTY_FORM = {
   project_id: '',
+  worker_id: '',
   worker_code: '',
   worker_name: '',
   category_name: 'General Helper',
   contractor_name: '',
   incident_date: '',
   shift_name: 'General Day Shift',
+  exception_category_id: 1,
   exception_type: 'Missing Gate Punch-Out',
   recorded_in: '08:00 AM',
   recorded_out: '—',
@@ -54,6 +56,7 @@ const EMPTY_FORM = {
 
 export function AttendanceExceptionsPage() {
   const [projects, setProjects] = useState([]);
+  const [workers, setWorkers] = useState([]);
   const [exceptions, setExceptions] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -80,6 +83,11 @@ export function AttendanceExceptionsPage() {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+
+    labourApi.workers.list().then(res => {
+      const list = res?.data?.labour_workers ?? res?.data?.data ?? [];
+      setWorkers(Array.isArray(list) ? list : []);
+    }).catch(() => setWorkers([]));
   }, []);
 
   const fetchExceptions = async () => {
@@ -119,12 +127,14 @@ export function AttendanceExceptionsPage() {
   const handleOpenEdit = (item) => {
     setForm({
       project_id: String(item.project_id || '1'),
+      worker_id: String(item.worker_id || ''),
       worker_code: item.worker_code || '',
       worker_name: item.worker_name || '',
       category_name: item.category_name || '',
       contractor_name: item.contractor_name || '',
       incident_date: item.incident_date || '',
       shift_name: item.shift_name || 'General Day Shift',
+      exception_category_id: item.exception_category_id || 1,
       exception_type: item.exception_type || 'Missing Gate Punch-Out',
       recorded_in: item.recorded_in || '',
       recorded_out: item.recorded_out || '',
@@ -148,7 +158,8 @@ export function AttendanceExceptionsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.worker_name.trim()) errs.worker_name = 'Worker name is required';
+    if (!form.worker_id) errs.worker_id = 'Worker is required';
+    if (!form.exception_category_id) errs.exception_category_id = 'Exception category is required';
     if (!form.incident_date) errs.incident_date = 'Date is required';
 
     if (Object.keys(errs).length > 0) {
@@ -159,19 +170,23 @@ export function AttendanceExceptionsPage() {
     setSaving(true);
     try {
       const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
+      const selectedWorker = workers.find(w => String(w.id) === String(form.worker_id));
+      const selectedCategory = EXCEPTION_CATEGORIES.find(c => String(c.id) === String(form.exception_category_id));
 
       const newException = {
-        id: editingItem?.id || Date.now(),
+        ...(editingItem?.id ? { id: editingItem.id } : {}),
         project_id: Number(form.project_id || 1),
         project_code: selectedProj?.project_code || 'PRJ-2026-001',
         project_name: selectedProj?.project_name || 'Civil Project',
-        worker_code: form.worker_code || 'LAB-000',
-        worker_name: form.worker_name,
+        worker_id: Number(form.worker_id),
+        worker_code: selectedWorker?.worker_code || form.worker_code || 'LAB-000',
+        worker_name: selectedWorker?.worker_name || form.worker_name || 'Unknown',
         category_name: form.category_name,
         contractor_name: form.contractor_name || 'Direct Roll',
         incident_date: form.incident_date,
         shift_name: form.shift_name,
-        exception_type: form.exception_type,
+        exception_category_id: form.exception_category_id,
+        exception_type: selectedCategory?.name || form.exception_type,
         recorded_in: form.recorded_in,
         recorded_out: form.recorded_out,
         adjusted_in: form.adjusted_in,
@@ -198,8 +213,15 @@ export function AttendanceExceptionsPage() {
       setEditingItem(null);
     } catch (error) {
       console.error(error);
-      const errMsg = error?.response?.data?.message || error?.message || 'Failed to save exception.';
-      toast.error(errMsg);
+      const errMsg = error?.message || 'Failed to save exception.';
+      
+      // Extract validation errors which might be nested differently depending on CI4 response
+      const rawData = error?.original?.response?.data || {};
+      const validationMsgs = rawData.messages || rawData.errors || error?.errors || {};
+      const msgList = Object.values(validationMsgs).filter(Boolean);
+      const errDetails = msgList.length > 0 ? ' - Missing: ' + msgList.join(', ') : '';
+      
+      toast.error(errMsg + errDetails);
     } finally {
       setSaving(false);
     }
@@ -243,7 +265,7 @@ export function AttendanceExceptionsPage() {
   const filtered = useMemo(() => {
     return exceptions.filter(e => {
       if (selectedProjectId !== 'all' && String(e.project_id) !== String(selectedProjectId)) return false;
-      if (categoryFilter !== 'all' && e.exception_id !== categoryFilter && !e.exception_type.toLowerCase().includes(categoryFilter.toLowerCase())) return false;
+      if (categoryFilter !== 'all' && e.exception_id !== categoryFilter && !(e.exception_type || '').toLowerCase().includes(categoryFilter.toLowerCase())) return false;
       if (statusFilter !== 'all' && e.status !== statusFilter) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -263,7 +285,7 @@ export function AttendanceExceptionsPage() {
 
   // Metrics
   const pendingCount = useMemo(() => exceptions.filter(e => e.status === 'Pending Approval').length, [exceptions]);
-  const missingPunchCount = useMemo(() => exceptions.filter(e => e.exception_type.includes('Missing')).length, [exceptions]);
+  const missingPunchCount = useMemo(() => exceptions.filter(e => (e.exception_type || '').includes('Missing')).length, [exceptions]);
   const regularizedCount = useMemo(() => exceptions.filter(e => e.status === 'Regularized').length, [exceptions]);
 
   const getStatusVariant = (status) => {
@@ -635,19 +657,11 @@ export function AttendanceExceptionsPage() {
                   />
                 </FormField>
 
-                <FormField label="Worker Code" required>
-                  <Input
-                    value={form.worker_code}
-                    onChange={(e) => handleFormChange('worker_code', e.target.value)}
-                    placeholder="e.g. LAB-0001"
-                  />
-                </FormField>
-
-                <FormField label="Worker Name" required error={errors.worker_name}>
-                  <Input
-                    value={form.worker_name}
-                    onChange={(e) => handleFormChange('worker_name', e.target.value)}
-                    placeholder="e.g. K. Selvam"
+                <FormField label="Worker" required error={errors.worker_id}>
+                  <Select
+                    options={workers.map(w => ({ value: String(w.id), label: `${w.worker_code} - ${w.worker_name}` }))}
+                    value={form.worker_id}
+                    onChange={(v) => handleFormChange('worker_id', v)}
                   />
                 </FormField>
 
@@ -663,11 +677,11 @@ export function AttendanceExceptionsPage() {
 
             <EntityEditModal.Section title="Exception & Regularization Timings">
               <EntityEditModal.Grid>
-                <FormField label="Exception Category" required>
+                <FormField label="Exception Category" required error={errors.exception_category_id}>
                   <Select
-                    options={EXCEPTION_CATEGORIES.filter(c => c.id !== 'all').map(c => ({ value: c.name, label: c.name }))}
-                    value={form.exception_type}
-                    onChange={(v) => handleFormChange('exception_type', v)}
+                    options={EXCEPTION_CATEGORIES.filter(c => c.id !== 'all').map(c => ({ value: String(c.id), label: c.name }))}
+                    value={form.exception_category_id}
+                    onChange={(v) => handleFormChange('exception_category_id', v)}
                   />
                 </FormField>
 

@@ -121,15 +121,13 @@ export function LabourRegisterPage() {
         if (typeof payload[k] === 'string') payload[k] = payload[k].trim(); 
       });
       if (editItem?.id) {
-        try { await labourApi.workers.update(editItem.id, payload); } catch (e) { /* ignore backend failure */ }
-        setItems(prev => prev.map(i => i.id === editItem.id ? { ...i, ...payload } : i));
+        await labourApi.workers.update(editItem.id, payload);
       } else {
-        const newItem = { id: Date.now(), ...payload };
-        try { await labourApi.workers.create(payload); } catch (e) { /* ignore backend failure */ }
-        setItems(prev => [newItem, ...prev]);
+        await labourApi.workers.create(payload);
       }
       toast.success(`Worker ${editItem ? 'updated' : 'created'} successfully.`);
       setIsAddOpen(false); setEditItem(null);
+      fetchItems();
     } catch (err) {
       setErrors(err?.errors ?? {});
       toast.error(err?.message || 'Failed to save worker.');
@@ -139,9 +137,9 @@ export function LabourRegisterPage() {
   const confirmDelete = async () => {
     if (!deleteItem?.id) return;
     try {
-      try { await labourApi.workers.remove(deleteItem.id); } catch (e) { /* ignore backend failure */ }
-      setItems(prev => prev.filter(i => i.id !== deleteItem.id));
+      await labourApi.workers.remove(deleteItem.id);
       toast.success('Worker deleted.'); 
+      fetchItems();
     } catch (err) { toast.error(err?.message || 'Cannot delete worker.'); }
     finally { setDeleteItem(null); }
   };
@@ -176,7 +174,7 @@ export function LabourRegisterPage() {
       'statuses': 'worker-statuses',
     };
     const targetKey = apiKeys[key] || key;
-    return (Array.isArray(masters[targetKey]) ? masters[targetKey] : []).map((m) => ({ value: String(m.id), label: m.employment_source_name || m.category_name || m.contractor_name || m.id_type_name || m.status_name || m.source_name || m.gender_name || m.type_name || m.basis_name || m.name || m.id }));
+    return (Array.isArray(masters[targetKey]) ? masters[targetKey] : []).map((m) => ({ value: String(m.id), label: m.wage_basis_name || m.wage_basis || m.employment_source_name || m.category_name || m.contractor_name || m.id_type_name || m.status_name || m.source_name || m.gender_name || m.type_name || m.basis_name || m.name || m.id }));
   };
 
   // Metrics
@@ -209,67 +207,15 @@ export function LabourRegisterPage() {
           { label: 'Labour & Attendance' },
           { label: 'Labour Register' }
         ]}
+        actions={
+          <Button variant="primary" size="sm" onClick={openAdd} className="flex items-center gap-1.5">
+            <Plus className="w-4 h-4" />
+            New Employee
+          </Button>
+        }
       />
 
       <div className="flex flex-col gap-3 sm:gap-4 w-full">
-        {/* Quick Actions Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
-          <div
-            className="bg-surface border border-border rounded-lg p-3 shadow-xs cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center text-center gap-2"
-            onClick={openAdd}
-          >
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <Plus className="w-4 h-4" />
-            </div>
-            <span className="text-[12px] font-semibold text-text-primary">New Employee</span>
-          </div>
-          
-          <div
-            className="bg-surface border border-border rounded-lg p-3 shadow-xs cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center text-center gap-2"
-            onClick={() => navigate('/masters/labour-categories')}
-          >
-            <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-              <Plus className="w-4 h-4" />
-            </div>
-            <span className="text-[12px] font-semibold text-text-primary">Add Category</span>
-          </div>
-
-          <div
-            className="bg-surface border border-border rounded-lg p-3 shadow-xs cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center text-center gap-2"
-            onClick={() => navigate('/masters/labour-categories')}
-          >
-            <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600">
-              <Edit className="w-4 h-4" />
-            </div>
-            <span className="text-[12px] font-semibold text-text-primary">Edit Category</span>
-          </div>
-
-          <div
-            className="bg-surface border border-border rounded-lg p-3 shadow-xs cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center text-center gap-2"
-            onClick={() => {
-              if (!hasPermission('superadmin') && !hasPermission('labour.delete')) {
-                toast.error('Only Superadmin can remove labour categories.');
-                return;
-              }
-              navigate('/masters/labour-categories');
-            }}
-          >
-            <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-600">
-              <Trash2 className="w-4 h-4" />
-            </div>
-            <span className="text-[12px] font-semibold text-text-primary">Remove Category</span>
-          </div>
-
-          <div
-            className="bg-surface border border-border rounded-lg p-3 shadow-xs cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center text-center gap-2"
-            onClick={() => navigate('/masters/wage-rates')}
-          >
-            <div className="w-8 h-8 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-600">
-              <IndianRupee className="w-4 h-4" />
-            </div>
-            <span className="text-[12px] font-semibold text-text-primary">Change Salary</span>
-          </div>
-        </div>
 
         {/* KPIs Summary Ribbon */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
