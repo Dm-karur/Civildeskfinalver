@@ -96,6 +96,16 @@ export function DailyApprovalsPage() {
     }
   };
 
+  const handleSubmitDpr = async (item) => {
+    try {
+      await dailyReportsApi.submit(item.id, { remarks: 'Submitted for PM Approval' });
+      toast.success(`DPR for ${item.report_date} submitted successfully.`);
+      loadData();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to submit DPR.');
+    }
+  };
+
   // Safe Filtered List
   const filtered = useMemo(() => {
     return reports.filter(r => {
@@ -300,7 +310,20 @@ export function DailyApprovalsPage() {
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
-                          {r.status_name.includes('Submitted') && (
+                          
+                          {(r.status_code === 'DRAFT' || r.status_name?.toUpperCase() === 'DRAFT') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[10px] px-1.5 text-blue-600 border-blue-200 hover:bg-blue-50"
+                              title="Submit DPR"
+                              onClick={() => handleSubmitDpr(r)}
+                            >
+                              <ArrowRight className="w-3 h-3 mr-0.5" /> Submit
+                            </Button>
+                          )}
+
+                          {r.status_name?.includes('Submitted') && (
                             <>
                               <Button
                                 variant="outline"
@@ -358,7 +381,12 @@ export function DailyApprovalsPage() {
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(r)}>
                   <Eye className="w-3 h-3 mr-1" /> View DPR
                 </Button>
-                {r.status_name.includes('Submitted') && (
+                {(r.status_code === 'DRAFT' || r.status_name?.toUpperCase() === 'DRAFT') && (
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-blue-600 border-blue-200" onClick={() => handleSubmitDpr(r)}>
+                    <ArrowRight className="w-3 h-3 mr-1" /> Submit
+                  </Button>
+                )}
+                {r.status_name?.includes('Submitted') && (
                   <Button variant="primary" size="sm" className="h-7 text-[11px] px-2 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleApprove(r)}>
                     <Check className="w-3 h-3 mr-1" /> Approve
                   </Button>

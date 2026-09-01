@@ -203,6 +203,16 @@ export function DailyProgressReportsPage() {
     }
   };
 
+  const handleSubmitDpr = async (item) => {
+    try {
+      await dailyReportsApi.submit(item.id, { remarks: 'Submitted by Site Engineer' });
+      toast.success(`DPR for ${item.report_date} submitted successfully.`);
+      loadData(); // Reload from server
+    } catch (err) {
+      toast.error(err?.message || 'Failed to submit DPR.');
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteItem?.id) return;
     try {
@@ -449,6 +459,17 @@ export function DailyProgressReportsPage() {
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
+                          {(r.status_code === 'DRAFT' || r.status_name?.toUpperCase() === 'DRAFT') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="Submit DPR to PM"
+                              onClick={() => handleSubmitDpr(r)}
+                            >
+                              <Send className="w-3.5 h-3.5 text-blue-500 hover:text-blue-700" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -501,10 +522,18 @@ export function DailyProgressReportsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
+              <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(r)}>
-                  <Eye className="w-3 h-3 mr-1" /> View Full DPR
+                  <Eye className="w-3 h-3 mr-1" /> View 360
                 </Button>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(r)}>
+                  <Edit className="w-3 h-3 mr-1" /> Edit
+                </Button>
+                {(r.status_code === 'DRAFT' || r.status_name?.toUpperCase() === 'DRAFT') && (
+                  <Button variant="primary" size="sm" className="h-7 text-[11px] px-2 bg-blue-600 hover:bg-blue-700" onClick={() => handleSubmitDpr(r)}>
+                    <Send className="w-3 h-3 mr-1" /> Submit
+                  </Button>
+                )}
               </div>
             </div>
           ))}
