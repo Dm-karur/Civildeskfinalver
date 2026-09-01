@@ -126,7 +126,9 @@ export function DailyPhotosPage() {
               ...p, 
               report_id: r.id, 
               project_id: r.project_id, 
-              date: r.report_date, 
+              date: p.captured_at ? new Date(p.captured_at).toISOString().split('T')[0] : 
+                    p.created_at ? new Date(p.created_at).toISOString().split('T')[0] : 
+                    new Date().toISOString().split('T')[0],
               project_code: r.project_code,
               // Fallbacks since these aren't saved in backend
               tag: 'General Progress', 

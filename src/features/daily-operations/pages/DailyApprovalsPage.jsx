@@ -15,7 +15,7 @@ import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, dailyReportsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -23,14 +23,7 @@ import { useAuth } from '../../auth/context/AuthContext';
 export function DailyApprovalsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [reports, setReports] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_daily_progress_reports');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -43,26 +36,64 @@ export function DailyApprovalsPage() {
   // Modals
   const [viewingItem, setViewingItem] = useState(null);
 
-  // Load Projects
-  useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('mock_daily_progress_reports', JSON.stringify(reports));
-  }, [reports]);
-
-  const handleApprove = (item) => {
-    setReports(prev => prev.map(r => r.id === item.id ? { ...r, status_name: 'Approved by PM' } : r));
-    toast.success(`DPR for ${item.report_date} approved and archived into official site diary.`);
+  const extractArray = (res) => {
+    if (Array.isArray(res)) return res;
+    if (res?.data && Array.isArray(res.data)) return res.data;
+    if (res?.data?.daily_site_reports) return res.data.daily_site_reports;
+    if (res?.daily_site_reports) return res.daily_site_reports;
+    return [];
   };
 
-  const handleReturn = (item) => {
-    setReports(prev => prev.map(r => r.id === item.id ? { ...r, status_name: 'Returned for Revision' } : r));
-    toast.success(`DPR for ${item.report_date} returned to site incharge.`);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const projRes = await projectsApi.list();
+      setProjects(extractArray(projRes));
+
+      if (dailyReportsApi?.list) {
+        const dprRes = await dailyReportsApi.list(selectedProjectId !== 'all' ? { project_id: selectedProjectId } : {});
+        const list = extractArray(dprRes);
+        const mapped = list.map(r => ({
+          ...r,
+          work_summary: r.overall_work_summary,
+          overall_progress: r.actual_progress_percentage || 0,
+          submitted_by: 'Site Engineer',
+          weather: 'Sunny & Clear (32°C)',
+          total_manpower: '0',
+          total_equipment: '0'
+        }));
+        setReports(mapped);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load approval queue.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [selectedProjectId]);
+
+  const handleApprove = async (item) => {
+    try {
+      await dailyReportsApi.approve(item.id, { remarks: 'Approved by PM' });
+      toast.success(`DPR for ${item.report_date} approved and archived into official site diary.`);
+      loadData();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to approve DPR.');
+    }
+  };
+
+  const handleReturn = async (item) => {
+    try {
+      await dailyReportsApi.reject(item.id, { remarks: 'Returned for Revision' });
+      toast.success(`DPR for ${item.report_date} returned to site incharge.`);
+      loadData();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to return DPR.');
+    }
   };
 
   // Safe Filtered List
