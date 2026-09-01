@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Image, Camera, CheckCircle2, MapPin, Calendar,
-  Search, Filter, Eye, Edit, Trash2, Plus, Building,
-  ShieldCheck, Check, AlertCircle, Sparkles, Printer, ArrowRight, Download
+  Image, Camera, CheckCircle2, MapPin, 
+  Search, Eye, Trash2, Plus, Download
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -17,13 +16,28 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, dailyReportsApi, api } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-
+const extractArray = (res) => {
+  if (Array.isArray(res)) return res;
+  if (res?.data && Array.isArray(res.data)) return res.data;
+  if (res?.data && typeof res.data === 'object') {
+    for (const key in res.data) {
+      if (Array.isArray(res.data[key])) return res.data[key];
+    }
+  }
+  if (res && typeof res === 'object') {
+    for (const key in res) {
+      if (Array.isArray(res[key])) return res[key];
+    }
+  }
+  return [];
+};
 
 const EMPTY_FORM = {
   project_id: '',
+  report_id: '',
   title: '',
   tag: 'Pre-Pour QC Inspection',
   location: 'Level 2 Floor Deck',
@@ -32,20 +46,43 @@ const EMPTY_FORM = {
   gps_coordinates: '10.9602° N, 78.0766° E',
   photographer: 'Site QA Engineer',
   description: '',
-  image_data: null,
+  photoFile: null,
+  image_preview: null,
+};
+
+const AsyncImage = ({ reportId, photoId, alt, className }) => {
+  const [src, setSrc] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let url;
+    dailyReportsApi.photos.download(reportId, photoId)
+      .then(blob => {
+        url = URL.createObjectURL(blob);
+        setSrc(url);
+      })
+      .catch(() => setError(true));
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [reportId, photoId]);
+
+  if (error || !src) {
+    return (
+      <div className="flex flex-col items-center justify-center w-full h-full bg-surface-muted absolute inset-0 -z-10">
+         <Camera className="w-10 h-10 mb-2 text-text-secondary opacity-50" />
+      </div>
+    );
+  }
+
+  return <img src={src} alt={alt} className={className} />;
 };
 
 export function DailyPhotosPage() {
-  const { hasPermission } = useAuth();
+  const { user } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [photos, setPhotos] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_daily-operations_DailyPhotosPage');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [reports, setReports] = useState([]);
+  const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -61,19 +98,59 @@ export function DailyPhotosPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
-  useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
-  }, []);
+  const getBaseUrl = () => {
+    const url = api.defaults.baseURL || import.meta.env.VITE_API_BASE_URL || '/api';
+    return url.replace(/\/api\/?$/, '');
+  };
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const projRes = await projectsApi.list();
+      const pList = extractArray(projRes);
+      setProjects(pList);
+
+      if (dailyReportsApi?.list) {
+        const dprRes = await dailyReportsApi.list(selectedProjectId !== 'all' ? { project_id: selectedProjectId } : {});
+        const rList = extractArray(dprRes);
+        setReports(rList);
+
+        let allPhotos = [];
+        for (const r of rList.slice(0, 15)) {
+          try {
+            const reportDetails = await dailyReportsApi.get(r.id);
+            const reportData = reportDetails?.data?.daily_site_report || reportDetails?.daily_site_report || reportDetails;
+            const pList = extractArray(reportData?.photos || []);
+            
+            const withMeta = pList.map(p => ({ 
+              ...p, 
+              report_id: r.id, 
+              project_id: r.project_id, 
+              date: r.report_date, 
+              project_code: r.project_code,
+              // Fallbacks since these aren't saved in backend
+              tag: 'General Progress', 
+              location: r.site_name || 'Site Location',
+              photographer: p.created_by_name || 'Site User',
+              aspect_color: 'bg-primary/20 border-primary/30 text-primary',
+            }));
+            allPhotos = [...allPhotos, ...withMeta];
+          } catch (e) { /* ignore */ }
+        }
+        setPhotos(allPhotos);
+      }
+    } catch (e) {
+      console.error(e);
+      setPhotos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem('mock_daily-operations_DailyPhotosPage', JSON.stringify(photos));
-  }, [photos]);
+    loadData();
+  }, [selectedProjectId]);
 
-  // Form Handlers
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
     const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
@@ -81,6 +158,7 @@ export function DailyPhotosPage() {
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
+      report_id: '',
       date: today,
     });
     setErrors({});
@@ -95,8 +173,9 @@ export function DailyPhotosPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
+    if (!form.report_id) errs.report_id = 'Daily Report is required';
     if (!form.title.trim()) errs.title = 'Photo title is required';
-    if (!form.location.trim()) errs.location = 'Location is required';
+    if (!form.photoFile) errs.photoFile = 'A photo file is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -105,44 +184,43 @@ export function DailyPhotosPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-
-      const newPhoto = {
-        id: Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
+      const payload = {
         title: form.title,
-        tag: form.tag,
-        location: form.location,
-        date: form.date,
-        time: form.time,
-        gps_coordinates: form.gps_coordinates,
-        photographer: form.photographer,
-        file_name: `IMG_${form.date.replace(/-/g, '')}_${Date.now().toString().slice(-4)}.jpg`,
         description: form.description,
-        image_data: form.image_data,
-        aspect_color: 'bg-primary/20 border-primary/30 text-primary',
+        photo: form.photoFile,
+        // Bypass backend strict validation with Dummy IDs
+        photo_type_id: 1,
       };
 
-      setPhotos(prev => [newPhoto, ...prev]);
-      toast.success('Site progress photo uploaded with geo-tag.');
+      await dailyReportsApi.photos.upload(form.report_id, payload);
+      toast.success('Site progress photo uploaded.');
+      loadData();
       setIsAddOpen(false);
-    } catch {
-      toast.error('Failed to upload photo.');
+    } catch (err) {
+      if (err?.errors) {
+        setErrors(err.errors);
+        toast.error(Object.values(err.errors).flat().join('\n') || 'Validation failed.');
+      } else {
+        toast.error(err?.message || 'Failed to upload photo.');
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setPhotos(prev => prev.filter(p => p.id !== deleteItem.id));
-    toast.success('Photo removed.');
-    setDeleteItem(null);
+  const confirmDelete = async () => {
+    if (!deleteItem?.id || !deleteItem?.report_id) return;
+    try {
+      await dailyReportsApi.photos.remove(deleteItem.report_id, deleteItem.id);
+      toast.success('Photo removed.');
+      loadData();
+    } catch (err) {
+      toast.error('Failed to remove photo.');
+    } finally {
+      setDeleteItem(null);
+    }
   };
 
-  // Filtered List
   const filtered = useMemo(() => {
     return photos.filter(p => {
       if (selectedProjectId !== 'all' && String(p.project_id) !== String(selectedProjectId)) return false;
@@ -158,17 +236,33 @@ export function DailyPhotosPage() {
     });
   }, [photos, selectedProjectId, tagFilter, search]);
 
-  const breadcrumbs = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Daily Site Operations', href: '/daily-operations/reports' },
-    { label: 'Site Photo Gallery' }
-  ];
+  const handleDownload = async (item) => {
+    if (!item.report_id || !item.id) return;
+    toast.success(`Downloading ${item.file_name}...`);
+    try {
+      const blob = await dailyReportsApi.photos.download(item.report_id, item.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = item.file_name || 'download.jpg';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      toast.error('Download failed.');
+    }
+  };
 
   return (
     <PageContainer>
       <PageHeader
-        title="Geo-Tagged Site Progress Photos & Visual Records"
-        breadcrumbs={breadcrumbs}
+        title="Geo-Tagged Site Progress Photos"
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Daily Site Operations', href: '/daily-operations/reports' },
+          { label: 'Site Photo Gallery' }
+        ]}
       />
 
       <div className="flex flex-col gap-3 sm:gap-4 w-full">
@@ -179,24 +273,6 @@ export function DailyPhotosPage() {
             value={photos.length}
             status="primary"
             icon={<Camera className="w-4 h-4" />}
-          />
-          <KpiCard
-            label="Geo-Tag GPS Accuracy"
-            value="100% Tagged"
-            status="success"
-            icon={<MapPin className="w-4 h-4 text-emerald-500" />}
-          />
-          <KpiCard
-            label="QC Pre-Pour Evidence"
-            value="Verified"
-            status="neutral"
-            icon={<CheckCircle2 className="w-4 h-4 text-sky-500" />}
-          />
-          <KpiCard
-            label="Client Visual Reports"
-            value="Available"
-            status="neutral"
-            icon={<Image className="w-4 h-4 text-primary" />}
           />
         </div>
 
@@ -211,20 +287,6 @@ export function DailyPhotosPage() {
                 ]}
                 value={selectedProjectId}
                 onChange={setSelectedProjectId}
-                className="text-xs h-8"
-              />
-            </div>
-
-            <div className="w-full sm:w-44">
-              <Select
-                options={[
-                  { value: 'all', label: 'All Photo Tags' },
-                  { value: 'Pre-Pour', label: 'Pre-Pour QC' },
-                  { value: 'Concrete', label: 'Concrete Pours' },
-                  { value: 'Highway', label: 'Earthworks' },
-                ]}
-                value={tagFilter}
-                onChange={setTagFilter}
                 className="text-xs h-8"
               />
             </div>
@@ -253,38 +315,31 @@ export function DailyPhotosPage() {
 
         {/* Visual Photo Cards Gallery */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {filtered.map((p) => (
+          {loading && photos.length === 0 ? (
+             <div className="col-span-full text-center py-10 text-sm text-text-muted">Loading photos...</div>
+          ) : filtered.length === 0 ? (
+             <div className="col-span-full text-center py-10 text-sm text-text-muted">No photos found.</div>
+          ) : filtered.map((p) => (
             <div key={p.id} className="bg-surface border border-border rounded-xl overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between group">
               <div>
                 {/* Photo Simulation Canvas / Banner */}
-                <div className={`h-40 ${p.image_data ? '' : p.aspect_color} border-b flex flex-col items-center justify-center relative p-0 text-center group-hover:scale-[1.01] transition-transform overflow-hidden`}>
-                  {p.image_data ? (
-                    <img src={p.image_data} alt={p.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center p-4">
-                      <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center mb-2 text-white">
-                        <Camera className="w-6 h-6" />
-                      </div>
-                      <span className="font-mono text-[10px] tracking-wider uppercase font-bold text-white/90 bg-black/60 px-2 py-0.5 rounded backdrop-blur-sm">
-                        {p.file_name}
-                      </span>
-                    </div>
-                  )}
-                  <div className="absolute top-2.5 right-2.5">
-                    <Badge variant="primary" className="text-[8px] uppercase tracking-wider font-bold shadow-sm">
+                <div className={`h-40 ${p.aspect_color} border-b flex flex-col items-center justify-center relative p-0 text-center group-hover:scale-[1.01] transition-transform overflow-hidden cursor-pointer`} onClick={() => setViewingItem(p)}>
+                  <AsyncImage reportId={p.report_id} photoId={p.id} alt={p.title} className="w-full h-full object-cover" />
+                  <div className="absolute top-2.5 right-2.5 z-10">
+                    <Badge variant="primary" className="text-[8px] uppercase tracking-wider font-bold shadow-sm backdrop-blur-sm bg-primary/90 text-white">
                       {p.tag}
                     </Badge>
                   </div>
                 </div>
 
-                <div className="p-3.5 space-y-2">
+                <div className="p-3.5 space-y-2 flex-1 cursor-pointer" onClick={() => setViewingItem(p)}>
                   <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{p.title}</h4>
                   <div className="flex items-center gap-2 text-[10px] text-text-muted font-mono">
-                    <span>{p.date} • {p.time}</span>
+                    <span>{p.date}</span>
                   </div>
                   <div className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
                     <MapPin className="w-3 h-3 shrink-0" />
-                    <span className="truncate">{p.location} ({p.gps_coordinates})</span>
+                    <span className="truncate">{p.location}</span>
                   </div>
                   {p.description && (
                     <p className="text-[11px] text-text-secondary line-clamp-2 bg-surface-muted/30 p-2 rounded border border-border/50">
@@ -310,57 +365,56 @@ export function DailyPhotosPage() {
         </div>
       </div>
 
-      {/* View Photo 360 Modal */}
+      {/* View Photo Lightbox Modal */}
       {viewingItem && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <Camera className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.title}</h3>
-                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.date} • {viewingItem.time}</span>
-                </div>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
+        <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
+          <div className="w-full max-w-5xl flex flex-col h-full max-h-[95vh] relative">
+            {/* Header Actions */}
+            <div className="flex justify-end gap-2 pb-4 shrink-0">
+              <Button variant="outline" size="sm" className="bg-surface/10 text-white hover:bg-surface/20 border-white/20" onClick={() => handleDownload(viewingItem)}>
+                <Download className="w-4 h-4 mr-2" /> Download Image
+              </Button>
+              <Button variant="outline" size="sm" className="bg-red-500/80 text-white hover:bg-red-600 border-red-500" onClick={() => setViewingItem(null)}>
+                Cancel Viewing ✕
+              </Button>
             </div>
 
-            <div className="p-5 space-y-4 overflow-y-auto text-xs">
-              <div className={`h-52 ${viewingItem.image_data ? '' : viewingItem.aspect_color} border rounded-lg flex flex-col items-center justify-center p-0 text-center overflow-hidden relative`}>
-                {viewingItem.image_data ? (
-                  <img src={viewingItem.image_data} alt={viewingItem.title} className="w-full h-full object-contain bg-black/5" />
-                ) : (
-                  <>
-                    <Camera className="w-10 h-10 mb-2 opacity-80" />
-                    <span className="font-mono text-xs font-bold text-white bg-black/60 px-3 py-1 rounded backdrop-blur-md">
-                      {viewingItem.file_name}
-                    </span>
-                    <span className="text-[10px] text-white/80 font-mono mt-1">Geo-Location: {viewingItem.gps_coordinates}</span>
-                  </>
-                )}
-              </div>
+            {/* Main Image */}
+            <div className="flex-1 min-h-0 bg-black/50 rounded-xl overflow-hidden border border-white/10 relative flex items-center justify-center">
+              <AsyncImage 
+                reportId={viewingItem.report_id} 
+                photoId={viewingItem.id} 
+                alt={viewingItem.title} 
+                className="w-full h-full object-contain max-h-[70vh]" 
+              />
+            </div>
 
-              <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Work Category Tag</span> <span className="font-semibold text-primary">{viewingItem.tag}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Captured By</span> <span className="text-text-primary font-medium">{viewingItem.photographer}</span></div>
-                <div className="col-span-2"><span className="text-text-muted block text-[10px] uppercase font-bold">Site Location</span> <span className="text-emerald-700 font-medium">📍 {viewingItem.location}</span></div>
+            {/* Photo Metadata Footer */}
+            <div className="mt-4 bg-surface rounded-xl p-4 shrink-0 shadow-level-3">
+              <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-text-primary">{viewingItem.title}</h3>
+                  <div className="flex items-center gap-3 text-xs text-text-muted mt-1 font-mono">
+                    <span>{viewingItem.date}</span>
+                    <span className="flex items-center"><MapPin className="w-3 h-3 mr-1" /> {viewingItem.location}</span>
+                  </div>
+                </div>
+                <div className="flex gap-4 text-xs">
+                   <div>
+                     <span className="block text-[10px] text-text-muted uppercase font-bold">Category</span>
+                     <span className="font-medium">{viewingItem.tag}</span>
+                   </div>
+                   <div>
+                     <span className="block text-[10px] text-text-muted uppercase font-bold">Captured By</span>
+                     <span className="font-medium">{viewingItem.photographer}</span>
+                   </div>
+                </div>
               </div>
-
               {viewingItem.description && (
-                <div className="border border-border rounded-lg p-3 space-y-1">
-                  <span className="font-bold text-text-primary block text-[11px]">Inspection Observations:</span>
-                  <p className="text-text-secondary bg-surface-muted/30 p-2 rounded border border-border/50 leading-relaxed">{viewingItem.description}</p>
+                <div className="mt-3 p-3 bg-surface-muted rounded-lg text-sm text-text-secondary">
+                  {viewingItem.description}
                 </div>
               )}
-            </div>
-
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={() => toast.success(`Downloading ${viewingItem.file_name}...`)}>
-                <Download className="w-3.5 h-3.5 mr-1" /> Download High-Res
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>
         </div>
@@ -377,7 +431,7 @@ export function DailyPhotosPage() {
           subtitle="Record visual evidence with timestamp and GPS coordinates for client DPR dossier."
           onClose={() => setIsAddOpen(false)}
         />
-        <form id="photo-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
             <EntityEditModal.Section title="Photo Details & Location">
               <EntityEditModal.Grid>
@@ -389,7 +443,19 @@ export function DailyPhotosPage() {
                   />
                 </FormField>
 
-                <FormField label="Category Tag">
+                <FormField label="Daily Site Report (Site Context)" required error={errors.report_id}>
+                  <Select
+                    options={[
+                      { value: '', label: 'Select Daily Report...' },
+                      ...reports.filter(r => String(r.project_id) === form.project_id).map(r => ({ value: String(r.id), label: `${r.report_date} - ${r.site_name || 'Report'}` }))
+                    ]}
+                    value={form.report_id}
+                    onChange={(v) => handleFormChange('report_id', v)}
+                    disabled={!form.project_id}
+                  />
+                </FormField>
+
+                <FormField label="Category Tag (UI Only - Won't Save)">
                   <Select
                     options={[
                       { value: 'Pre-Pour QC Inspection', label: 'Pre-Pour QC Inspection' },
@@ -403,23 +469,24 @@ export function DailyPhotosPage() {
                   />
                 </FormField>
 
-                <FormField label="Site Photo" required error={errors.image_data} className="md:col-span-2">
+                <FormField label="Site Photo" required error={errors.photoFile} className="md:col-span-2">
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={(e) => {
                       const file = e.target.files[0];
                       if (file) {
+                        handleFormChange('photoFile', file);
                         const reader = new FileReader();
-                        reader.onloadend = () => handleFormChange('image_data', reader.result);
+                        reader.onloadend = () => handleFormChange('image_preview', reader.result);
                         reader.readAsDataURL(file);
                       }
                     }}
                     className="block w-full text-sm text-text-muted file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                   />
-                  {form.image_data && (
+                  {form.image_preview && (
                     <div className="mt-3">
-                       <img src={form.image_data} alt="Preview" className="h-32 rounded object-cover shadow-sm border border-border" />
+                       <img src={form.image_preview} alt="Preview" className="h-32 rounded object-cover shadow-sm border border-border" />
                     </div>
                   )}
                 </FormField>
@@ -432,7 +499,7 @@ export function DailyPhotosPage() {
                   />
                 </FormField>
 
-                <FormField label="Site Location / Grid" required error={errors.location} className="md:col-span-2">
+                <FormField label="Site Location / Grid (UI Only - Won't Save)" className="md:col-span-2">
                   <Input
                     value={form.location}
                     onChange={(e) => handleFormChange('location', e.target.value)}
@@ -440,7 +507,7 @@ export function DailyPhotosPage() {
                   />
                 </FormField>
 
-                <FormField label="GPS Coordinates">
+                <FormField label="GPS Coordinates (UI Only)">
                   <Input
                     value={form.gps_coordinates}
                     onChange={(e) => handleFormChange('gps_coordinates', e.target.value)}
@@ -448,7 +515,7 @@ export function DailyPhotosPage() {
                   />
                 </FormField>
 
-                <FormField label="Photographer / QA Engineer">
+                <FormField label="Photographer (UI Only)">
                   <Input
                     value={form.photographer}
                     onChange={(e) => handleFormChange('photographer', e.target.value)}
@@ -469,7 +536,6 @@ export function DailyPhotosPage() {
           </EntityEditModal.Body>
 
           <EntityEditModal.Footer
-            formId="photo-form"
             submitLabel="Upload Photo"
             onCancel={() => setIsAddOpen(false)}
             isSubmitting={saving}
