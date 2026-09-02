@@ -93,7 +93,25 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
     let active = true;
     navigationApi.list()
       .then((items) => {
-        if (active) setNavigation(items);
+        if (active) {
+          const processedItems = [...items];
+          // Find the "Masters" section/menu
+          const mastersNode = processedItems.find(i => i.item_name === 'Masters' || i.item_code === 'MASTERS');
+          if (mastersNode) {
+            mastersNode.children = mastersNode.children || [];
+            mastersNode.children.push({
+              item_code: 'SUBCONTRACTOR_MASTER',
+              item_name: 'Subcontractor Master',
+              item_type: null,
+              icon_key: 'briefcase',
+              children: [
+                { item_code: 'SUB_TYPE', item_name: 'Subcontractor Type', route_path: '/masters/subcontractor-types' },
+                { item_code: 'SUB_LIST', item_name: 'Subcontractors', route_path: '/masters/subcontractors' }
+              ]
+            });
+          }
+          setNavigation(processedItems);
+        }
       })
       .catch((requestError) => {
         if (active) setError(requestError.message || 'Navigation could not be loaded.');

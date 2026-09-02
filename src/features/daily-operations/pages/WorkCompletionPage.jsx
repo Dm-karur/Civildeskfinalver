@@ -666,11 +666,6 @@ export function WorkCompletionPage() {
         />
         <form id="act-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            {boqItems && boqItems.length > 0 && (
-              <div className="bg-blue-50 text-blue-600 p-3 mb-4 rounded border border-blue-200 text-xs font-mono whitespace-pre-wrap">
-                FIRST BOQ ITEM: {JSON.stringify(boqItems[0], null, 2)}
-              </div>
-            )}
             {submitDebug && (
               <div className="bg-red-50 text-red-600 p-3 mb-4 rounded border border-red-200 text-xs font-mono whitespace-pre-wrap">
                 RAW BACKEND ERRORS: {JSON.stringify(submitDebug.backendErrors, null, 2)}

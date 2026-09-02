@@ -19,6 +19,9 @@ import { ApprovalWorkflowsPage } from '../../features/workflows/pages/ApprovalWo
 import { ProtectedRoute } from '../../components/layout/ProtectedRoute';
 import { RequirePermission } from '../../components/layout/RequirePermission';
 import { ErrorBoundary } from '../../components/layout/ErrorBoundary';
+import { UnderDevelopment } from '../../features/masters/pages/UnderDevelopment';
+import { SubcontractorTypesPage } from '../../features/masters/pages/SubcontractorTypesPage';
+import { SubcontractorsMasterPage } from '../../features/masters/pages/SubcontractorsMasterPage';
 // Phase 1 — Sites, Masters, BOQ, Budgets
 import { SitesListPage } from '../../features/sites/pages/SitesListPage';
 import { SiteZonesPage } from '../../features/sites/pages/SiteZonesPage';
@@ -408,6 +411,10 @@ export const router = createBrowserRouter([
           { path: 'masters/trades', element: R('labour.view', TradesPage) },
           { path: 'masters/wage-rates', element: R('wages.view', WageRatesPage) },
           { path: 'masters/crews', element: R('labour.view', CrewsPage) },
+
+          // ─── Masters — Subcontractor ─────────────────────
+          { path: 'masters/subcontractor-types', element: <SubcontractorTypesPage /> },
+          { path: 'masters/subcontractors', element: <SubcontractorsMasterPage /> },
 
           // ─── Masters — Materials & Procurement ───────────
           { path: 'masters/material-categories', element: R('materials.view', MaterialCategoriesPage) },
