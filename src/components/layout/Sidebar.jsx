@@ -95,6 +95,25 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
       .then((items) => {
         if (active) {
           const processedItems = [...items];
+          // Find the "Procurement" section/menu
+          const procNode = processedItems.find(i => i.item_name === 'Procurement' || i.item_code === 'PROCUREMENT');
+          if (procNode && procNode.children) {
+            const hasAppr = procNode.children.some(c => c.route_path === '/procurement/material-request-approval');
+            if (!hasAppr) {
+              const reqIdx = procNode.children.findIndex(c => c.route_path === '/procurement/requisitions' || c.item_code === 'PURCHASE_REQUISITIONS');
+              const newItem = {
+                item_code: 'MATERIAL_REQUEST_APPROVAL',
+                item_name: 'Material Request Approval',
+                route_path: '/procurement/material-request-approval'
+              };
+              if (reqIdx !== -1) {
+                procNode.children.splice(reqIdx + 1, 0, newItem);
+              } else {
+                procNode.children.unshift(newItem);
+              }
+            }
+          }
+
           // Find the "Masters" section/menu
           const mastersNode = processedItems.find(i => i.item_name === 'Masters' || i.item_code === 'MASTERS');
           if (mastersNode) {

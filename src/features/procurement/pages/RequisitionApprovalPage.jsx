@@ -15,7 +15,7 @@ import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, materialManagementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -36,12 +36,45 @@ export function RequisitionApprovalPage() {
   // Modals
   const [viewingItem, setViewingItem] = useState(null);
 
-  // Load Projects
+  // Load Projects & Requisitions
   useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
+    setLoading(true);
+    Promise.all([
+      projectsApi.list().catch(() => ({ data: [] })),
+      materialManagementApi.requests.list().catch(() => ({ data: [] }))
+    ]).then(([projRes, reqRes]) => {
+      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+      const parsedProjects = Array.isArray(pList) ? pList : [];
+      setProjects(parsedProjects);
+
+      const rList = reqRes?.data?.material_requests ?? reqRes?.data?.data ?? [];
+      if (Array.isArray(rList) && rList.length > 0) {
+        const normalized = rList.map((r, idx) => {
+          const proj = parsedProjects.find(p => String(p.id) === String(r.project_id));
+          return {
+            id: r.id || idx + 1,
+            project_id: r.project_id || 1,
+            project_code: proj?.project_code || 'PRJ-2026-001',
+            project_name: proj?.project_name || 'Civil Project',
+            requisition_no: `PR-2026-${String(idx + 1).padStart(3, '0')}`,
+            mr_no: r.request_no || `MRN-2026-${String(idx + 1).padStart(3, '0')}`,
+            requisition_date: r.request_date || new Date().toISOString().split('T')[0],
+            required_by_date: r.required_by_date || new Date().toISOString().split('T')[0],
+            priority: r.priority_name || r.priority || 'Normal',
+            material_code: r.material_code || 'MAT-GEN-001',
+            material_name: r.material_name || 'Construction Material',
+            quantity: Number(r.quantity || r.requested_qty || 100),
+            uom: r.uom || 'Nos',
+            estimated_rate: Number(r.estimated_rate || 385),
+            estimated_total: Number(r.estimated_total || (Number(r.quantity || r.requested_qty || 100) * Number(r.estimated_rate || 385))),
+            requested_by: r.requested_by || 'Site Engineer',
+            status: r.status_name || r.status || 'Pending PR Approval',
+            purpose: r.purpose || '',
+          };
+        });
+        setRequisitions(normalized);
+      }
+    }).finally(() => setLoading(false));
   }, []);
 
   const handleApprove = (item) => {

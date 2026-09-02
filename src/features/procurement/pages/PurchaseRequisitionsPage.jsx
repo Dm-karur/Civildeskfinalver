@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, CheckCircle2, Clock, AlertTriangle, IndianRupee,
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
@@ -19,15 +20,14 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, materialManagementApi } from '../../../api/apiservice';
+import { projectsApi, materialManagementApi, materialsApi, sitesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
-
-
 
 const EMPTY_FORM = {
   project_id: '',
   site_name: '',
   requisition_no: '',
+  mr_no: '',
   requisition_date: '',
   required_by_date: '',
   priority: 'Normal',
@@ -39,13 +39,18 @@ const EMPTY_FORM = {
   estimated_total: '38500',
   requested_by: 'Site Engineer',
   department: 'Civil Structural Works',
-  status: 'Pending PM Approval',
+  status: 'Pending PR Approval',
   purpose: '',
+  suggested_supplier: '',
 };
 
 export function PurchaseRequisitionsPage() {
   const { hasPermission } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [materials, setMaterials] = useState([]);
   const [requisitions, setRequisitions] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -71,61 +76,84 @@ export function PurchaseRequisitionsPage() {
     setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
-      materialManagementApi.requests?.list ? materialManagementApi.requests.list().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([projRes, reqRes]) => {
+      sitesApi.list().catch(() => ({ data: [] })),
+      materialsApi.catalogue.list().catch(() => ({ data: [] })),
+      materialManagementApi.requests.list().catch(() => ({ data: [] }))
+    ]).then(([projRes, sitesRes, catRes, reqRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
-      setProjects(Array.isArray(pList) ? pList : []);
+      const parsedProjects = Array.isArray(pList) ? pList : [];
+      setProjects(parsedProjects);
+
+      const sList = sitesRes?.data?.sites ?? sitesRes?.sites ?? (Array.isArray(sitesRes) ? sitesRes : []);
+      setSites(Array.isArray(sList) ? sList : []);
+
+      const mList = catRes?.data?.materials ?? catRes?.materials ?? (Array.isArray(catRes) ? catRes : []);
+      setMaterials(Array.isArray(mList) ? mList : []);
+
       const rList = reqRes?.data?.material_requests ?? reqRes?.data?.data ?? [];
       if (Array.isArray(rList) && rList.length > 0) {
-        const normalized = rList.map((r, idx) => ({
-          id: r.id || idx + 1,
-          project_id: r.project_id || 1,
-          project_code: r.project_code || 'PRJ-2026-001',
-          project_name: r.project_name || 'Civil Project',
-          site_name: r.site_name || 'Site Yard',
-          requisition_no: r.request_no || `PR-2026-${String(idx + 1).padStart(3, '0')}`,
-          requisition_date: r.request_date || new Date().toISOString().split('T')[0],
-          required_by_date: r.required_by_date || new Date().toISOString().split('T')[0],
-          priority: r.priority || 'Normal',
-          material_code: r.material_code || 'MAT-GEN-001',
-          material_name: r.material_name || 'Construction Material',
-          quantity: Number(r.quantity || r.requested_qty || 0),
-          uom: r.uom || 'Nos',
-          estimated_rate: Number(r.estimated_rate || 385),
-          estimated_total: Number(r.estimated_total || (Number(r.quantity || r.requested_qty || 0) * Number(r.estimated_rate || 385))),
-          requested_by: r.requested_by || 'Site Engineer',
-          department: r.department || 'Civil Works',
-          status: r.status_name || r.status || 'Pending PM Approval',
-          purpose: r.purpose || '',
-        }));
+        const normalized = rList.map((r, idx) => {
+          const proj = parsedProjects.find(p => String(p.id) === String(r.project_id));
+          const site = sList.find(s => String(s.id) === String(r.site_id));
+
+          return {
+            id: r.id || idx + 1,
+            project_id: r.project_id || 1,
+            project_code: proj?.project_code || 'PRJ-2026-001',
+            project_name: proj?.project_name || 'Civil Project',
+            site_name: site?.site_name || r.site_name || 'Site Yard',
+            requisition_no: `PR-2026-${String(idx + 1).padStart(3, '0')}`,
+            mr_no: r.request_no || `MRN-2026-${String(idx + 1).padStart(3, '0')}`,
+            requisition_date: r.request_date || new Date().toISOString().split('T')[0],
+            required_by_date: r.required_by_date || new Date().toISOString().split('T')[0],
+            priority: r.priority_name || r.priority || 'Normal',
+            material_code: r.material_code || 'MAT-GEN-001',
+            material_name: r.material_name || 'Construction Material',
+            quantity: Number(r.quantity || r.requested_qty || 100),
+            uom: r.uom || 'Nos',
+            estimated_rate: Number(r.estimated_rate || 385),
+            estimated_total: Number(r.estimated_total || (Number(r.quantity || r.requested_qty || 100) * Number(r.estimated_rate || 385))),
+            requested_by: r.requested_by || 'Site Engineer',
+            department: r.department || 'Civil Works',
+            status: r.status_name || r.status || 'Pending PR Approval',
+            purpose: r.purpose || '',
+            suggested_supplier: r.suggested_supplier || 'Approved Vendor',
+          };
+        });
         setRequisitions(normalized);
       }
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  
-  // --- MOCK PERSISTENCE INJECTED ---
+  // Handle URL query param / navigation state from Material Requests page
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_procurement_PurchaseRequisitionsPage');
-      if (saved) {
-        setRequisitions(JSON.parse(saved));
+    const searchParams = new URLSearchParams(location.search);
+    const mrId = searchParams.get('mr_id');
+    if (mrId && requisitions.length > 0) {
+      const sourceReq = requisitions.find(r => String(r.id) === String(mrId));
+      if (sourceReq) {
+        setForm({
+          ...EMPTY_FORM,
+          project_id: String(sourceReq.project_id),
+          site_name: sourceReq.site_name,
+          mr_no: sourceReq.mr_no,
+          requisition_no: `PR-2026-MR-${sourceReq.id}`,
+          requisition_date: new Date().toISOString().split('T')[0],
+          required_by_date: sourceReq.required_by_date,
+          priority: sourceReq.priority,
+          material_code: sourceReq.material_code,
+          material_name: sourceReq.material_name,
+          quantity: String(sourceReq.quantity),
+          uom: sourceReq.uom,
+          estimated_rate: String(sourceReq.estimated_rate),
+          estimated_total: String(sourceReq.estimated_total),
+          purpose: sourceReq.purpose,
+          status: 'Pending PR Approval',
+        });
+        setIsAddOpen(true);
       }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
     }
-  }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_procurement_PurchaseRequisitionsPage');
-    if (requisitions.length > 0 || saved) {
-       localStorage.setItem('mock_procurement_PurchaseRequisitionsPage', JSON.stringify(requisitions));
-    }
-  }, [requisitions]);
-  // ---------------------------------
+  }, [location.search, requisitions]);
 
   // Form Handlers
   const handleOpenAdd = () => {

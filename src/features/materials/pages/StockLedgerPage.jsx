@@ -94,13 +94,14 @@ export function StockLedgerPage() {
           let inward_qty = 0;
           let outward_qty = 0;
 
-          if (['RECEIPT', 'RETURN', 'ADJUSTMENT_IN'].includes(x.movement_type)) {
+          if (['RECEIPT', 'RETURN', 'ADJUSTMENT_IN', 'TRANSFER_IN'].includes(x.movement_type)) {
             inward_qty = qty;
             runningBalance += qty;
-          } else if (['ISSUE', 'ADJUSTMENT_OUT'].includes(x.movement_type)) {
+          } else if (['ISSUE', 'ADJUSTMENT_OUT', 'TRANSFER_OUT'].includes(x.movement_type)) {
             outward_qty = qty;
             runningBalance -= qty;
           } else if (x.movement_type === 'TRANSFER') {
+            // Fallback if backend just sends 'TRANSFER'
             inward_qty = qty;
             runningBalance += qty;
           }
@@ -111,6 +112,8 @@ export function StockLedgerPage() {
             movement_type: x.movement_type === 'RECEIPT' ? 'Inward Receipt (GRN)' :
                            x.movement_type === 'ISSUE' ? 'Outward Issue (MIN)' :
                            x.movement_type === 'RETURN' ? 'Surplus Return (MRN)' :
+                           x.movement_type === 'TRANSFER_IN' ? 'Inter-Site Transfer In' :
+                           x.movement_type === 'TRANSFER_OUT' ? 'Inter-Site Transfer Out' :
                            x.movement_type === 'TRANSFER' ? 'Inter-Site Transfer' :
                            x.movement_type === 'ADJUSTMENT_IN' ? 'Audit Adjustment In' : 'Audit Adjustment Out',
             party: x.movement_type === 'RECEIPT' ? 'Material Supplier' : 'Subcontractor / Site Foreman',

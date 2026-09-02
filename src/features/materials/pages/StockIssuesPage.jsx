@@ -150,29 +150,42 @@ export function StockIssuesPage() {
     }).catch(() => setLoading(false));
   }, []);
 
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
+  const handleDocumentAction = async (item, actionName) => {
+    setLoading(true);
     try {
-      const saved = localStorage.getItem('mock_materials_StockIssuesPage');
-      if (saved) {
-        setIssues(JSON.parse(saved));
+      if (actionName === 'post') {
+        await materialManagementApi.transactions.postTransaction(item.id);
+      } else {
+        await materialManagementApi.transactions.action(item.id, actionName);
       }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
+      toast.success(`Transaction ${actionName} successful.`);
+      await fetchIssuesList();
+    } catch (err) {
+      toast.error(err?.message || `Failed to ${actionName} transaction.`);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_materials_StockIssuesPage');
-    if (issues.length > 0 || saved) {
-       localStorage.setItem('mock_materials_StockIssuesPage', JSON.stringify(issues));
+  const handleSubmitRequest = (item) => handleDocumentAction(item, 'submit');
+  const handleApprove = (item) => handleDocumentAction(item, 'approve');
+  const handleReject = (item) => handleDocumentAction(item, 'reject');
+  const handlePost = (item) => handleDocumentAction(item, 'post');
+
+  const handleDelete = async () => {
+    if (!deleteItem) return;
+    setLoading(true);
+    try {
+      await materialManagementApi.transactions.remove(deleteItem.id);
+      toast.success('Stock issue deleted successfully.');
+      setDeleteItem(null);
+      await fetchIssuesList();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to delete transaction.');
+    } finally {
+      setLoading(false);
     }
-  }, [issues]);
-  // ---------------------------------
+  };
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -556,24 +569,80 @@ export function StockIssuesPage() {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
-                            title="View MIN 360"
+                            title="View Transaction"
                             onClick={() => setViewingItem(i)}
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
-                          {(i.status_code || i.status || '').toUpperCase().includes('DRAFT') && (
+                          
+                          {(i.status_name === 'Submitted' || i.status === 'Pending Approval') && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-[10px] px-1.5 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                                title="Approve"
+                                onClick={() => handleApprove(i)}
+                              >
+                                <Check className="w-3 h-3 mr-0.5" /> Approve
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                title="Reject"
+                                onClick={() => handleReject(i)}
+                              >
+                                <XCircle className="w-3.5 h-3.5 text-red-500 hover:text-red-700" />
+                              </Button>
+                            </>
+                          )}
+                          
+                          {(i.status_code || i.status_name || '').toUpperCase().includes('DRAFT') && (
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-[10px] px-1.5 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                title="Submit Issue"
+                                onClick={() => handleSubmitRequest(i)}
+                              >
+                                <ArrowUpFromLine className="w-3 h-3 mr-0.5" /> Submit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                title="Edit"
+                                onClick={() => handleOpenEdit(i)}
+                              >
+                                <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                title="Delete"
+                                onClick={() => setDeleteItem(i)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
+                              </Button>
+                            </div>
+                          )}
+
+                          {String(i.status_name).toUpperCase().includes('APPROVED') && (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              className="h-6 w-6 p-0"
-                              title="Edit"
-                              onClick={() => handleOpenEdit(i)}
+                              className="h-6 text-[10px] px-1.5 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                              title="Post to Ledger"
+                              onClick={() => handlePost(i)}
                             >
-                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                              <CheckCircle2 className="w-3 h-3 mr-0.5" /> Post
                             </Button>
                           )}
-                        </div>
-                      </td>
+                          </div>
+                        </td>
                     </tr>
                   ))
                 )}
@@ -803,14 +872,14 @@ export function StockIssuesPage() {
         </form>
       </EntityEditModal>
 
-      {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={Boolean(deleteItem)}
-        title="Delete Material Issue"
-        message={`Are you sure you want to delete "${deleteItem?.issue_no}"?`}
-        variant="danger"
+        title="Delete Stock Issue"
+        description={`Are you sure you want to delete transaction "${deleteItem?.issue_no}"?`}
         confirmLabel="Delete"
-        onConfirm={confirmDelete}
+        destructive={true}
+        loading={loading}
+        onConfirm={handleDelete}
         onCancel={() => setDeleteItem(null)}
       />
     </PageContainer>

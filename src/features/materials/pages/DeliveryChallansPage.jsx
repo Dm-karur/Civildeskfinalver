@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   FileCheck2, CheckCircle2, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
-  ShieldCheck, Check, AlertCircle, Sparkles, Printer, Truck, FileText
+  ShieldCheck, Check, AlertCircle, Sparkles, Printer, Truck, FileText, ArrowUpFromLine, XCircle
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -162,29 +162,27 @@ export function DeliveryChallansPage() {
     }).catch(() => setLoading(false));
   }, []);
 
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
+  const handleDocumentAction = async (item, actionName) => {
+    setLoading(true);
     try {
-      const saved = localStorage.getItem('mock_materials_DeliveryChallansPage');
-      if (saved) {
-        setChallans(JSON.parse(saved));
+      if (actionName === 'post') {
+        await materialManagementApi.transactions.postTransaction(item.id);
+      } else {
+        await materialManagementApi.transactions.action(item.id, actionName);
       }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
+      toast.success(`Challan ${actionName} successful.`);
+      await fetchChallansList();
+    } catch (err) {
+      toast.error(err?.message || `Failed to ${actionName} challan.`);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_materials_DeliveryChallansPage');
-    if (challans.length > 0 || saved) {
-       localStorage.setItem('mock_materials_DeliveryChallansPage', JSON.stringify(challans));
-    }
-  }, [challans]);
-  // ---------------------------------
+  const handleSubmitRequest = (item) => handleDocumentAction(item, 'submit');
+  const handleApprove = (item) => handleDocumentAction(item, 'approve');
+  const handleReject = (item) => handleDocumentAction(item, 'reject');
+  const handlePost = (item) => handleDocumentAction(item, 'post');
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -339,17 +337,17 @@ export function DeliveryChallansPage() {
     }
   };
 
-  const confirmDelete = async () => {
+  const handleDelete = async () => {
     if (!deleteItem?.id) return;
-    setSaving(true);
+    setLoading(true);
     try {
-      await materialManagementApi.transactions.delete(deleteItem.id);
+      await materialManagementApi.transactions.remove(deleteItem.id);
       toast.success('Delivery challan removed.');
-      fetchChallansList();
-    } catch {
-      toast.error('Failed to delete delivery challan.');
+      await fetchChallansList();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to delete delivery challan.');
     } finally {
-      setSaving(false);
+      setLoading(false);
       setDeleteItem(null);
     }
   };
@@ -583,15 +581,72 @@ export function DeliveryChallansPage() {
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Edit"
-                            onClick={() => handleOpenEdit(c)}
-                          >
-                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
+                          {(c.status_name === 'Submitted' || c.status === 'Pending Approval') && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-[10px] px-1.5 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                                title="Approve"
+                                onClick={() => handleApprove(c)}
+                              >
+                                <Check className="w-3 h-3 mr-0.5" /> Approve
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                title="Reject"
+                                onClick={() => handleReject(c)}
+                              >
+                                <XCircle className="w-3.5 h-3.5 text-red-500 hover:text-red-700" />
+                              </Button>
+                            </>
+                          )}
+                          
+                          {(c.status_code || c.status_name || c.status || '').toUpperCase().includes('DRAFT') && (
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-[10px] px-1.5 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                title="Submit Challan"
+                                onClick={() => handleSubmitRequest(c)}
+                              >
+                                <ArrowUpFromLine className="w-3 h-3 mr-0.5" /> Submit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                title="Edit"
+                                onClick={() => handleOpenEdit(c)}
+                              >
+                                <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                title="Delete"
+                                onClick={() => setDeleteItem(c)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
+                              </Button>
+                            </div>
+                          )}
+
+                          {String(c.status_name || c.status).toUpperCase().includes('APPROVED') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[10px] px-1.5 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                              title="Post Challan"
+                              onClick={() => handlePost(c)}
+                            >
+                              <Truck className="w-3 h-3 mr-0.5" /> Dispatch
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -829,7 +884,8 @@ export function DeliveryChallansPage() {
         message={`Are you sure you want to delete "${deleteItem?.challan_no}"?`}
         variant="danger"
         confirmLabel="Delete"
-        onConfirm={confirmDelete}
+        loading={loading}
+        onConfirm={handleDelete}
         onCancel={() => setDeleteItem(null)}
       />
     </PageContainer>

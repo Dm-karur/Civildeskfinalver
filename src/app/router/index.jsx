@@ -83,6 +83,7 @@ import { MaterialConsumptionPage } from '../../features/materials/pages/Material
 import { StockLedgerPage } from '../../features/materials/pages/StockLedgerPage';
 // Phase 2 — Procurement
 import { PurchaseRequisitionsPage } from '../../features/procurement/pages/PurchaseRequisitionsPage';
+import { MaterialRequestApprovalPage } from '../../features/procurement/pages/MaterialRequestApprovalPage';
 import { RequisitionApprovalPage } from '../../features/procurement/pages/RequisitionApprovalPage';
 import { RfqPage } from '../../features/procurement/pages/RfqPage';
 import { VendorQuotationsPage } from '../../features/procurement/pages/VendorQuotationsPage';
@@ -298,6 +299,7 @@ export const router = createBrowserRouter([
 
           // ─── 7. Procurement ───────────────────────────────
           { path: 'procurement/requisitions', element: R('purchase_orders.view', PurchaseRequisitionsPage) },
+          { path: 'procurement/material-request-approval', element: R('purchase_orders.approve', MaterialRequestApprovalPage) },
           { path: 'procurement/requisition-approval', element: R('purchase_orders.approve', RequisitionApprovalPage) },
           { path: 'procurement/rfq', element: R('purchase_orders.view', RfqPage) },
           { path: 'procurement/quotations', element: R('purchase_orders.view', VendorQuotationsPage) },

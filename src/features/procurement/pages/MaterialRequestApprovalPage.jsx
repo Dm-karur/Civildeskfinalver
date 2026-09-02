@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Send, CheckCircle2, XCircle, Clock, AlertTriangle,
   Eye, Edit, Trash2, Plus, MoreVertical,
-  ShieldCheck, Check, RotateCcw, RefreshCw
+  ShieldCheck, Check, RotateCcw, RefreshCw, Truck, FileText, ShoppingCart
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -24,42 +24,51 @@ import { WorkflowTimeline } from '../../../components/composite/WorkflowTimeline
 import { projectsApi, materialManagementApi, sitesApi, mastersApi, materialsApi, usersApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-const EMPTY_FORM = {
-  project_id: '',
-  site_id: '',
-  request_date: '',
-  required_by_date: '',
-  priority_id: '',
-  purpose: '',
-  is_boq_required: false,
-  items: [{ material_id: '', specification: '', requested_qty: '', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }]
-};
-
-export function MaterialRequestsPage() {
-  const { user, hasPermission } = useAuth();
+export function MaterialRequestApprovalPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Admin Check (Admin / Super Admin vs Accounts User)
+  const isAdmin = Boolean(user?.is_super_admin) || String(user?.role_name || user?.role || '').toLowerCase().includes('admin');
+
   const [projects, setProjects] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [priorities, setPriorities] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [vendors, setVendors] = useState([]);
+  const [uoms, setUoms] = useState([]);
+  const [users, setUsers] = useState([]);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Admin check using existing permission system
-  const isAdmin = Boolean(user?.is_super_admin);
-
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [selectedSiteId, setSelectedSiteId] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const perPage = 10;
 
-  // Modals
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
+  // Modals & Active Items
   const [viewingItem, setViewingItem] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
   const [actionModalItem, setActionModalItem] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [statusChangeItem, setStatusChangeItem] = useState(null);
+  const [selectedNewStatus, setSelectedNewStatus] = useState('');
+  const [statusOptions, setStatusOptions] = useState([]);
+
+  // Form State for Edit Modal
+  const [form, setForm] = useState({
+    project_id: '',
+    site_id: '',
+    request_date: '',
+    required_by_date: '',
+    priority_id: '',
+    purpose: '',
+    items: []
+  });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [remarks, setRemarks] = useState('');
@@ -68,21 +77,8 @@ export function MaterialRequestsPage() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const menuRef = useRef(null);
 
-  // Change Status dialog
-  const [statusChangeItem, setStatusChangeItem] = useState(null);
-  const [selectedNewStatus, setSelectedNewStatus] = useState('');
-  const [statusOptions, setStatusOptions] = useState([]);
-
-  const [sites, setSites] = useState([]);
-  const [priorities, setPriorities] = useState([]);
-  const [materials, setMaterials] = useState([]);
-  const [vendors, setVendors] = useState([]);
-  const [uoms, setUoms] = useState([]);
-  const [users, setUsers] = useState([]);
-
-  // Cache for fully fetched requests (with items)
+  // Cache for full request details
   const [detailsMap, setDetailsMap] = useState({});
-  const [detailsLoading, setDetailsLoading] = useState(false);
 
   // Close three-dot menu on outside click
   useEffect(() => {
@@ -95,39 +91,36 @@ export function MaterialRequestsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filtered List
-  const filtered = useMemo(() => {
-    return requests.filter(r => {
-      if (selectedProjectId !== 'all' && String(r.project_id) !== String(selectedProjectId)) return false;
-      if (priorityFilter !== 'all' && r.priority_name !== priorityFilter) return false;
-      if (statusFilter !== 'all' && String(r.status_name).toUpperCase() !== String(statusFilter).toUpperCase()) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        const no = (r.request_no || '').toLowerCase();
-        const purp = (r.purpose || '').toLowerCase();
-        const req = (r.requested_by || '').toLowerCase();
-        const site = (r.site_name || '').toLowerCase();
-        if (!no.includes(q) && !purp.includes(q) && !req.includes(q) && !site.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [requests, selectedProjectId, priorityFilter, statusFilter, search]);
+  // Helper to format Approval ID: MRA-2026-001
+  const getApprovalId = (req, idx) => {
+    if (req.approval_id) return req.approval_id;
+    const numPart = String(req.id || idx + 1).padStart(3, '0');
+    return `MRA-2026-${numPart}`;
+  };
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
+  const getUserName = (userId) => {
+    const u = users.find(usr => String(usr.id) === String(userId));
+    return u ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : userId ? `User #${userId}` : '—';
+  };
 
-  // Load Projects & API Data
+  // Load Data
   useEffect(() => {
+    loadAllData();
+  }, []);
+
+  const loadAllData = async () => {
     setLoading(true);
-    Promise.all([
-      projectsApi.list().catch(() => ({ data: [] })),
-      sitesApi.list().catch(() => ({ data: [] })),
-      materialsApi.catalogue.list().catch(() => ({ data: [] })),
-      materialsApi.suppliers.list().catch(() => ({ data: [] })),
-      materialsApi.masters().catch(() => ({ data: {} })),
-      materialManagementApi.requests.list().catch(() => ({ data: [] })),
-      usersApi.list().catch(() => ({ data: [] }))
-    ]).then(([projRes, sitesRes, catRes, suppRes, mastersMatRes, reqRes, usersRes]) => {
+    try {
+      const [projRes, sitesRes, catRes, suppRes, mastersMatRes, reqRes, usersRes] = await Promise.all([
+        projectsApi.list().catch(() => ({ data: [] })),
+        sitesApi.list().catch(() => ({ data: [] })),
+        materialsApi.catalogue.list().catch(() => ({ data: [] })),
+        materialsApi.suppliers.list().catch(() => ({ data: [] })),
+        materialsApi.masters().catch(() => ({ data: {} })),
+        materialManagementApi.requests.list().catch(() => ({ data: [] })),
+        usersApi.list().catch(() => ({ data: [] }))
+      ]);
+
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       const parsedProjects = Array.isArray(pList) ? pList : [];
       setProjects(parsedProjects);
@@ -148,7 +141,6 @@ export function MaterialRequestsPage() {
       const prioList = mastersData?.request_priorities ?? [];
       setPriorities(Array.isArray(prioList) ? prioList : []);
 
-      // Store status options for admin Change Status
       const stList = mastersData?.request_statuses ?? [];
       setStatusOptions(Array.isArray(stList) ? stList : []);
 
@@ -157,13 +149,14 @@ export function MaterialRequestsPage() {
 
       const rList = reqRes?.data?.material_requests ?? reqRes?.data?.data ?? reqRes?.data ?? [];
       if (Array.isArray(rList)) {
-        const mapped = rList.map(r => {
+        const mapped = rList.map((r, idx) => {
           const site = sList.find(s => String(s.id) === String(r.site_id));
           const proj = parsedProjects.find(p => String(p.id) === String(r.project_id));
           const prio = prioList.find(p => String(p.id) === String(r.priority_id));
 
           return {
             ...r,
+            approval_code: getApprovalId(r, idx),
             site_name: site?.site_name || '',
             project_name: proj?.project_name || '',
             priority_name: prio?.priority_name || 'Normal',
@@ -174,75 +167,126 @@ export function MaterialRequestsPage() {
       } else {
         setRequests([]);
       }
-    }).finally(() => setLoading(false));
-  }, []);
-
-  // Auto-generate reference number based on date
-  const generateRefNumber = (dateStr) => {
-    const datePart = (dateStr || new Date().toISOString().split('T')[0]).replace(/-/g, '');
-    const existingCount = requests.filter(r => (r.request_no || '').includes(`MR-${datePart}`)).length;
-    const seqPart = String(existingCount + 1).padStart(3, '0');
-    return `MR-${datePart}-${seqPart}`;
+    } catch (err) {
+      toast.error('Failed to load data.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleOpenAdd = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const defaultRequired = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
-    const defaultSite = sites.find(s => String(s.project_id) === String(defaultProj))?.id ? String(sites.find(s => String(s.project_id) === String(defaultProj)).id) : (sites[0]?.id ? String(sites[0].id) : '');
-    const defaultPriority = priorities[0]?.id ? String(priorities[0].id) : '1';
-
-    setForm({
-      ...EMPTY_FORM,
-      project_id: defaultProj,
-      site_id: defaultSite,
-      request_date: today,
-      required_by_date: defaultRequired,
-      priority_id: defaultPriority,
-      items: [{ material_id: '', specification: '', requested_qty: '100', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }]
+  // Filtered List
+  const filtered = useMemo(() => {
+    return requests.filter((r, idx) => {
+      if (selectedProjectId !== 'all' && String(r.project_id) !== String(selectedProjectId)) return false;
+      if (selectedSiteId !== 'all' && String(r.site_id) !== String(selectedSiteId)) return false;
+      if (priorityFilter !== 'all' && r.priority_name !== priorityFilter) return false;
+      if (statusFilter !== 'all' && String(r.status_name).toUpperCase() !== String(statusFilter).toUpperCase()) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const appNo = (r.approval_code || getApprovalId(r, idx)).toLowerCase();
+        const reqNo = (r.request_no || '').toLowerCase();
+        const proj = (r.project_name || '').toLowerCase();
+        const reqBy = getUserName(r.requested_by || r.created_by).toLowerCase();
+        if (!appNo.includes(q) && !reqNo.includes(q) && !proj.includes(q) && !reqBy.includes(q)) return false;
+      }
+      return true;
     });
-    setErrors({});
-    setIsAddOpen(true);
-  };
+  }, [requests, selectedProjectId, selectedSiteId, priorityFilter, statusFilter, search, users]);
 
-  // Auto-fetch details for the current page requests
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const paged = filtered.slice((page - 1) * perPage, page * perPage);
+
+  // Auto-fetch item details for current page
   useEffect(() => {
-    const missingIds = paged
-      .map(r => r.id)
-      .filter(id => !detailsMap[id]);
-
+    const missingIds = paged.map(r => r.id).filter(id => !detailsMap[id]);
     if (missingIds.length === 0) return;
 
-    setDetailsLoading(true);
     Promise.all(
-      missingIds.map(id => 
+      missingIds.map(id =>
         materialManagementApi.requests.get(id)
-          .then(res => {
-            const req = res?.data?.material_request ?? res?.material_request;
-            return { id, req };
-          })
+          .then(res => ({ id, req: res?.data?.material_request ?? res?.material_request }))
           .catch(() => ({ id, req: null }))
       )
     ).then(results => {
       setDetailsMap(prev => {
         const next = { ...prev };
         results.forEach(({ id, req }) => {
-          if (req) {
-            next[id] = req;
-          }
+          if (req) next[id] = req;
         });
         return next;
       });
-    }).finally(() => {
-      setDetailsLoading(false);
     });
   }, [paged, detailsMap]);
 
-  const getUserName = (userId) => {
-    const u = users.find(usr => String(usr.id) === String(userId));
-    return u ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : userId ? `User #${userId}` : '—';
+  // Metrics
+  const pendingCount = useMemo(() => requests.filter(r => {
+    const s = String(r.status_name).toUpperCase();
+    return s === 'SUBMITTED' || s === 'PENDING APPROVAL';
+  }).length, [requests]);
+
+  const approvedCount = useMemo(() => requests.filter(r => {
+    const s = String(r.status_name).toUpperCase();
+    return s === 'APPROVED' || s === 'ORDERED' || s === 'PARTIALLY ORDERED';
+  }).length, [requests]);
+
+  const rejectedCount = useMemo(() => requests.filter(r => {
+    const s = String(r.status_name).toUpperCase();
+    return s === 'REJECTED' || s === 'CANCELLED';
+  }).length, [requests]);
+
+  const getStatusVariant = (status) => {
+    const s = String(status).toUpperCase();
+    if (s.includes('APPROV') || s.includes('ORDER')) return 'success';
+    if (s.includes('SUBMIT') || s.includes('PENDING')) return 'warning';
+    if (s.includes('REJECT') || s.includes('CANCEL')) return 'error';
+    return 'neutral';
   };
 
+  const getPriorityVariant = (priority) => {
+    const p = String(priority).toUpperCase();
+    if (p === 'CRITICAL' || p === 'HIGH') return 'error';
+    if (p === 'URGENT') return 'warning';
+    return 'neutral';
+  };
+
+  // Open View Detail Modal
+  const handleOpenView = async (item) => {
+    setLoading(true);
+    try {
+      const res = await materialManagementApi.requests.get(item.id);
+      const fullReq = res?.data?.material_request ?? res?.material_request ?? {};
+      setViewingItem({ ...item, ...fullReq });
+    } catch {
+      toast.error('Failed to load request details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Vendor-Wise Item Grouping for View Detail Modal
+  const vendorGroups = useMemo(() => {
+    if (!viewingItem?.items) return {};
+    const groups = {};
+    viewingItem.items.forEach((item, idx) => {
+      const vId = item.supplier_id || item.vendor_id || item.material_supplier_id || item.preferred_supplier_id || item.supplier?.id || item.vendor?.id;
+      const vendorObj = vendors.find(v => String(v.id) === String(vId) || (v.supplier_name && item.vendor_name && v.supplier_name.toLowerCase() === item.vendor_name.toLowerCase()));
+      let vendorName = vendorObj?.supplier_name || vendorObj?.name || vendorObj?.company_name || item.supplier_name || item.vendor_name || item.supplier?.supplier_name;
+      
+      if (!vendorName) {
+        if (vId) {
+          vendorName = `Supplier Vendor #${vId}`;
+        } else {
+          vendorName = 'Unassigned Vendor / General Supply';
+        }
+      }
+
+      if (!groups[vendorName]) groups[vendorName] = [];
+      groups[vendorName].push({ ...item, vendorObj });
+    });
+    return groups;
+  }, [viewingItem, vendors]);
+
+  // Open Edit Modal (Accounts User or Admin)
   const handleOpenEdit = async (item) => {
     setLoading(true);
     setOpenMenuId(null);
@@ -272,20 +316,7 @@ export function MaterialRequestsPage() {
       setErrors({});
       setEditingItem(fullReq);
     } catch {
-      toast.error('Failed to load request details.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOpenView = async (item) => {
-    setLoading(true);
-    try {
-      const res = await materialManagementApi.requests.get(item.id);
-      const fullReq = res?.data?.material_request ?? res?.material_request ?? {};
-      setViewingItem({ ...item, ...fullReq });
-    } catch {
-      setViewingItem(item);
+      toast.error('Failed to load request details for editing.');
     } finally {
       setLoading(false);
     }
@@ -296,14 +327,13 @@ export function MaterialRequestsPage() {
     setErrors(prev => ({ ...prev, [field]: null }));
   };
 
-  const handleSubmit = async (e) => {
+  // Submit Edit (Allows editing Vendor & Quantity at item level)
+  const handleSubmitEdit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.project_id) errs.project_id = 'Project is required';
     if (!form.site_id) errs.site_id = 'Site location is required';
     if (!form.priority_id) errs.priority_id = 'Priority is required';
-    
-    // Validate items
+
     const itemErrors = [];
     form.items.forEach((item, index) => {
       const itemErr = {};
@@ -313,9 +343,7 @@ export function MaterialRequestsPage() {
         itemErrors[index] = itemErr;
       }
     });
-    if (itemErrors.length > 0) {
-      errs.items = itemErrors;
-    }
+    if (itemErrors.length > 0) errs.items = itemErrors;
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -324,44 +352,17 @@ export function MaterialRequestsPage() {
 
     setSaving(true);
     try {
-      let requestId = editingItem?.id;
-
-      const preparedItems = form.items.map(item => {
-        const mat = materials.find(m => String(m.id) === String(item.material_id));
-        const specVal = item.specification || item.variant || item.size || item.spec || item.item_specification || item.material_variant || mat?.specification || mat?.variant || null;
-        const suppId = item.supplier_id ? Number(item.supplier_id) : null;
-        return {
-          material_id: Number(item.material_id),
-          uom_id: Number(item.uom_id || mat?.uom_id || mat?.unit_id || 1),
-          requested_qty: Number(item.requested_qty),
-          estimated_rate: Number(item.estimated_rate || 0),
-          specification: specVal,
-          variant: specVal,
-          spec: specVal,
-          item_specification: specVal,
-          material_variant: specVal,
-          size: specVal,
-          description: specVal,
-          remarks: item.remarks || null,
-          supplier_id: suppId,
-          vendor_id: suppId,
-          material_supplier_id: suppId,
-          preferred_supplier_id: suppId
-        };
-      });
-
+      const requestId = editingItem?.id;
       if (requestId) {
-        // Update header
         await materialManagementApi.requests.update(requestId, {
           project_id: Number(form.project_id),
           site_id: Number(form.site_id),
-          request_date: form.request_date || new Date().toISOString().split('T')[0],
-          required_by_date: form.required_by_date || new Date().toISOString().split('T')[0],
+          request_date: form.request_date,
+          required_by_date: form.required_by_date,
           priority_id: Number(form.priority_id),
-          purpose: form.purpose || ''
+          purpose: form.purpose
         });
 
-        // Sync items
         const origItems = editingItem.items || [];
         const origItemIds = origItems.map(i => i.id);
         const newItemIds = form.items.filter(i => i.id).map(i => i.id);
@@ -371,76 +372,47 @@ export function MaterialRequestsPage() {
           await materialManagementApi.requests.removeItem(requestId, itemId);
         }
 
-        for (const itemPayload of preparedItems) {
-          const matchingOrig = form.items.find(i => i.material_id === String(itemPayload.material_id) && i.id);
-          if (matchingOrig?.id) {
-            await materialManagementApi.requests.updateItem(requestId, matchingOrig.id, itemPayload);
+        for (const item of form.items) {
+          const payload = {
+            material_id: Number(item.material_id),
+            uom_id: Number(item.uom_id || 1),
+            requested_qty: Number(item.requested_qty),
+            estimated_rate: Number(item.estimated_rate || 0),
+            specification: item.specification || null,
+            remarks: item.remarks || null,
+            ...(item.supplier_id ? {
+              supplier_id: Number(item.supplier_id),
+              vendor_id: Number(item.supplier_id),
+              material_supplier_id: Number(item.supplier_id)
+            } : {})
+          };
+          if (item.id) {
+            await materialManagementApi.requests.updateItem(requestId, item.id, payload);
           } else {
-            await materialManagementApi.requests.addItem(requestId, itemPayload);
+            await materialManagementApi.requests.addItem(requestId, payload);
           }
         }
         toast.success('Material request updated.');
-      } else {
-        // Auto-generate reference number
-        const autoRef = generateRefNumber(form.request_date);
-
-        // Create header & items
-        const headerRes = await materialManagementApi.requests.create({
-          project_id: Number(form.project_id),
-          site_id: Number(form.site_id),
-          request_no: autoRef,
-          request_date: form.request_date || new Date().toISOString().split('T')[0],
-          required_by_date: form.required_by_date || new Date().toISOString().split('T')[0],
-          priority_id: Number(form.priority_id),
-          purpose: form.purpose || 'Site Material Requirement',
-          items: preparedItems
-        });
-
-        requestId = headerRes?.data?.material_request?.id ?? headerRes?.material_request?.id ?? headerRes?.id;
-        
-        if (requestId) {
-          // If items were not saved automatically during header creation, ensure items are attached
-          const createdItems = headerRes?.data?.material_request?.items ?? headerRes?.material_request?.items ?? [];
-          if (!createdItems || createdItems.length === 0) {
-            for (const itemPayload of preparedItems) {
-              try {
-                await materialManagementApi.requests.addItem(requestId, itemPayload);
-              } catch (itemErr) {
-                console.warn('Item addition notice:', itemErr);
-              }
-            }
-          }
-
-          // Immediately submit to set status to SUBMITTED
-          try {
-            await materialManagementApi.requests.action(requestId, 'submit');
-          } catch (subErr) {
-            console.warn('Auto-submit action notice:', subErr);
-          }
-        }
-        toast.success('Material request submitted successfully.');
+        setEditingItem(null);
+        await loadAllData();
       }
-
-      setIsAddOpen(false);
-      setEditingItem(null);
-      await loadRequests();
     } catch (err) {
-      console.error('Material request submit error:', err);
-      toast.error(err?.message || err?.data?.message || 'Failed to save material request. Check required fields.');
+      toast.error(err?.message || 'Failed to update material request.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDocumentAction = async (item, actionName, payload = {}) => {
+  // Admin Approval / Rejection Actions
+  const handleDocumentAction = async (id, actionName, payload = {}) => {
     setLoading(true);
     try {
-      await materialManagementApi.requests.action(item.id, actionName, payload);
-      toast.success(`Request ${actionName}d successfully.`);
+      await materialManagementApi.requests.action(id, actionName, payload);
+      toast.success(`Material request ${actionName}d successfully.`);
       setActionModalItem(null);
       setViewingItem(null);
       setRemarks('');
-      await loadRequests();
+      await loadAllData();
     } catch (err) {
       toast.error(err?.message || `Failed to ${actionName} request.`);
     } finally {
@@ -448,24 +420,42 @@ export function MaterialRequestsPage() {
     }
   };
 
-  const handleOpenActionModal = (item, actionType) => {
-    setActionModalItem({ item, actionType });
-    setRemarks('');
-  };
+  // Admin Change Status
+  const handleChangeStatus = async () => {
+    if (!statusChangeItem || !selectedNewStatus) return;
+    setLoading(true);
+    try {
+      const selectedOpt = statusOptions.find(s => String(s.id) === String(selectedNewStatus) || String(s.status_name).toLowerCase() === String(selectedNewStatus).toLowerCase());
+      const statusText = (selectedOpt?.status_name || selectedNewStatus || '').toLowerCase();
+      
+      let actionName = 'approve';
+      if (statusText.includes('approv')) actionName = 'approve';
+      else if (statusText.includes('reject')) actionName = 'reject';
+      else if (statusText.includes('return')) actionName = 'return';
+      else if (statusText.includes('cancel')) actionName = 'cancel';
+      else if (statusText.includes('submit')) actionName = 'submit';
+      else actionName = statusText;
 
-  const handleExecuteAction = () => {
-    if (!actionModalItem) return;
-    const { item, actionType } = actionModalItem;
-    if ((actionType === 'reject' || actionType === 'return') && !remarks.trim()) {
-      toast.error(`Please provide remarks for ${actionType} action.`);
-      return;
+      try {
+        await materialManagementApi.requests.action(statusChangeItem.id, actionName, { remarks: 'Status updated by Admin' });
+      } catch {
+        await materialManagementApi.requests.update(statusChangeItem.id, {
+          status_id: Number(selectedNewStatus)
+        });
+      }
+
+      toast.success('Status updated successfully.');
+      setStatusChangeItem(null);
+      setSelectedNewStatus('');
+      await loadAllData();
+    } catch (err) {
+      toast.error(err?.message || err?.data?.message || 'Failed to change status.');
+    } finally {
+      setLoading(false);
     }
-    handleDocumentAction(item, actionType, { remarks });
   };
 
-  const handleApprove = (item) => handleOpenActionModal(item, 'approve');
-  const handleReject = (item) => handleOpenActionModal(item, 'reject');
-  
+  // Delete Handler (Admin only)
   const handleDelete = async () => {
     if (!deleteItem) return;
     setLoading(true);
@@ -473,7 +463,7 @@ export function MaterialRequestsPage() {
       await materialManagementApi.requests.remove(deleteItem.id);
       toast.success('Material request deleted successfully.');
       setDeleteItem(null);
-      await loadRequests();
+      await loadAllData();
     } catch (err) {
       toast.error(err?.message || 'Failed to delete request.');
     } finally {
@@ -481,117 +471,23 @@ export function MaterialRequestsPage() {
     }
   };
 
-  // Change Status handler (Admin only)
-  const handleChangeStatus = async () => {
-    if (!statusChangeItem || !selectedNewStatus) return;
-    setLoading(true);
-    try {
-      await materialManagementApi.requests.update(statusChangeItem.id, {
-        status_id: Number(selectedNewStatus)
-      });
-      toast.success('Status updated successfully.');
-      setStatusChangeItem(null);
-      setSelectedNewStatus('');
-      await loadRequests();
-    } catch (err) {
-      toast.error(err?.message || 'Failed to change status.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadRequests = async () => {
-    try {
-      const reqRes = await materialManagementApi.requests.list();
-      const rList = reqRes?.data?.material_requests ?? reqRes?.data?.data ?? reqRes?.data ?? [];
-      if (Array.isArray(rList)) {
-        const mapped = rList.map(r => {
-          const site = sites.find(s => String(s.id) === String(r.site_id));
-          const proj = projects.find(p => String(p.id) === String(r.project_id));
-          const prio = priorities.find(p => String(p.id) === String(r.priority_id));
-          
-          return {
-            ...r,
-            site_name: site?.site_name || '',
-            project_name: proj?.project_name || '',
-            priority_name: prio?.priority_name || 'Normal',
-            status_name: r.status_name || r.status_code || r.status || 'Submitted'
-          };
-        });
-        setRequests(mapped);
-      }
-    } catch (err) {
-      console.error('Failed to reload requests:', err);
-    }
-  };
-
-  // Metrics
-  const pendingCount = useMemo(() => requests.filter(r => {
-    const s = String(r.status_name).toUpperCase();
-    return s === 'SUBMITTED' || s === 'PENDING APPROVAL';
-  }).length, [requests]);
-  
-  const approvedCount = useMemo(() => requests.filter(r => {
-    const s = String(r.status_name).toUpperCase();
-    return s === 'APPROVED' || s === 'ORDERED' || s === 'PARTIALLY ORDERED';
-  }).length, [requests]);
-  
-  const criticalCount = useMemo(() => requests.filter(r => {
-    const p = String(r.priority_name).toUpperCase();
-    return p === 'CRITICAL' || p === 'URGENT';
-  }).length, [requests]);
-
-  const getStatusVariant = (status) => {
-    const s = String(status).toUpperCase();
-    if (s.includes('APPROV') || s.includes('ORDER')) return 'success';
-    if (s.includes('SUBMIT') || s.includes('PENDING')) return 'warning';
-    if (s.includes('REJECT') || s.includes('CANCEL')) return 'error';
-    return 'neutral';
-  };
-
-  const getPriorityVariant = (priority) => {
-    const p = String(priority).toUpperCase();
-    if (p === 'CRITICAL' || p === 'HIGH') return 'error';
-    if (p === 'URGENT') return 'warning';
-    return 'neutral';
-  };
-
-  const handleApproveWithRemarks = async (id) => {
-    setSaving(true);
-    try {
-      await materialManagementApi.requests.action(id, 'approve', { remarks });
-      toast.success('Material request approved successfully.');
-      setViewingItem(null);
-      await loadRequests();
-    } catch {
-      toast.error('Failed to approve request.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Materials & Inventory', href: '/materials/catalogue' },
-    { label: 'Material Requests' }
+    { label: 'Procurement', href: '/procurement/requisitions' },
+    { label: 'Material Request Approval' }
   ];
 
   return (
     <PageContainer>
       <PageHeader
-        title="Material Requests"
+        title="Material Request Approval"
+        subtitle="Review and approve submitted material requests before they proceed to procurement."
         breadcrumbs={breadcrumbs}
       />
 
       <div className="flex flex-col gap-3 sm:gap-4 w-full">
-        {/* KPI Summary Ribbon */}
+        {/* KPI Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-          <KpiCard
-            label="Total Indent Requests"
-            value={requests.length}
-            status="primary"
-            icon={<Send className="w-4 h-4" />}
-          />
           <KpiCard
             label="Pending Approvals"
             value={pendingCount}
@@ -599,23 +495,29 @@ export function MaterialRequestsPage() {
             icon={<Clock className="w-4 h-4 text-amber-500" />}
           />
           <KpiCard
-            label="Approved & Dispatched"
+            label="Approved"
             value={approvedCount}
             status="success"
             icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
-            label="Urgent / Critical Priority"
-            value={`${criticalCount} Indents`}
-            status={criticalCount > 0 ? 'warning' : 'neutral'}
-            icon={<AlertTriangle className="w-4 h-4 text-red-500" />}
+            label="Rejected"
+            value={rejectedCount}
+            status={rejectedCount > 0 ? 'error' : 'neutral'}
+            icon={<XCircle className="w-4 h-4 text-red-500" />}
+          />
+          <KpiCard
+            label="Total Requests"
+            value={requests.length}
+            status="primary"
+            icon={<Send className="w-4 h-4" />}
           />
         </div>
 
         {/* Filter and Search Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
           <div className="flex flex-wrap items-center gap-2 flex-1">
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:w-44">
               <Select
                 options={[
                   { value: 'all', label: 'All Projects' },
@@ -623,6 +525,18 @@ export function MaterialRequestsPage() {
                 ]}
                 value={selectedProjectId}
                 onChange={setSelectedProjectId}
+                className="text-xs h-8"
+              />
+            </div>
+
+            <div className="w-full sm:w-40">
+              <Select
+                options={[
+                  { value: 'all', label: 'All Sites' },
+                  ...sites.map(s => ({ value: String(s.id), label: s.site_name }))
+                ]}
+                value={selectedSiteId}
+                onChange={setSelectedSiteId}
                 className="text-xs h-8"
               />
             </div>
@@ -641,13 +555,12 @@ export function MaterialRequestsPage() {
               />
             </div>
 
-            <div className="w-full sm:w-40">
+            <div className="w-full sm:w-36">
               <Select
                 options={[
                   { value: 'all', label: 'All Status' },
-                  { value: 'Submitted', label: 'Pending Approval' },
+                  { value: 'Submitted', label: 'Submitted' },
                   { value: 'Approved', label: 'Approved' },
-                  { value: 'Ordered', label: 'Ordered' },
                   { value: 'Rejected', label: 'Rejected' },
                 ]}
                 value={statusFilter}
@@ -658,27 +571,15 @@ export function MaterialRequestsPage() {
 
             <div className="w-full sm:w-52">
               <SearchField
-                placeholder="Search indent no, material, purpose..."
+                placeholder="Search Approval ID, Ref, Project, User..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
           </div>
-
-          <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Plus className="w-3.5 h-3.5" />}
-              onClick={handleOpenAdd}
-              className="text-xs h-8 shadow-xs"
-            >
-              Material Request
-            </Button>
-          </div>
         </div>
 
-        {/* Desktop & Tablet Table */}
+        {/* Approval Table */}
         <div className="hidden sm:block">
           <DataTableContainer
             pagination={
@@ -696,34 +597,31 @@ export function MaterialRequestsPage() {
               <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
                   <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2 w-32">Indent Ref Number</th>
-                  <th className="px-3 py-2 w-32">Project</th>
+                  <th className="px-3 py-2 w-32">Approval ID</th>
+                  <th className="px-3 py-2 w-36">Project</th>
                   <th className="px-3 py-2 w-32">Site</th>
-                  <th className="px-3 py-2 w-28">Request By</th>
-                  <th className="px-3 py-2 text-center w-24">Expected Date</th>
-                  <th className="px-3 py-2 w-24 text-right">Amount</th>
-                  <th className="px-3 py-2 text-center w-20">Priority</th>
+                  <th className="px-3 py-2 w-28">Requested By</th>
+                  <th className="px-3 py-2 text-center w-24">Priority</th>
                   <th className="px-3 py-2 text-center w-24">Status</th>
-                  <th className="px-3 py-2 text-center w-24">Actions</th>
+                  <th className="px-3 py-2 text-center w-24">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {loading ? (
                   <tr>
-                    <td colSpan="10" className="text-center py-8 text-text-muted text-[12px]">
+                    <td colSpan="8" className="text-center py-8 text-text-muted text-[12px]">
                       Loading material requests...
                     </td>
                   </tr>
                 ) : paged.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="text-center py-8 text-text-muted text-[12px]">
-                      No material requests found matching criteria.
+                    <td colSpan="8" className="text-center py-8 text-text-muted text-[12px]">
+                      No material requests are pending approval.
                     </td>
                   </tr>
                 ) : (
                   paged.map((r, idx) => {
-                    const reqDetails = detailsMap[r.id];
-                    const estAmt = reqDetails?.items?.reduce((sum, item) => sum + Number(item.estimated_amount || 0), 0) ?? 0;
+                    const approvalId = r.approval_code || getApprovalId(r, (page - 1) * perPage + idx);
                     const isMenuOpen = openMenuId === r.id;
 
                     return (
@@ -733,11 +631,13 @@ export function MaterialRequestsPage() {
                         </td>
                         <td className="px-3 py-2">
                           <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                            {r.request_no}
+                            {approvalId}
                           </span>
                         </td>
                         <td className="px-3 py-2 font-medium text-text-primary text-[11px]">
-                          {r.project_name || '—'}
+                          <span className="truncate block" title={r.project_name}>
+                            {r.project_name || '—'}
+                          </span>
                         </td>
                         <td className="px-3 py-2 text-text-secondary text-[11px]">
                           <span className="truncate block" title={r.site_name}>
@@ -746,12 +646,6 @@ export function MaterialRequestsPage() {
                         </td>
                         <td className="px-3 py-2 text-text-secondary text-[11px]">
                           {getUserName(r.requested_by || r.created_by)}
-                        </td>
-                        <td className="px-3 py-2 text-center font-mono text-[11px]">
-                          <span className="text-text-primary font-medium">{r.required_by_date || '—'}</span>
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono font-semibold text-text-primary text-[11px]">
-                          {estAmt > 0 ? `₹${estAmt.toLocaleString('en-IN')}` : '—'}
                         </td>
                         <td className="px-3 py-2 text-center">
                           <Badge
@@ -770,8 +664,8 @@ export function MaterialRequestsPage() {
                           </Badge>
                         </td>
                         <td className="px-3 py-2">
-                          <div className="flex items-center justify-center gap-0.5">
-                            {/* View Button */}
+                          <div className="flex items-center justify-center gap-1">
+                            {/* View Icon */}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -802,27 +696,44 @@ export function MaterialRequestsPage() {
                                   ref={menuRef}
                                   className="absolute right-0 top-7 z-50 w-44 bg-surface border border-border rounded-sm shadow-xl p-1 text-[11px] animate-in fade-in zoom-in-95 duration-100"
                                 >
+                                  {/* Issue Purchase Order (PO) */}
+                                  {(String(r.status_name || r.status || '').toUpperCase().includes('APPROV') || String(r.status_name || r.status || '').toUpperCase().includes('ORDER')) && (
+                                    <button
+                                      onClick={() => {
+                                        setOpenMenuId(null);
+                                        navigate(`/procurement/purchase-orders?mr_id=${r.id}`);
+                                      }}
+                                      className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-emerald-50 flex items-center gap-2 text-emerald-700 font-semibold"
+                                    >
+                                      <ShoppingCart className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span>Issue PO</span>
+                                    </button>
+                                  )}
+
+                                  {/* Edit (Accounts User & Admin) */}
                                   <button
-                                    onClick={() => {
-                                      handleOpenEdit(r);
-                                    }}
+                                    onClick={() => handleOpenEdit(r)}
                                     className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-surface-muted flex items-center gap-2 text-text-primary"
                                   >
                                     <Edit className="w-3.5 h-3.5 text-text-secondary" />
                                     <span>Edit</span>
                                   </button>
 
-                                  <button
-                                    onClick={() => {
-                                      setDeleteItem(r);
-                                      setOpenMenuId(null);
-                                    }}
-                                    className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-error/10 flex items-center gap-2 text-error"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span>Delete</span>
-                                  </button>
+                                  {/* Delete (Admin Only) */}
+                                  {isAdmin && (
+                                    <button
+                                      onClick={() => {
+                                        setDeleteItem(r);
+                                        setOpenMenuId(null);
+                                      }}
+                                      className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-error/10 flex items-center gap-2 text-error"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  )}
 
+                                  {/* Change Status (Admin Only) */}
                                   {isAdmin && (
                                     <>
                                       <div className="border-t border-border my-1"></div>
@@ -856,17 +767,16 @@ export function MaterialRequestsPage() {
         {/* Mobile View */}
         <div className="block sm:hidden space-y-3">
           {paged.map((r, idx) => {
-            const reqDetails = detailsMap[r.id];
-            const estAmt = reqDetails?.items?.reduce((sum, item) => sum + Number(item.estimated_amount || 0), 0) ?? 0;
+            const approvalId = r.approval_code || getApprovalId(r, (page - 1) * perPage + idx);
             const isMenuOpen = openMenuId === `mobile-${r.id}`;
 
             return (
               <div key={r.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="font-mono text-[10px] font-bold text-primary block">{r.request_no}</span>
+                    <span className="font-mono text-[10px] font-bold text-primary block">{approvalId}</span>
                     <h4 className="font-semibold text-text-primary text-[13px] leading-snug">
-                      {r.project_name || 'Material Request'}
+                      {r.project_name || 'Highway Project'}
                     </h4>
                     <span className="text-[11px] text-text-muted block">{r.site_name}</span>
                   </div>
@@ -886,15 +796,8 @@ export function MaterialRequestsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60 font-mono">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-text-muted block">Amount</span>
-                    <span className="font-bold text-primary text-[12px]">{estAmt > 0 ? `₹${estAmt.toLocaleString('en-IN')}` : '—'}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] uppercase font-bold text-text-muted block">Expected Date</span>
-                    <span className="text-text-primary text-[11px] font-medium">{r.required_by_date || '—'}</span>
-                  </div>
+                <div className="text-xs pt-1 border-t border-border/60 font-mono flex justify-between">
+                  <span className="text-[10px] text-text-muted">Requested By: <strong className="text-text-primary">{getUserName(r.requested_by || r.created_by)}</strong></span>
                 </div>
 
                 <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
@@ -910,14 +813,13 @@ export function MaterialRequestsPage() {
                         setOpenMenuId(isMenuOpen ? null : `mobile-${r.id}`);
                       }}
                       className={`h-7 w-7 p-0 ${isMenuOpen ? 'text-primary bg-surface-muted' : 'text-text-secondary'}`}
-                      title="More Options"
                     >
                       <MoreVertical className="w-3.5 h-3.5" />
                     </Button>
                     {isMenuOpen && (
                       <div
                         ref={menuRef}
-                        className="absolute right-0 bottom-8 z-50 w-44 bg-surface border border-border rounded-sm shadow-xl p-1 text-[11px] animate-in fade-in zoom-in-95 duration-100"
+                        className="absolute right-0 bottom-8 z-50 w-44 bg-surface border border-border rounded-sm shadow-xl p-1 text-[11px]"
                       >
                         <button
                           onClick={() => handleOpenEdit(r)}
@@ -926,24 +828,23 @@ export function MaterialRequestsPage() {
                           <Edit className="w-3.5 h-3.5 text-text-secondary" />
                           <span>Edit</span>
                         </button>
-                        <button
-                          onClick={() => { setDeleteItem(r); setOpenMenuId(null); }}
-                          className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-error/10 flex items-center gap-2 text-error"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Delete</span>
-                        </button>
                         {isAdmin && (
-                          <>
-                            <div className="border-t border-border my-1"></div>
-                            <button
-                              onClick={() => { setStatusChangeItem(r); setSelectedNewStatus(''); setOpenMenuId(null); }}
-                              className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-surface-muted flex items-center gap-2 text-text-primary"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
-                              <span>Change Status</span>
-                            </button>
-                          </>
+                          <button
+                            onClick={() => { setDeleteItem(r); setOpenMenuId(null); }}
+                            className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-error/10 flex items-center gap-2 text-error"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => { setStatusChangeItem(r); setSelectedNewStatus(''); setOpenMenuId(null); }}
+                            className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-surface-muted flex items-center gap-2 text-text-primary"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Change Status</span>
+                          </button>
                         )}
                       </div>
                     )}
@@ -966,19 +867,19 @@ export function MaterialRequestsPage() {
         </div>
       </div>
 
-      {/* View Detail Modal */}
+      {/* View Detail Modal (Vendor-Wise Material Grouping) */}
       {viewingItem && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4 animate-fade-in">
-          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-scale-in">
+          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] animate-scale-in">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <Send className="w-4 h-4" />
+                  <FileText className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-text-primary">{viewingItem.request_no}</h3>
                   <span className="text-[11px] font-mono text-text-muted">
-                    {viewingItem.project_name || projects.find(p => String(p.id) === String(viewingItem.project_id))?.project_name || '—'}
+                    {viewingItem.project_name || projects.find(p => String(p.id) === String(viewingItem.project_id))?.project_name || (viewingItem.project_id ? `Project #${viewingItem.project_id}` : '—')}
                   </span>
                 </div>
               </div>
@@ -986,117 +887,136 @@ export function MaterialRequestsPage() {
             </div>
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs flex-1">
-
-              {/* General Properties Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
+              {/* Header Info Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
                 <div>
-                  <span className="text-text-muted block text-[10px] uppercase font-bold">Request Date</span>
-                  <span className="font-mono text-text-primary font-semibold">{viewingItem.request_date}</span>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Indent Reference</span>
+                  <span className="font-mono text-text-primary font-bold">{viewingItem.request_no}</span>
                 </div>
                 <div>
-                  <span className="text-text-muted block text-[10px] uppercase font-bold">Expected Date</span>
-                  <span className="font-mono text-text-primary font-bold text-red-600">{viewingItem.required_by_date}</span>
-                </div>
-                <div>
-                  <span className="text-text-muted block text-[10px] uppercase font-bold">Priority</span>
-                  <span className="font-semibold text-text-primary uppercase">
-                    {viewingItem.priority_name || priorities.find(p => String(p.id) === String(viewingItem.priority_id))?.name || viewingItem.priority || 'Normal'}
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Project</span>
+                  <span className="font-semibold text-text-primary">
+                    {viewingItem.project_name || projects.find(p => String(p.id) === String(viewingItem.project_id))?.project_name || (viewingItem.project_id ? `Project #${viewingItem.project_id}` : '—')}
                   </span>
                 </div>
                 <div>
-                  <span className="text-text-muted block text-[10px] uppercase font-bold">Status</span>
-                  <span className="font-bold text-primary uppercase">
-                    {viewingItem.status_name || viewingItem.status_code || viewingItem.status || 'Submitted'}
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Site Location</span>
+                  <span className="font-semibold text-text-primary">
+                    {viewingItem.site_name || sites.find(s => String(s.id) === String(viewingItem.site_id))?.site_name || (viewingItem.site_id ? `Site #${viewingItem.site_id}` : '—')}
                   </span>
                 </div>
                 <div>
                   <span className="text-text-muted block text-[10px] uppercase font-bold">Requested By</span>
-                  <span className="text-text-primary font-semibold">{getUserName(viewingItem.requested_by || viewingItem.created_by)}</span>
+                  <span className="font-semibold text-text-primary">{getUserName(viewingItem.requested_by || viewingItem.created_by)}</span>
                 </div>
                 <div>
-                  <span className="text-text-muted block text-[10px] uppercase font-bold">Site Location</span>
-                  <span className="text-text-primary font-medium">
-                    {viewingItem.site_name || sites.find(s => String(s.id) === String(viewingItem.site_id))?.site_name || '—'}
-                  </span>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Request Date</span>
+                  <span className="font-mono text-text-primary">{viewingItem.request_date}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Required Date</span>
+                  <span className="font-mono font-bold text-red-600">{viewingItem.required_by_date}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Priority</span>
+                  <Badge variant={getPriorityVariant(viewingItem.priority_name || viewingItem.priority)} className="text-[9px] uppercase font-bold">
+                    {viewingItem.priority_name || priorities.find(p => String(p.id) === String(viewingItem.priority_id))?.name || viewingItem.priority || 'Normal'}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Status</span>
+                  <Badge variant={getStatusVariant(viewingItem.status_name || viewingItem.status)} className="text-[9px] uppercase font-bold">
+                    {viewingItem.status_name || viewingItem.status_code || viewingItem.status || 'Submitted'}
+                  </Badge>
                 </div>
               </div>
 
-              {/* Items List Table */}
-              <div className="space-y-1.5">
-                <span className="font-bold text-text-primary block text-[11px]">Material Requisition Details</span>
-                <div className="border border-border rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-[11px]">
-                    <thead className="bg-surface-muted font-bold text-text-secondary border-b border-border">
-                      <tr>
-                        <th className="p-2">Material Item</th>
-                        <th className="p-2 text-center">UOM</th>
-                        <th className="p-2 text-right">Requested Qty</th>
-                        <th className="p-2 text-right">Approved Qty</th>
-                        <th className="p-2 text-right">Est. Rate</th>
-                        <th className="p-2 text-right">Est. Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {viewingItem.items?.map((item, i) => {
-                        const baseUom = uoms.find(u => String(u.id) === String(item.uom_id));
-                        const itemVendor = vendors.find(v => String(v.id) === String(item.supplier_id || item.vendor_id || item.material_supplier_id));
-                        const mat = materials.find(m => String(m.id) === String(item.material_id));
-                        const itemSpec = item.specification || item.variant || item.size || item.spec || item.item_specification || item.material_variant || item.description || mat?.specification || mat?.variant || mat?.size;
-                        return (
-                          <tr key={item.id || i} className="hover:bg-surface-muted/20">
-                            <td className="p-2 font-medium text-text-primary">
-                              <div>
-                                {item.material_code ? `${item.material_code} - ${item.material_name}` : item.material_name || `Material #${item.material_id}`}
-                              </div>
-                              {(itemSpec || itemVendor || item.remarks) && (
-                                <div className="text-[10px] text-text-muted space-y-0.5 mt-0.5">
-                                  {itemSpec && <div><span className="font-semibold text-text-secondary">Spec / Variant:</span> {itemSpec}</div>}
-                                  {itemVendor && <div><span className="font-semibold text-text-secondary">Vendor:</span> {itemVendor.supplier_name || itemVendor.name || itemVendor.company_name}</div>}
-                                  {item.remarks && <div><span className="font-semibold text-text-secondary">Remarks:</span> {item.remarks}</div>}
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-2 text-center font-mono text-text-secondary">
-                              {baseUom?.unit_code || '—'}
-                            </td>
-                            <td className="p-2 text-right font-mono font-medium">
-                              {item.requested_qty}
-                            </td>
-                            <td className="p-2 text-right font-mono font-bold text-emerald-600">
-                              {item.approved_qty ?? item.requested_qty}
-                            </td>
-                            <td className="p-2 text-right font-mono text-text-secondary">
-                              ₹{Number(item.estimated_rate || 0).toLocaleString('en-IN')}
-                            </td>
-                            <td className="p-2 text-right font-mono font-semibold text-text-primary">
-                              ₹{Number(item.estimated_amount || 0).toLocaleString('en-IN')}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Purpose */}
               {viewingItem.purpose && (
-                <div className="border border-border rounded-lg p-3 space-y-1 bg-surface-muted/10">
-                  <span className="font-bold text-text-primary block text-[11px]">Purpose & Scope:</span>
-                  <p className="text-text-secondary text-[11px] leading-relaxed italic">"{viewingItem.purpose}"</p>
+                <div className="border border-border rounded-lg p-2.5 bg-surface-muted/10">
+                  <span className="font-bold text-text-primary block text-[11px]">Purpose / Activity Scope:</span>
+                  <p className="text-text-secondary italic text-[11px]">"{viewingItem.purpose}"</p>
                 </div>
               )}
 
-              {/* Review / Approval Remarks Form Section (If Submitted) */}
-              {(viewingItem.status_name === 'Submitted' || viewingItem.status === 'Pending Approval') && (
-                <div className="border border-emerald-100 bg-emerald-50/20 rounded-lg p-3 space-y-2">
-                  <span className="font-bold text-emerald-900 block text-[11px]">Approval Review</span>
-                  <FormField label="Reviewer Remarks" error={errors.approval_remarks}>
+              {/* VERY IMPORTANT: VENDOR-WISE MATERIAL GROUPING */}
+              <div className="space-y-3">
+                <span className="font-bold text-text-primary block text-[12px] uppercase tracking-wider">
+                  Material Items (Grouped by Vendor)
+                </span>
+
+                {Object.keys(vendorGroups).length === 0 ? (
+                  <div className="p-4 text-center text-text-muted border border-border rounded-lg">No material items found.</div>
+                ) : (
+                  Object.entries(vendorGroups).map(([vendorName, itemsList], gIdx) => (
+                    <div key={gIdx} className="border border-border rounded-lg overflow-hidden bg-surface shadow-2xs">
+                      {/* Vendor Header */}
+                      <div className="bg-surface-muted/60 px-3.5 py-2 border-b border-border flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Truck className="w-4 h-4 text-primary" />
+                          <span className="font-bold text-text-primary text-[12px] uppercase tracking-wider">{vendorName}</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-text-muted">{itemsList.length} Item(s)</span>
+                      </div>
+
+                      {/* Items Table for this Vendor */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-[11px]">
+                          <thead className="bg-surface-muted/20 font-semibold text-text-secondary border-b border-border/60">
+                            <tr>
+                              <th className="p-2">Material</th>
+                              <th className="p-2">Variant / Size / Spec</th>
+                              <th className="p-2 text-right">Required Qty</th>
+                              <th className="p-2 text-center">UOM</th>
+                              <th className="p-2">Remarks</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/40">
+                            {itemsList.map((item, i) => {
+                              const baseUom = uoms.find(u => String(u.id) === String(item.uom_id));
+                              const mat = materials.find(m => String(m.id) === String(item.material_id));
+                              const itemSpec = item.specification || item.variant || item.size || item.spec || item.item_specification || item.material_variant || item.description || mat?.specification || mat?.variant || mat?.size || '—';
+                              return (
+                                <tr key={item.id || i} className="hover:bg-surface-muted/10">
+                                  <td className="p-2 font-semibold text-text-primary">
+                                    {item.material_code ? `${item.material_code} - ${item.material_name}` : item.material_name || `Material #${item.material_id}`}
+                                  </td>
+                                  <td className="p-2 text-text-secondary font-mono">
+                                    {itemSpec}
+                                  </td>
+                                  <td className="p-2 text-right font-mono font-bold text-primary">
+                                    {item.requested_qty}
+                                  </td>
+                                  <td className="p-2 text-center font-mono text-text-secondary">
+                                    {baseUom?.unit_code || '—'}
+                                  </td>
+                                  <td className="p-2 text-text-muted italic">
+                                    {item.remarks || '—'}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* ADMIN ONLY APPROVAL / REJECTION BUTTONS */}
+              {isAdmin && (
+                String(viewingItem.status_name || viewingItem.status || '').toUpperCase().includes('SUBMIT') ||
+                String(viewingItem.status_name || viewingItem.status || '').toUpperCase().includes('PENDING') ||
+                String(viewingItem.status_name || viewingItem.status || '').toUpperCase().includes('DRAFT')
+              ) && (
+                <div className="border border-emerald-200 bg-emerald-50/20 rounded-lg p-3 space-y-2">
+                  <span className="font-bold text-emerald-900 block text-[11px]">Admin Approval Board Review</span>
+                  <FormField label="Reviewer Remarks">
                     <Textarea
                       rows={2}
                       value={remarks}
                       onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="Add comments about allocation, rate variations, delivery dates..."
+                      placeholder="Enter approval remarks or reason for rejection..."
                     />
                   </FormField>
                   <div className="flex items-center gap-2 pt-1">
@@ -1105,59 +1025,64 @@ export function MaterialRequestsPage() {
                       size="sm"
                       className="bg-emerald-600 hover:bg-emerald-700 text-white h-8"
                       leftIcon={<Check className="w-3.5 h-3.5" />}
-                      onClick={() => handleApproveWithRemarks(viewingItem.id)}
-                      isSubmitting={saving}
+                      onClick={() => handleDocumentAction(viewingItem.id, 'approve', { remarks })}
+                      isSubmitting={loading}
                     >
-                      Approve
+                      Approve Request
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       className="border-red-200 text-red-600 hover:bg-red-50 h-8"
                       leftIcon={<XCircle className="w-3.5 h-3.5" />}
-                      onClick={async () => {
-                        setSaving(true);
-                        try {
-                          await materialManagementApi.requests.action(viewingItem.id, 'reject', { remarks });
-                          toast.success('Material request rejected.');
-                          setViewingItem(null);
-                          await loadRequests();
-                        } catch {
-                          toast.error('Failed to reject request.');
-                        } finally {
-                          setSaving(false);
-                        }
-                      }}
-                      isSubmitting={saving}
+                      onClick={() => handleDocumentAction(viewingItem.id, 'reject', { remarks })}
+                      isSubmitting={loading}
                     >
-                      Reject
+                      Reject Request
                     </Button>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end">
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
+              <div>
+                {(String(viewingItem.status_name || viewingItem.status || '').toUpperCase().includes('APPROV') || String(viewingItem.status_name || viewingItem.status || '').toUpperCase().includes('ORDER')) && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white h-8"
+                    leftIcon={<ShoppingCart className="w-3.5 h-3.5" />}
+                    onClick={() => {
+                      const id = viewingItem.id;
+                      setViewingItem(null);
+                      navigate(`/procurement/purchase-orders?mr_id=${id}`);
+                    }}
+                  >
+                    Issue Purchase Order (PO)
+                  </Button>
+                )}
+              </div>
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add / Edit Material Request Modal */}
+      {/* Edit Modal (Vendor & Quantity Editable at Item Level) */}
       <EntityEditModal
-        isOpen={Boolean(isAddOpen || editingItem)}
-        onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
+        isOpen={Boolean(editingItem)}
+        onClose={() => setEditingItem(null)}
       >
         <EntityEditModal.Header
-          icon={Send}
-          title={editingItem ? 'Edit Material Request' : 'New Material Request'}
-          subtitle="Submit material requisition for project site requirements."
-          onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
+          icon={Edit}
+          title="Edit Material Request Items"
+          subtitle="Adjust vendor assignments, quantities, specifications, or remarks before approval."
+          onClose={() => setEditingItem(null)}
         />
-        <form id="mrn-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <form id="edit-mra-form" onSubmit={handleSubmitEdit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="Project & Location Information">
+            <EntityEditModal.Section title="Header Scope">
               <EntityEditModal.Grid>
                 <FormField label="Parent Project" required error={errors.project_id}>
                   <Select
@@ -1178,43 +1103,14 @@ export function MaterialRequestsPage() {
               </EntityEditModal.Grid>
             </EntityEditModal.Section>
 
-            <EntityEditModal.Section title="Urgency & Scope">
-              <EntityEditModal.Grid>
-                <FormField label="Priority Level" required error={errors.priority_id}>
-                  <Select
-                    options={priorities.map(p => ({ value: String(p.id), label: p.priority_name }))}
-                    value={form.priority_id}
-                    onChange={(v) => handleFormChange('priority_id', v)}
-                    placeholder="Select Priority"
-                  />
-                </FormField>
-
-                <FormField label="Expected Date">
-                  <Input
-                    type="date"
-                    value={form.required_by_date}
-                    onChange={(e) => handleFormChange('required_by_date', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Purpose & Activity Scope" className="md:col-span-2">
-                  <Textarea
-                    rows={2}
-                    value={form.purpose}
-                    onChange={(e) => handleFormChange('purpose', e.target.value)}
-                    placeholder="Describe specific work activity requiring these materials..."
-                  />
-                </FormField>
-              </EntityEditModal.Grid>
-            </EntityEditModal.Section>
-
-            <EntityEditModal.Section title="Material Items List">
+            {/* Editable Item Rows */}
+            <EntityEditModal.Section title="Material Items (Edit Vendor & Quantity)">
               <div className="space-y-3">
                 {form.items && form.items.map((item, idx) => {
                   const itemErr = errors.items?.[idx] || {};
 
                   return (
-                    <div key={idx} className="bg-surface-muted/30 p-3 rounded-lg border border-border/60">
+                    <div key={idx} className="bg-surface-muted/30 p-3 rounded-lg border border-border/60 space-y-2">
                       <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
                         {/* 1. Material * */}
                         <div className="sm:col-span-3">
@@ -1302,12 +1198,12 @@ export function MaterialRequestsPage() {
                                 nextItems[idx] = { ...nextItems[idx], remarks: e.target.value };
                                 handleFormChange('items', nextItems);
                               }}
-                              placeholder="e.g. Need ISI certified"
+                              placeholder="e.g. Approved brand"
                             />
                           </FormField>
                         </div>
 
-                        {/* 6. Delete Item icon */}
+                        {/* Delete */}
                         <div className={`sm:col-span-1 flex items-center justify-center ${idx === 0 ? 'sm:pb-0.5' : 'sm:pb-0'}`}>
                           {form.items.length > 1 && (
                             <Button
@@ -1319,7 +1215,6 @@ export function MaterialRequestsPage() {
                                 const nextItems = form.items.filter((_, i) => i !== idx);
                                 handleFormChange('items', nextItems);
                               }}
-                              title="Delete Item"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -1351,55 +1246,13 @@ export function MaterialRequestsPage() {
           </EntityEditModal.Body>
 
           <EntityEditModal.Footer
-            formId="mrn-form"
-            submitLabel={editingItem ? 'Update Material Request' : 'Submit Material Request'}
-            onCancel={() => { setIsAddOpen(false); setEditingItem(null); }}
+            formId="edit-mra-form"
+            submitLabel="Save Changes"
+            onCancel={() => setEditingItem(null)}
             isSubmitting={saving}
           />
         </form>
       </EntityEditModal>
-
-      {/* Action Approval / Reject Remarks Modal */}
-      {actionModalItem && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-md p-5 space-y-4 animate-scale-in">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="font-bold text-text-primary text-sm flex items-center gap-2">
-                {actionModalItem.actionType === 'approve' && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
-                {actionModalItem.actionType === 'reject' && <XCircle className="w-5 h-5 text-red-600" />}
-                {actionModalItem.actionType === 'return' && <RotateCcw className="w-5 h-5 text-amber-600" />}
-                {actionModalItem.actionType === 'approve' ? 'Approve Material Request' : actionModalItem.actionType === 'reject' ? 'Reject Material Request' : 'Return Request'}
-              </h3>
-              <Button variant="ghost" size="sm" onClick={() => setActionModalItem(null)}>✕</Button>
-            </div>
-
-            <p className="text-xs text-text-secondary">
-              Indent Reference: <span className="font-mono font-bold text-primary">{actionModalItem.item.request_no}</span>
-            </p>
-
-            <FormField label={actionModalItem.actionType === 'approve' ? "Approval Remarks (Optional)" : "Reason / Remarks (Required)"} required={actionModalItem.actionType !== 'approve'}>
-              <Textarea
-                rows={3}
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                placeholder={actionModalItem.actionType === 'approve' ? "Optional notes for procurement..." : "Specify reason or corrections needed..."}
-              />
-            </FormField>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
-              <Button variant="outline" size="sm" onClick={() => setActionModalItem(null)}>Cancel</Button>
-              <Button
-                variant={actionModalItem.actionType === 'reject' ? 'destructive' : actionModalItem.actionType === 'return' ? 'warning' : 'primary'}
-                size="sm"
-                onClick={handleExecuteAction}
-                isSubmitting={loading}
-              >
-                Confirm {actionModalItem.actionType.toUpperCase()}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Admin Change Status Dialog */}
       {statusChangeItem && (
@@ -1416,9 +1269,6 @@ export function MaterialRequestsPage() {
             <p className="text-xs text-text-secondary">
               Indent Reference: <span className="font-mono font-bold text-primary">{statusChangeItem.request_no}</span>
             </p>
-            <p className="text-xs text-text-secondary">
-              Current Status: <Badge variant={getStatusVariant(statusChangeItem.status_name)} className="text-[9px] font-bold uppercase ml-1">{statusChangeItem.status_name}</Badge>
-            </p>
 
             <FormField label="New Status" required>
               <Select
@@ -1429,8 +1279,6 @@ export function MaterialRequestsPage() {
                         { value: 'submitted', label: 'Submitted' },
                         { value: 'approved', label: 'Approved' },
                         { value: 'rejected', label: 'Rejected' },
-                        { value: 'ordered', label: 'Ordered' },
-                        { value: 'cancelled', label: 'Cancelled' },
                       ]
                 }
                 value={selectedNewStatus}
@@ -1459,7 +1307,7 @@ export function MaterialRequestsPage() {
       <ConfirmDialog
         isOpen={Boolean(deleteItem)}
         title="Delete Material Request?"
-        description={`Are you sure you want to delete "${deleteItem?.request_no}"? This action cannot be undone.`}
+        description={`Are you sure you want to delete "${deleteItem?.request_no}"?`}
         confirmLabel="Delete"
         destructive={true}
         loading={loading}
