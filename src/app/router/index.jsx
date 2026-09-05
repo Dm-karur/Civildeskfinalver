@@ -68,8 +68,8 @@ import { LabourLeavePage } from '../../features/labour/pages/LabourLeavePage';
 import { DailyWagesPage } from '../../features/labour/pages/DailyWagesPage';
 import { ManpowerCostPage } from '../../features/labour/pages/ManpowerCostPage';
 import { LabourWageApprovalPage } from '../../features/labour/pages/LabourWageApprovalPage';
-// Phase 2 — Materials & Inventory
 import { MaterialCataloguePage } from '../../features/materials/pages/MaterialCataloguePage';
+import { MaterialCatalogueFormPage } from '../../features/materials/pages/MaterialCatalogueFormPage';
 import { StockOverviewPage } from '../../features/materials/pages/StockOverviewPage';
 import { ProjectStockPage } from '../../features/materials/pages/ProjectStockPage';
 import { MaterialRequestsPage } from '../../features/materials/pages/MaterialRequestsPage';
@@ -290,6 +290,8 @@ export const router = createBrowserRouter([
 
           // ─── 6. Materials & Inventory ─────────────────────
           { path: 'materials/catalogue', element: R('materials.view', MaterialCataloguePage) },
+          { path: 'materials/catalogue/new', element: R('materials.manage_master', MaterialCatalogueFormPage) },
+          { path: 'materials/catalogue/:id/edit', element: R('materials.manage_master', MaterialCatalogueFormPage) },
           { path: 'materials/stock', element: R('material_stock.view', StockOverviewPage) },
           { path: 'materials/project-stock', element: R('material_stock.view', ProjectStockPage) },
           { path: 'materials/requests', element: R('materials.view', MaterialRequestsPage) },
@@ -433,6 +435,8 @@ export const router = createBrowserRouter([
           { path: 'masters/material-categories', element: R('materials.view', MaterialCategoriesPage) },
           { path: 'masters/equipment-master', element: <EquipmentMasterPage /> },
           { path: 'masters/materials', element: R('materials.view', MaterialCataloguePage) },
+          { path: 'masters/materials/new', element: R('materials.manage_master', MaterialCatalogueFormPage) },
+          { path: 'masters/materials/:id/edit', element: R('materials.manage_master', MaterialCatalogueFormPage) },
           { path: 'masters/brands', element: R('materials.view', BrandsPage) },
           { path: 'masters/material-units', element: R('materials.view', UnitsOfMeasurementPage) },
           { path: 'masters/warehouses', element: R('material_stock.view', WarehousesPage) },

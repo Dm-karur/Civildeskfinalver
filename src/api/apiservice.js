@@ -305,6 +305,7 @@ export const labourContractorBillsApi = {
 export const materialsApi = {
     masters: (params) => request.get('/materials/masters', params),
     categories: crud('/materials/categories'),
+    brands: crud('/materials/brands'),
     catalogue: crud('/materials/catalogue'),
     suppliers: crud('/materials/suppliers'),
 };
@@ -332,24 +333,6 @@ export const materialManagementApi = {
     stock: (params) => request.get('/material-management/stock', params),
     exportStock: (params) => request.download('/material-management/stock/export', params),
     ledger: (params) => request.get('/material-management/ledger', params),
-};
-
-export const procurementApi = {
-    purchaseOrders: materialDocument('purchase-orders'),
-    requisitions: materialDocument('requests'),
-    receipts: {
-        ...materialDocument('receipts'),
-        inspect: (id, payload) => action('/material-management/receipts', id, 'inspect', payload),
-        post: (id, payload) => action('/material-management/receipts', id, 'post', payload),
-    },
-    transactions: {
-        ...materialDocument('transactions'),
-        post: (id, payload) => action('/material-management/transactions', id, 'post', payload),
-    },
-    rfq: crud('/procurement/rfq'),
-    quotations: crud('/procurement/quotations'),
-    invoices: crud('/procurement/vendor-invoices'),
-    returns: crud('/procurement/returns'),
 };
 
 const dailyEntry = (type) => ({

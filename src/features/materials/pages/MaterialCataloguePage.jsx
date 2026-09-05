@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Package, Plus, Edit, Trash2, ShieldCheck, ChevronRight, HelpCircle, Eye, Tag } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -18,27 +19,13 @@ import { toast } from '../../../components/composite/Toast';
 import { materialsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-const EMPTY_FORM = {
-  material_category_id: '',
-  base_uom_id: '',
-  material_code: '',
-  material_name: '',
-  specification: '',
-  brand_preference: '',
-  hsn_code: '',
-  gst_rate: '18',
-  standard_rate: '0',
-  minimum_stock_qty: '0',
-  reorder_qty: '0',
-  storage_location_hint: '',
-  quality_check_required: '0',
-  batch_tracking_required: '0',
-  is_active: '1',
-  notes: '',
-};
 
 export function MaterialCataloguePage() {
   const { hasPermission } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isMasterSection = location.pathname.startsWith('/masters');
+
   const [materials, setMaterials] = useState([]);
   const [categories, setCategories] = useState([]);
   const [uoms, setUoms] = useState([]);
@@ -50,14 +37,9 @@ export function MaterialCataloguePage() {
   const [page, setPage] = useState(1);
   const perPage = 10;
 
-  // Modals
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
+  // View & Delete Modals
   const [viewingItem, setViewingItem] = useState(null);
   const [deletingItem, setDeletingItem] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -77,7 +59,7 @@ export function MaterialCataloguePage() {
 
       const uomList = resMasters?.data?.masters?.units ?? resMasters?.masters?.units ?? [];
       setUoms(Array.isArray(uomList) ? uomList : []);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load material catalogue data.');
       setMaterials([]);
       setCategories([]);
@@ -91,98 +73,13 @@ export function MaterialCataloguePage() {
     fetchData();
   }, [fetchData]);
 
-  // Form Handlers
+  // Navigate to New / Edit Dedicated Form Page
   const handleOpenAdd = () => {
-    setForm({
-      ...EMPTY_FORM,
-      material_category_id: categories[0]?.id ? String(categories[0].id) : '',
-      base_uom_id: uoms[0]?.id ? String(uoms[0].id) : '',
-    });
-    setErrors({});
-    setIsAddOpen(true);
+    navigate(isMasterSection ? '/masters/materials/new' : '/materials/catalogue/new');
   };
 
   const handleOpenEdit = (item) => {
-    setForm({
-      material_category_id: String(item.material_category_id || ''),
-      base_uom_id: String(item.base_uom_id || ''),
-      material_code: item.material_code || '',
-      material_name: item.material_name || '',
-      specification: item.specification || '',
-      brand_preference: item.brand_preference || '',
-      hsn_code: item.hsn_code || '',
-      gst_rate: String(item.gst_rate ?? '18'),
-      standard_rate: String(item.standard_rate ?? '0'),
-      minimum_stock_qty: String(item.minimum_stock_qty ?? '0'),
-      reorder_qty: String(item.reorder_qty ?? '0'),
-      storage_location_hint: item.storage_location_hint || '',
-      quality_check_required: item.quality_check_required ? '1' : '0',
-      batch_tracking_required: item.batch_tracking_required ? '1' : '0',
-      is_active: item.is_active ? '1' : '0',
-      notes: item.notes || '',
-    });
-    setErrors({});
-    setEditingItem(item);
-  };
-
-  const handleFormChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: null }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const validationErrs = {};
-
-    if (!form.material_name.trim()) validationErrs.material_name = 'Material name is required.';
-    if (!form.material_code.trim()) validationErrs.material_code = 'Material code is required.';
-    if (!form.material_category_id) validationErrs.material_category_id = 'Category is required.';
-    if (!form.base_uom_id) validationErrs.base_uom_id = 'Base UOM is required.';
-
-    if (Object.keys(validationErrs).length > 0) {
-      setErrors(validationErrs);
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const payload = {
-        material_category_id: Number(form.material_category_id),
-        base_uom_id: Number(form.base_uom_id),
-        material_code: form.material_code.toUpperCase().trim(),
-        material_name: form.material_name.trim(),
-        specification: form.specification.trim() || null,
-        brand_preference: form.brand_preference.trim() || null,
-        hsn_code: form.hsn_code.trim() || null,
-        gst_rate: Number(form.gst_rate || 0),
-        standard_rate: Number(form.standard_rate || 0),
-        minimum_stock_qty: Number(form.minimum_stock_qty || 0),
-        reorder_qty: Number(form.reorder_qty || 0),
-        storage_location_hint: form.storage_location_hint.trim() || null,
-        quality_check_required: Number(form.quality_check_required),
-        batch_tracking_required: Number(form.batch_tracking_required),
-        is_active: Number(form.is_active),
-        notes: form.notes.trim() || null,
-      };
-
-      const isEditing = Boolean(editingItem?.id);
-      if (isEditing) {
-        await materialsApi.catalogue.update(editingItem.id, payload);
-        toast.success('Material catalogue item updated successfully.');
-      } else {
-        await materialsApi.catalogue.create(payload);
-        toast.success('Material catalogue item created successfully.');
-      }
-
-      setIsAddOpen(false);
-      setEditingItem(null);
-      fetchData();
-    } catch (err) {
-      setErrors(err?.errors ?? {});
-      toast.error(err?.message || 'Unable to save material catalogue item.');
-    } finally {
-      setSaving(false);
-    }
+    navigate(isMasterSection ? `/masters/materials/${item.id}/edit` : `/materials/catalogue/${item.id}/edit`);
   };
 
   const confirmDelete = async () => {
@@ -389,190 +286,6 @@ export function MaterialCataloguePage() {
         </DataTableContainer>
       </div>
 
-      {/* Add / Edit Modal */}
-      <EntityEditModal
-        isOpen={isAddOpen || Boolean(editingItem)}
-        onClose={() => {
-          setIsAddOpen(false);
-          setEditingItem(null);
-        }}
-      >
-        <EntityEditModal.Header
-          icon={Package}
-          title={editingItem ? 'Edit Material catalogue Item' : 'Add Material catalogue Item'}
-          subtitle="Configure stock limits, standard purchase prices, categories, and conversion settings."
-          onClose={() => {
-            setIsAddOpen(false);
-            setEditingItem(null);
-          }}
-        />
-        <form id="material-item-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <EntityEditModal.Body>
-            <EntityEditModal.Section title="General Information">
-              <EntityEditModal.Grid>
-                <FormField label="Material Code" required error={errors.material_code}>
-                  <Input
-                    placeholder="e.g. MAT-CEMENT-001"
-                    value={form.material_code}
-                    onChange={(e) => handleFormChange('material_code', e.target.value)}
-                    disabled={Boolean(editingItem)}
-                  />
-                </FormField>
-
-                <FormField label="Material Name" required error={errors.material_name}>
-                  <Input
-                    placeholder="e.g. Portland Pozzolana Cement"
-                    value={form.material_name}
-                    onChange={(e) => handleFormChange('material_name', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Category" required error={errors.material_category_id}>
-                  <Select
-                    value={form.material_category_id}
-                    onChange={(val) => handleFormChange('material_category_id', val)}
-                    options={[
-                      { value: '', label: 'Select a category' },
-                      ...categories.map((c) => ({ value: String(c.id), label: `${c.category_name} (${c.category_code})` }))
-                    ]}
-                  />
-                </FormField>
-
-                <FormField label="Base Unit of Measurement" required error={errors.base_uom_id}>
-                  <Select
-                    value={form.base_uom_id}
-                    onChange={(val) => handleFormChange('base_uom_id', val)}
-                    options={[
-                      { value: '', label: 'Select a unit' },
-                      ...uoms.map((u) => ({ value: String(u.id), label: `${u.unit_name} (${u.unit_code})` }))
-                    ]}
-                  />
-                </FormField>
-
-                <FormField label="Standard Purchase Rate (₹)" error={errors.standard_rate}>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={form.standard_rate}
-                    onChange={(e) => handleFormChange('standard_rate', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="GST Rate (%)" error={errors.gst_rate}>
-                  <Select
-                    value={form.gst_rate}
-                    onChange={(val) => handleFormChange('gst_rate', val)}
-                    options={[
-                      { value: '0', label: '0%' },
-                      { value: '5', label: '5%' },
-                      { value: '12', label: '12%' },
-                      { value: '18', label: '18%' },
-                      { value: '28', label: '28%' }
-                    ]}
-                  />
-                </FormField>
-
-                <FormField label="HSN Code" error={errors.hsn_code}>
-                  <Input
-                    placeholder="e.g. 2523"
-                    value={form.hsn_code}
-                    onChange={(e) => handleFormChange('hsn_code', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Brand Preferences" error={errors.brand_preference}>
-                  <Input
-                    placeholder="e.g. Ultratech, ACC"
-                    value={form.brand_preference}
-                    onChange={(e) => handleFormChange('brand_preference', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Min Stock Alert Qty" error={errors.minimum_stock_qty}>
-                  <Input
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={form.minimum_stock_qty}
-                    onChange={(e) => handleFormChange('minimum_stock_qty', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Reorder Qty" error={errors.reorder_qty}>
-                  <Input
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={form.reorder_qty}
-                    onChange={(e) => handleFormChange('reorder_qty', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Quality Check Intake" error={errors.quality_check_required}>
-                  <Select
-                    value={form.quality_check_required}
-                    onChange={(val) => handleFormChange('quality_check_required', val)}
-                    options={[
-                      { value: '0', label: 'Not Required' },
-                      { value: '1', label: 'Inspection Required' }
-                    ]}
-                  />
-                </FormField>
-
-                <FormField label="Batch Tracking" error={errors.batch_tracking_required}>
-                  <Select
-                    value={form.batch_tracking_required}
-                    onChange={(val) => handleFormChange('batch_tracking_required', val)}
-                    options={[
-                      { value: '0', label: 'Disabled' },
-                      { value: '1', label: 'Enabled' }
-                    ]}
-                  />
-                </FormField>
-
-                <FormField label="Storage Hint (Location)" error={errors.storage_location_hint}>
-                  <Input
-                    placeholder="e.g. Rack A-12"
-                    value={form.storage_location_hint}
-                    onChange={(e) => handleFormChange('storage_location_hint', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Active Status" error={errors.is_active}>
-                  <Select
-                    value={form.is_active}
-                    onChange={(val) => handleFormChange('is_active', val)}
-                    options={[
-                      { value: '1', label: 'Active' },
-                      { value: '0', label: 'Inactive' }
-                    ]}
-                  />
-                </FormField>
-
-                <FormField label="Specifications / Notes" className="md:col-span-2" error={errors.notes}>
-                  <Textarea
-                    placeholder="Material specs, weight info, packaging details..."
-                    value={form.notes}
-                    onChange={(e) => handleFormChange('notes', e.target.value)}
-                    rows={3}
-                  />
-                </FormField>
-              </EntityEditModal.Grid>
-            </EntityEditModal.Section>
-          </EntityEditModal.Body>
-          <EntityEditModal.Footer
-            formId="material-item-form"
-            submitLabel={editingItem ? 'Update Material' : 'Create Material'}
-            onCancel={() => {
-              setIsAddOpen(false);
-              setEditingItem(null);
-            }}
-            isSubmitting={saving}
-          />
-        </form>
-      </EntityEditModal>
 
       {/* View Details Modal */}
       <EntityEditModal

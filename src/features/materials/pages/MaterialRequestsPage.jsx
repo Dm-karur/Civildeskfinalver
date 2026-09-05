@@ -957,19 +957,15 @@ export function MaterialRequestsPage() {
                         const itemSpec = item.specification || item.variant || item.size || item.spec || item.item_specification || item.material_variant || item.description || mat?.specification || mat?.variant || mat?.size;
                         const parsedSpec = parseSpecification(itemSpec || '');
                         const brand = item.brand || parsedSpec.brand;
-                        const size = item.size || parsedSpec.size;
-                        const variant = item.variant || parsedSpec.variant;
                         return (
                           <tr key={item.id || i} className="hover:bg-surface-muted/20">
                             <td className="p-2 font-medium text-text-primary">
                               <div>
                                 {item.material_code ? `${item.material_code} - ${item.material_name}` : item.material_name || `Material #${item.material_id}`}
                               </div>
-                              {(brand || size || variant || itemVendor || item.remarks) && (
+                              {(brand || itemVendor || item.remarks) && (
                                 <div className="text-[11px] text-text-muted space-y-0.5 mt-1">
                                   {brand && <div><span className="font-semibold text-text-secondary">Brand:</span> {brand}</div>}
-                                  {size && <div><span className="font-semibold text-text-secondary">Size:</span> {size}</div>}
-                                  {variant && <div><span className="font-semibold text-text-secondary">Variant:</span> {variant}</div>}
                                   {itemVendor && <div><span className="font-semibold text-text-secondary">Vendor:</span> {itemVendor.supplier_name || itemVendor.name || itemVendor.company_name}</div>}
                                   {item.remarks && <div><span className="font-semibold text-text-secondary">Remarks:</span> {item.remarks}</div>}
                                 </div>
@@ -1088,7 +1084,7 @@ export function MaterialRequestsPage() {
                     <div key={idx} className="bg-surface-muted/30 p-3 rounded-lg border border-border/60">
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-12 gap-2.5 items-end">
                         {/* 1. Material */}
-                        <div className="sm:col-span-2 md:col-span-4 xl:col-span-4">
+                        <div className="sm:col-span-2 md:col-span-4 xl:col-span-5">
                           <FormField label={idx === 0 ? "Material" : ""} required error={itemErr.material_id}>
                             <Select
                               options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
@@ -1110,7 +1106,7 @@ export function MaterialRequestsPage() {
                         </div>
 
                         {/* 2. Brand */}
-                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-2">
+                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-3">
                           <FormField label={idx === 0 ? "Brand" : ""}>
                             <Input
                               value={item.brand || ''}
@@ -1124,37 +1120,7 @@ export function MaterialRequestsPage() {
                           </FormField>
                         </div>
 
-                        {/* 3. Size */}
-                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
-                          <FormField label={idx === 0 ? "Size" : ""}>
-                            <Input
-                              value={item.size || ''}
-                              onChange={(e) => {
-                                const nextItems = [...form.items];
-                                nextItems[idx] = { ...nextItems[idx], size: e.target.value };
-                                handleFormChange('items', nextItems);
-                              }}
-                              placeholder="e.g. 12mm"
-                            />
-                          </FormField>
-                        </div>
-
-                        {/* 4. Varient */}
-                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
-                          <FormField label={idx === 0 ? "Varient" : ""}>
-                            <Input
-                              value={item.variant || ''}
-                              onChange={(e) => {
-                                const nextItems = [...form.items];
-                                nextItems[idx] = { ...nextItems[idx], variant: e.target.value };
-                                handleFormChange('items', nextItems);
-                              }}
-                              placeholder="e.g. Fe500D"
-                            />
-                          </FormField>
-                        </div>
-
-                        {/* 5. Vendor */}
+                        {/* 3. Vendor */}
                         <div className="sm:col-span-1 md:col-span-2 xl:col-span-2">
                           <FormField label={idx === 0 ? "Vendor" : ""}>
                             <Select
@@ -1173,7 +1139,7 @@ export function MaterialRequestsPage() {
                           </FormField>
                         </div>
 
-                        {/* 6. Required Quantity */}
+                        {/* 4. Required Quantity */}
                         <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
                           <FormField label={idx === 0 ? "Required Quantity" : ""} required error={itemErr.requested_qty}>
                             <Input

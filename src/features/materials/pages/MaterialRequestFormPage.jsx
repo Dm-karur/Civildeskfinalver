@@ -51,8 +51,6 @@ export const formatSpecification = (brand, size, variant) => {
 const EMPTY_ITEM = {
   material_id: '',
   brand: '',
-  size: '',
-  variant: '',
   supplier_id: '',
   requested_qty: '',
   uom_id: '',
@@ -149,8 +147,6 @@ export function MaterialRequestFormPage() {
                 id: i.id,
                 material_id: String(i.material_id || ''),
                 brand: i.brand || parsed.brand || '',
-                size: i.size || parsed.size || '',
-                variant: i.variant || parsed.variant || '',
                 supplier_id: String(i.supplier_id || i.vendor_id || i.material_supplier_id || ''),
                 requested_qty: String(i.requested_qty ?? ''),
                 uom_id: String(i.uom_id || ''),
@@ -221,7 +217,7 @@ export function MaterialRequestFormPage() {
     try {
       const preparedItems = form.items.map(item => {
         const mat = materials.find(m => String(m.id) === String(item.material_id));
-        const composedSpec = formatSpecification(item.brand, item.size, item.variant) || null;
+        const composedSpec = item.brand?.trim() ? `Brand: ${item.brand.trim()}` : null;
         const suppId = item.supplier_id ? Number(item.supplier_id) : null;
         return {
           material_id: Number(item.material_id),
@@ -232,8 +228,8 @@ export function MaterialRequestFormPage() {
           specification_note: composedSpec,
           item_specification: composedSpec,
           brand: item.brand?.trim() || null,
-          size: item.size?.trim() || null,
-          variant: item.variant?.trim() || null,
+          size: null,
+          variant: null,
           remarks: null,
           supplier_id: suppId,
           vendor_id: suppId,
@@ -408,7 +404,7 @@ export function MaterialRequestFormPage() {
                     <div key={idx} className="bg-surface-muted/30 p-4 rounded-lg border border-border/60">
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-12 gap-3 items-end">
                         {/* 1. Material Dropdown */}
-                        <div className="sm:col-span-2 md:col-span-4 xl:col-span-4">
+                        <div className="sm:col-span-2 md:col-span-4 xl:col-span-5">
                           <FormField label={idx === 0 ? "Material" : ""} required error={itemErr.material_id}>
                             <Select
                               options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
@@ -430,7 +426,7 @@ export function MaterialRequestFormPage() {
                         </div>
 
                         {/* 2. Brand */}
-                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-2">
+                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-3">
                           <FormField label={idx === 0 ? "Brand" : ""}>
                             <Input
                               value={item.brand || ''}
@@ -444,37 +440,7 @@ export function MaterialRequestFormPage() {
                           </FormField>
                         </div>
 
-                        {/* 3. Size */}
-                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
-                          <FormField label={idx === 0 ? "Size" : ""}>
-                            <Input
-                              value={item.size || ''}
-                              onChange={(e) => {
-                                const nextItems = [...form.items];
-                                nextItems[idx] = { ...nextItems[idx], size: e.target.value };
-                                handleFormChange('items', nextItems);
-                              }}
-                              placeholder="e.g. 12mm"
-                            />
-                          </FormField>
-                        </div>
-
-                        {/* 4. Varient */}
-                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
-                          <FormField label={idx === 0 ? "Varient" : ""}>
-                            <Input
-                              value={item.variant || ''}
-                              onChange={(e) => {
-                                const nextItems = [...form.items];
-                                nextItems[idx] = { ...nextItems[idx], variant: e.target.value };
-                                handleFormChange('items', nextItems);
-                              }}
-                              placeholder="e.g. Fe500D"
-                            />
-                          </FormField>
-                        </div>
-
-                        {/* 5. Vendor */}
+                        {/* 3. Vendor */}
                         <div className="sm:col-span-1 md:col-span-2 xl:col-span-2">
                           <FormField label={idx === 0 ? "Vendor" : ""}>
                             <Select
@@ -493,7 +459,7 @@ export function MaterialRequestFormPage() {
                           </FormField>
                         </div>
 
-                        {/* 6. Required Quantity */}
+                        {/* 4. Required Quantity */}
                         <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
                           <FormField label={idx === 0 ? "Required Quantity" : ""} required error={itemErr.requested_qty}>
                             <Input
