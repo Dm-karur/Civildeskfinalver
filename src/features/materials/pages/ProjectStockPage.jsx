@@ -29,6 +29,7 @@ export function ProjectStockPage() {
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [selectedSiteId, setSelectedSiteId] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -131,6 +132,7 @@ export function ProjectStockPage() {
   const filtered = useMemo(() => {
     return stocks.filter(s => {
       if (selectedProjectId !== 'all' && String(s.project_id) !== String(selectedProjectId)) return false;
+      if (selectedSiteId !== 'all' && String(s.site_id) !== String(selectedSiteId)) return false;
       if (statusFilter !== 'all' && s.status !== statusFilter) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -143,7 +145,7 @@ export function ProjectStockPage() {
       }
       return true;
     });
-  }, [stocks, selectedProjectId, statusFilter, search]);
+  }, [stocks, selectedProjectId, selectedSiteId, statusFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -212,7 +214,24 @@ export function ProjectStockPage() {
                   ...projects.map(p => ({ value: String(p.id), label: p.project_name }))
                 ]}
                 value={selectedProjectId}
-                onChange={setSelectedProjectId}
+                onChange={(val) => {
+                  setSelectedProjectId(val);
+                  setSelectedSiteId('all');
+                }}
+                className="text-xs h-8"
+              />
+            </div>
+
+            <div className="w-full sm:w-44">
+              <Select
+                options={[
+                  { value: 'all', label: 'All Sites' },
+                  ...sites
+                    .filter(s => selectedProjectId === 'all' || String(s.project_id) === String(selectedProjectId))
+                    .map(s => ({ value: String(s.id), label: s.site_name }))
+                ]}
+                value={selectedSiteId}
+                onChange={setSelectedSiteId}
                 className="text-xs h-8"
               />
             </div>

@@ -26,6 +26,7 @@ export function StockLedgerPage() {
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedSiteId, setSelectedSiteId] = useState('all');
   const [selectedMaterialId, setSelectedMaterialId] = useState('');
   const [movementFilter, setMovementFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -109,6 +110,8 @@ export function StockLedgerPage() {
           return {
             ...x,
             id: idx + 1,
+            project_id: x.project_id || selectedProjectId,
+            site_id: siteId,
             movement_type: x.movement_type === 'RECEIPT' ? 'Inward Receipt (GRN)' :
                            x.movement_type === 'ISSUE' ? 'Outward Issue (MIN)' :
                            x.movement_type === 'RETURN' ? 'Surplus Return (MRN)' :
@@ -118,7 +121,7 @@ export function StockLedgerPage() {
                            x.movement_type === 'ADJUSTMENT_IN' ? 'Audit Adjustment In' : 'Audit Adjustment Out',
             party: x.movement_type === 'RECEIPT' ? 'Material Supplier' : 'Subcontractor / Site Foreman',
             material_name: matObj?.material_name || 'Construction Material',
-            site_name: siteObj?.site_name || 'Project Site',
+            site_name: siteObj?.site_name || (siteId ? `Site #${siteId}` : 'Project Site'),
             inward_qty: inward_qty,
             outward_qty: outward_qty,
             balance_qty: runningBalance,
@@ -146,6 +149,7 @@ export function StockLedgerPage() {
   const filtered = useMemo(() => {
     return entries.filter(e => {
       if (selectedProjectId && String(e.project_id) !== String(selectedProjectId)) return false;
+      if (selectedSiteId !== 'all' && String(e.to_site_id || e.from_site_id || e.site_id) !== String(selectedSiteId)) return false;
       if (movementFilter !== 'all' && !e.movement_type.includes(movementFilter)) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -158,7 +162,7 @@ export function StockLedgerPage() {
       }
       return true;
     });
-  }, [entries, selectedProjectId, movementFilter, search]);
+  }, [entries, selectedProjectId, selectedSiteId, movementFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -231,9 +235,26 @@ export function StockLedgerPage() {
               <Select
                 options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
                 value={selectedProjectId}
-                onChange={setSelectedProjectId}
+                onChange={(val) => {
+                  setSelectedProjectId(val);
+                  setSelectedSiteId('all');
+                }}
                 className="text-xs h-8"
                 placeholder="Select Project"
+              />
+            </div>
+
+            <div className="w-full sm:w-44">
+              <Select
+                options={[
+                  { value: 'all', label: 'All Sites' },
+                  ...sites
+                    .filter(s => !selectedProjectId || String(s.project_id) === String(selectedProjectId))
+                    .map(s => ({ value: String(s.id), label: s.site_name }))
+                ]}
+                value={selectedSiteId}
+                onChange={setSelectedSiteId}
+                className="text-xs h-8"
               />
             </div>
 

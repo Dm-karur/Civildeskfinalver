@@ -306,12 +306,12 @@ export function MaterialRequestApprovalPage() {
           id: i.id,
           material_id: String(i.material_id || ''),
           specification: i.specification || '',
-          requested_qty: String(i.requested_qty || '100'),
+          requested_qty: String(i.requested_qty ?? ''),
           supplier_id: String(i.supplier_id || i.vendor_id || i.material_supplier_id || ''),
           remarks: i.remarks || '',
           uom_id: String(i.uom_id || ''),
           estimated_rate: String(i.estimated_rate || '0')
-        })) : [{ material_id: '', specification: '', requested_qty: '100', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }]
+        })) : [{ material_id: '', specification: '', requested_qty: '', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }]
       });
       setErrors({});
       setEditingItem(fullReq);
@@ -964,7 +964,7 @@ export function MaterialRequestApprovalPage() {
                           <thead className="bg-surface-muted/20 font-semibold text-text-secondary border-b border-border/60">
                             <tr>
                               <th className="p-2">Material</th>
-                              <th className="p-2">Variant / Size / Spec</th>
+                              <th className="p-2">Variant</th>
                               <th className="p-2 text-right">Required Qty</th>
                               <th className="p-2 text-center">UOM</th>
                               <th className="p-2">Remarks</th>
@@ -1134,9 +1134,9 @@ export function MaterialRequestApprovalPage() {
                           </FormField>
                         </div>
 
-                        {/* 2. Variant / Size / Spec */}
+                        {/* 2. Variant */}
                         <div className="sm:col-span-2">
-                          <FormField label={idx === 0 ? "Variant / Size / Spec" : ""}>
+                          <FormField label={idx === 0 ? "Variant" : ""}>
                             <Input
                               value={item.specification || ''}
                               onChange={(e) => {
@@ -1164,7 +1164,7 @@ export function MaterialRequestApprovalPage() {
                                 nextItems[idx] = { ...nextItems[idx], requested_qty: val };
                                 handleFormChange('items', nextItems);
                               }}
-                              placeholder="100.00"
+                              placeholder="0.00"
                             />
                           </FormField>
                         </div>
@@ -1233,7 +1233,7 @@ export function MaterialRequestApprovalPage() {
                   onClick={() => {
                     const nextItems = [
                       ...form.items,
-                      { material_id: '', specification: '', requested_qty: '100', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }
+                      { material_id: '', specification: '', requested_qty: '', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }
                     ];
                     handleFormChange('items', nextItems);
                   }}

@@ -25,7 +25,7 @@ export function Select({ options = [], value = '', onChange, placeholder = 'Sele
       left: rect.left,
       top: openAbove ? undefined : rect.bottom + 4,
       bottom: openAbove ? window.innerHeight - rect.top + 4 : undefined,
-      width: rect.width,
+      width: Math.max(130, rect.width),
       maxHeight: Math.max(120, Math.min(300, openAbove ? rect.top - 12 : below - 12)),
     });
   };

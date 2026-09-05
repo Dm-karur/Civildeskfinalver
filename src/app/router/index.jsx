@@ -73,6 +73,7 @@ import { MaterialCataloguePage } from '../../features/materials/pages/MaterialCa
 import { StockOverviewPage } from '../../features/materials/pages/StockOverviewPage';
 import { ProjectStockPage } from '../../features/materials/pages/ProjectStockPage';
 import { MaterialRequestsPage } from '../../features/materials/pages/MaterialRequestsPage';
+import { MaterialRequestFormPage } from '../../features/materials/pages/MaterialRequestFormPage';
 import { StockReceiptsPage } from '../../features/materials/pages/StockReceiptsPage';
 import { StockIssuesPage } from '../../features/materials/pages/StockIssuesPage';
 import { StockTransfersPage } from '../../features/materials/pages/StockTransfersPage';
@@ -91,6 +92,7 @@ import { QuotationComparisonPage } from '../../features/procurement/pages/Quotat
 import { PurchaseOrdersPage } from '../../features/procurement/pages/PurchaseOrdersPage';
 import { PurchaseOrderApprovalPage } from '../../features/procurement/pages/PurchaseOrderApprovalPage';
 import { ProcurementGoodsReceiptPage } from '../../features/procurement/pages/ProcurementGoodsReceiptPage';
+import { ReceivePoDeliveryPage } from '../../features/procurement/pages/ReceivePoDeliveryPage';
 import { VendorInvoicesPage } from '../../features/procurement/pages/VendorInvoicesPage';
 import { ProcurementReturnsPage } from '../../features/procurement/pages/ProcurementReturnsPage';
 import { ProcurementTrackingPage } from '../../features/procurement/pages/ProcurementTrackingPage';
@@ -288,6 +290,8 @@ export const router = createBrowserRouter([
           { path: 'materials/stock', element: R('material_stock.view', StockOverviewPage) },
           { path: 'materials/project-stock', element: R('material_stock.view', ProjectStockPage) },
           { path: 'materials/requests', element: R('materials.view', MaterialRequestsPage) },
+          { path: 'materials/requests/new', element: R('materials.view', MaterialRequestFormPage) },
+          { path: 'materials/requests/:id/edit', element: R('materials.view', MaterialRequestFormPage) },
           { path: 'materials/receipts', element: R('material_receipts.view', StockReceiptsPage) },
           { path: 'materials/issues', element: R('material_stock.view', StockIssuesPage) },
           { path: 'materials/transfers', element: R('material_stock.view', StockTransfersPage) },
@@ -307,6 +311,8 @@ export const router = createBrowserRouter([
           { path: 'procurement/purchase-orders', element: R('purchase_orders.view', PurchaseOrdersPage) },
           { path: 'procurement/purchase-order-approval', element: R('purchase_orders.approve', PurchaseOrderApprovalPage) },
           { path: 'procurement/goods-receipt', element: R('material_receipts.view', ProcurementGoodsReceiptPage) },
+          { path: 'procurement/goods-receipt/new', element: R('material_receipts.view', ReceivePoDeliveryPage) },
+          { path: 'procurement/goods-receipt/:id/edit', element: R('material_receipts.view', ReceivePoDeliveryPage) },
           { path: 'procurement/vendor-invoices', element: R('purchase_orders.view', VendorInvoicesPage) },
           { path: 'procurement/returns', element: R('purchase_orders.view', ProcurementReturnsPage) },
           { path: 'procurement/tracking', element: R('purchase_orders.view', ProcurementTrackingPage) },

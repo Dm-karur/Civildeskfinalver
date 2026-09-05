@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Send, CheckCircle2, XCircle, Clock, AlertTriangle,
+  Send, CheckCircle2, Clock, AlertTriangle,
   Eye, Edit, Trash2, Plus, MoreVertical,
-  ShieldCheck, Check, RotateCcw, RefreshCw
+  ShieldCheck, RefreshCw
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -58,11 +58,9 @@ export function MaterialRequestsPage() {
   const [editingItem, setEditingItem] = useState(null);
   const [viewingItem, setViewingItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
-  const [actionModalItem, setActionModalItem] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [remarks, setRemarks] = useState('');
 
   // Three-dot menu
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -186,23 +184,7 @@ export function MaterialRequestsPage() {
   };
 
   const handleOpenAdd = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const defaultRequired = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
-    const defaultSite = sites.find(s => String(s.project_id) === String(defaultProj))?.id ? String(sites.find(s => String(s.project_id) === String(defaultProj)).id) : (sites[0]?.id ? String(sites[0].id) : '');
-    const defaultPriority = priorities[0]?.id ? String(priorities[0].id) : '1';
-
-    setForm({
-      ...EMPTY_FORM,
-      project_id: defaultProj,
-      site_id: defaultSite,
-      request_date: today,
-      required_by_date: defaultRequired,
-      priority_id: defaultPriority,
-      items: [{ material_id: '', specification: '', requested_qty: '100', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }]
-    });
-    setErrors({});
-    setIsAddOpen(true);
+    navigate('/materials/requests/new');
   };
 
   // Auto-fetch details for the current page requests
@@ -243,39 +225,9 @@ export function MaterialRequestsPage() {
     return u ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : userId ? `User #${userId}` : '—';
   };
 
-  const handleOpenEdit = async (item) => {
-    setLoading(true);
+  const handleOpenEdit = (item) => {
     setOpenMenuId(null);
-    try {
-      const res = await materialManagementApi.requests.get(item.id);
-      const fullReq = res?.data?.material_request ?? res?.material_request ?? {};
-      const reqItems = fullReq.items || [];
-
-      setForm({
-        project_id: String(fullReq.project_id || ''),
-        site_id: String(fullReq.site_id || ''),
-        request_date: fullReq.request_date || '',
-        required_by_date: fullReq.required_by_date || '',
-        priority_id: String(fullReq.priority_id || ''),
-        purpose: fullReq.purpose || '',
-        items: reqItems.length > 0 ? reqItems.map(i => ({
-          id: i.id,
-          material_id: String(i.material_id || ''),
-          specification: i.specification || '',
-          requested_qty: String(i.requested_qty || '100'),
-          supplier_id: String(i.supplier_id || i.vendor_id || i.material_supplier_id || ''),
-          remarks: i.remarks || '',
-          uom_id: String(i.uom_id || ''),
-          estimated_rate: String(i.estimated_rate || '0')
-        })) : [{ material_id: '', specification: '', requested_qty: '100', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }]
-      });
-      setErrors({});
-      setEditingItem(fullReq);
-    } catch {
-      toast.error('Failed to load request details.');
-    } finally {
-      setLoading(false);
-    }
+    navigate(`/materials/requests/${item.id}/edit`);
   };
 
   const handleOpenView = async (item) => {
@@ -431,40 +383,6 @@ export function MaterialRequestsPage() {
       setSaving(false);
     }
   };
-
-  const handleDocumentAction = async (item, actionName, payload = {}) => {
-    setLoading(true);
-    try {
-      await materialManagementApi.requests.action(item.id, actionName, payload);
-      toast.success(`Request ${actionName}d successfully.`);
-      setActionModalItem(null);
-      setViewingItem(null);
-      setRemarks('');
-      await loadRequests();
-    } catch (err) {
-      toast.error(err?.message || `Failed to ${actionName} request.`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOpenActionModal = (item, actionType) => {
-    setActionModalItem({ item, actionType });
-    setRemarks('');
-  };
-
-  const handleExecuteAction = () => {
-    if (!actionModalItem) return;
-    const { item, actionType } = actionModalItem;
-    if ((actionType === 'reject' || actionType === 'return') && !remarks.trim()) {
-      toast.error(`Please provide remarks for ${actionType} action.`);
-      return;
-    }
-    handleDocumentAction(item, actionType, { remarks });
-  };
-
-  const handleApprove = (item) => handleOpenActionModal(item, 'approve');
-  const handleReject = (item) => handleOpenActionModal(item, 'reject');
   
   const handleDelete = async () => {
     if (!deleteItem) return;
@@ -554,20 +472,6 @@ export function MaterialRequestsPage() {
     if (p === 'CRITICAL' || p === 'HIGH') return 'error';
     if (p === 'URGENT') return 'warning';
     return 'neutral';
-  };
-
-  const handleApproveWithRemarks = async (id) => {
-    setSaving(true);
-    try {
-      await materialManagementApi.requests.action(id, 'approve', { remarks });
-      toast.success('Material request approved successfully.');
-      setViewingItem(null);
-      await loadRequests();
-    } catch {
-      toast.error('Failed to approve request.');
-    } finally {
-      setSaving(false);
-    }
   };
 
   const breadcrumbs = [
@@ -1050,7 +954,7 @@ export function MaterialRequestsPage() {
                               </div>
                               {(itemSpec || itemVendor || item.remarks) && (
                                 <div className="text-[10px] text-text-muted space-y-0.5 mt-0.5">
-                                  {itemSpec && <div><span className="font-semibold text-text-secondary">Spec / Variant:</span> {itemSpec}</div>}
+                                  {itemSpec && <div><span className="font-semibold text-text-secondary">Variant:</span> {itemSpec}</div>}
                                   {itemVendor && <div><span className="font-semibold text-text-secondary">Vendor:</span> {itemVendor.supplier_name || itemVendor.name || itemVendor.company_name}</div>}
                                   {item.remarks && <div><span className="font-semibold text-text-secondary">Remarks:</span> {item.remarks}</div>}
                                 </div>
@@ -1087,54 +991,6 @@ export function MaterialRequestsPage() {
                 </div>
               )}
 
-              {/* Review / Approval Remarks Form Section (If Submitted) */}
-              {(viewingItem.status_name === 'Submitted' || viewingItem.status === 'Pending Approval') && (
-                <div className="border border-emerald-100 bg-emerald-50/20 rounded-lg p-3 space-y-2">
-                  <span className="font-bold text-emerald-900 block text-[11px]">Approval Review</span>
-                  <FormField label="Reviewer Remarks" error={errors.approval_remarks}>
-                    <Textarea
-                      rows={2}
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="Add comments about allocation, rate variations, delivery dates..."
-                    />
-                  </FormField>
-                  <div className="flex items-center gap-2 pt-1">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white h-8"
-                      leftIcon={<Check className="w-3.5 h-3.5" />}
-                      onClick={() => handleApproveWithRemarks(viewingItem.id)}
-                      isSubmitting={saving}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-red-200 text-red-600 hover:bg-red-50 h-8"
-                      leftIcon={<XCircle className="w-3.5 h-3.5" />}
-                      onClick={async () => {
-                        setSaving(true);
-                        try {
-                          await materialManagementApi.requests.action(viewingItem.id, 'reject', { remarks });
-                          toast.success('Material request rejected.');
-                          setViewingItem(null);
-                          await loadRequests();
-                        } catch {
-                          toast.error('Failed to reject request.');
-                        } finally {
-                          setSaving(false);
-                        }
-                      }}
-                      isSubmitting={saving}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end">
@@ -1238,9 +1094,9 @@ export function MaterialRequestsPage() {
                           </FormField>
                         </div>
 
-                        {/* 2. Variant / Size / Spec */}
+                        {/* 2. Variant */}
                         <div className="sm:col-span-2">
-                          <FormField label={idx === 0 ? "Variant / Size / Spec" : ""}>
+                          <FormField label={idx === 0 ? "Variant" : ""}>
                             <Input
                               value={item.specification || ''}
                               onChange={(e) => {
@@ -1268,7 +1124,7 @@ export function MaterialRequestsPage() {
                                 nextItems[idx] = { ...nextItems[idx], requested_qty: val };
                                 handleFormChange('items', nextItems);
                               }}
-                              placeholder="100.00"
+                              placeholder="0.00"
                             />
                           </FormField>
                         </div>
@@ -1338,7 +1194,7 @@ export function MaterialRequestsPage() {
                   onClick={() => {
                     const nextItems = [
                       ...form.items,
-                      { material_id: '', specification: '', requested_qty: '100', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }
+                      { material_id: '', specification: '', requested_qty: '', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }
                     ];
                     handleFormChange('items', nextItems);
                   }}
@@ -1358,48 +1214,6 @@ export function MaterialRequestsPage() {
           />
         </form>
       </EntityEditModal>
-
-      {/* Action Approval / Reject Remarks Modal */}
-      {actionModalItem && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-md p-5 space-y-4 animate-scale-in">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="font-bold text-text-primary text-sm flex items-center gap-2">
-                {actionModalItem.actionType === 'approve' && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
-                {actionModalItem.actionType === 'reject' && <XCircle className="w-5 h-5 text-red-600" />}
-                {actionModalItem.actionType === 'return' && <RotateCcw className="w-5 h-5 text-amber-600" />}
-                {actionModalItem.actionType === 'approve' ? 'Approve Material Request' : actionModalItem.actionType === 'reject' ? 'Reject Material Request' : 'Return Request'}
-              </h3>
-              <Button variant="ghost" size="sm" onClick={() => setActionModalItem(null)}>✕</Button>
-            </div>
-
-            <p className="text-xs text-text-secondary">
-              Indent Reference: <span className="font-mono font-bold text-primary">{actionModalItem.item.request_no}</span>
-            </p>
-
-            <FormField label={actionModalItem.actionType === 'approve' ? "Approval Remarks (Optional)" : "Reason / Remarks (Required)"} required={actionModalItem.actionType !== 'approve'}>
-              <Textarea
-                rows={3}
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                placeholder={actionModalItem.actionType === 'approve' ? "Optional notes for procurement..." : "Specify reason or corrections needed..."}
-              />
-            </FormField>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
-              <Button variant="outline" size="sm" onClick={() => setActionModalItem(null)}>Cancel</Button>
-              <Button
-                variant={actionModalItem.actionType === 'reject' ? 'destructive' : actionModalItem.actionType === 'return' ? 'warning' : 'primary'}
-                size="sm"
-                onClick={handleExecuteAction}
-                isSubmitting={loading}
-              >
-                Confirm {actionModalItem.actionType.toUpperCase()}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Admin Change Status Dialog */}
       {statusChangeItem && (

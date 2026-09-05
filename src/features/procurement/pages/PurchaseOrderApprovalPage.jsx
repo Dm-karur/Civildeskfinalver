@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   ShieldCheck, CheckCircle2, Clock, IndianRupee, ShoppingCart,
-  Search, Filter, Eye, RotateCcw, Check, AlertCircle, Building, Printer, Download, Truck
+  Search, Filter, Eye, RotateCcw, Check, Truck
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -15,8 +15,6 @@ import { Select } from '../../../components/ui/Select';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, materialManagementApi, materialsApi, sitesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
-
-import html2pdf from 'html2pdf.js';
 
 export function PurchaseOrderApprovalPage() {
   const { user } = useAuth();
@@ -710,156 +708,7 @@ export function PurchaseOrderApprovalPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                {(() => {
-                  const s = String(viewingItem.status_name || viewingItem.status || '').toUpperCase();
-                  const isApproved = s.includes('APPROV') || s.includes('RECEIV') || s.includes('COMPLET');
-                  if (!isApproved) {
-                    return (
-                      <div className="p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-[11px] flex items-center gap-1.5">
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                        <span>PDF & Print available after PO is Approved by Admin.</span>
-                      </div>
-                    );
-                  }
-                  return (
-                    <>
-                      <Button variant="outline" size="sm" onClick={() => window.print()}>
-                        <Printer className="w-3.5 h-3.5 mr-1 text-primary" /> Print PO
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          if (!viewingItem) return;
-                          toast.info('Generating PDF document...');
-                          try {
-                            const itemsList = viewingItem.items || detailsMap[viewingItem.id]?.items || [];
-                            const calcTaxable = Number(viewingItem.taxable_amount || itemsList.reduce((acc, i) => acc + (Number(i.ordered_qty || 0) * Number(i.unit_rate || 0)), 0));
-                            const calcTax = Number(viewingItem.tax_amount || Math.round(calcTaxable * 0.18));
-                            const calcFreight = Number(viewingItem.freight_amount || 0);
-                            const calcGrandTotal = Number(viewingItem.grand_total || viewingItem.total_amount || (calcTaxable + calcTax + calcFreight));
-
-                            const container = document.createElement('div');
-                            container.style.width = '750px';
-                            container.style.padding = '25px';
-                            container.style.fontFamily = 'sans-serif';
-                            container.style.background = '#ffffff';
-
-                            container.innerHTML = `
-                              <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #0284C7; padding-bottom: 15px; margin-bottom: 20px;">
-                                <div>
-                                  <h1 style="font-size: 22px; font-weight: bold; color: #0284C7; margin: 0;">CIVIL DESK ERP</h1>
-                                  <p style="font-size: 11px; color: #4B5563; margin: 3px 0 0 0;">Official Purchase Order Voucher</p>
-                                </div>
-                                <div style="text-align: right;">
-                                  <h2 style="font-size: 16px; font-weight: bold; margin: 0; color: #111827;">${viewingItem.po_no || 'PO VOUCHER'}</h2>
-                                  <p style="font-size: 11px; color: #6B7280; margin: 3px 0 0 0;">Date: ${viewingItem.po_date || '—'}</p>
-                                </div>
-                              </div>
-
-                              <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 20px; border: 1px solid #E5E7EB; border-radius: 6px; padding: 12px; background: #F9FAFB;">
-                                <div>
-                                  <strong style="color: #374151; display: block; margin-bottom: 4px;">PROJECT DETAILS</strong>
-                                  <div>Project: ${viewingItem.project_name || '—'}</div>
-                                  <div>Target Delivery: ${viewingItem.expected_delivery_date || '—'}</div>
-                                </div>
-                                <div style="text-align: right;">
-                                  <strong style="color: #374151; display: block; margin-bottom: 4px;">SUPPLIER DETAILS</strong>
-                                  <div>Supplier: ${viewingItem.supplier_name || '—'}</div>
-                                  <div>GSTIN: ${viewingItem.supplier_gstin || '—'}</div>
-                                </div>
-                              </div>
-
-                              <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 20px;">
-                                <thead>
-                                  <tr style="background: #0284C7; color: white;">
-                                    <th style="padding: 8px; text-align: left;">Item Description</th>
-                                    <th style="padding: 8px; text-align: center;">UOM</th>
-                                    <th style="padding: 8px; text-align: right;">Qty</th>
-                                    <th style="padding: 8px; text-align: right;">Rate (₹)</th>
-                                    <th style="padding: 8px; text-align: right;">Tax (₹)</th>
-                                    <th style="padding: 8px; text-align: right;">Total (₹)</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  ${itemsList.map(item => {
-                              const qty = Number(item.ordered_qty || item.requested_qty || 0);
-                              const rate = Number(item.unit_rate || item.rate || 0);
-                              const txable = Number(item.taxable_amount ?? (qty * rate));
-                              const tx = Number(item.tax_amount ?? Math.round(txable * 0.18));
-                              const tot = Number(item.total_amount ?? (txable + tx));
-                              return `
-                                      <tr style="border-bottom: 1px solid #E5E7EB;">
-                                        <td style="padding: 8px;">${item.material_name || `Item #${item.material_id}`}${item.specification ? `<br/><small style="color:#6B7280">${item.specification}</small>` : ''}</td>
-                                        <td style="padding: 8px; text-align: center;">${item.uom_name || 'Nos'}</td>
-                                        <td style="padding: 8px; text-align: right;">${qty}</td>
-                                        <td style="padding: 8px; text-align: right;">₹${rate.toLocaleString('en-IN')}</td>
-                                        <td style="padding: 8px; text-align: right;">₹${tx.toLocaleString('en-IN')}</td>
-                                        <td style="padding: 8px; text-align: right; font-weight: bold;">₹${tot.toLocaleString('en-IN')}</td>
-                                      </tr>
-                                    `;
-                            }).join('')}
-                                </tbody>
-                              </table>
-
-                              <div style="display: flex; justify-content: space-between; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 6px; padding: 12px; margin-bottom: 20px; font-size: 11px;">
-                                <div>
-                                  <span style="font-size: 10px; color: #065F46; text-transform: uppercase; font-weight: bold; display: block;">Taxable Value</span>
-                                  <span style="font-size: 13px; font-weight: bold; font-family: monospace;">₹${calcTaxable.toLocaleString('en-IN')}</span>
-                                </div>
-                                <div>
-                                  <span style="font-size: 10px; color: #065F46; text-transform: uppercase; font-weight: bold; display: block;">GST Total (18%)</span>
-                                  <span style="font-size: 13px; font-weight: bold; font-family: monospace;">₹${calcTax.toLocaleString('en-IN')}</span>
-                                </div>
-                                <div>
-                                  <span style="font-size: 10px; color: #065F46; text-transform: uppercase; font-weight: bold; display: block;">Freight & Logistics</span>
-                                  <span style="font-size: 13px; font-weight: bold; font-family: monospace;">₹${calcFreight.toLocaleString('en-IN')}</span>
-                                </div>
-                                <div style="text-align: right;">
-                                  <span style="font-size: 10px; color: #064E3B; text-transform: uppercase; font-weight: bold; display: block;">Grand Total</span>
-                                  <span style="font-size: 16px; font-weight: 800; color: #047857; font-family: monospace;">₹${calcGrandTotal.toLocaleString('en-IN')}</span>
-                                </div>
-                              </div>
-
-                              ${viewingItem.notes ? `
-                                <div style="border: 1px solid #E5E7EB; padding: 10px; border-radius: 6px; margin-bottom: 20px; background: #F9FAFB;">
-                                  <strong style="font-size: 11px; color: #374151; display: block;">Commercial Notes:</strong>
-                                  <p style="font-size: 11px; color: #4B5563; margin: 4px 0 0 0; font-style: italic;">"${viewingItem.notes}"</p>
-                                </div>
-                              ` : ''}
-
-                              <div style="margin-top: 40px; border-top: 1px solid #E5E7EB; padding-top: 15px; display: flex; justify-content: space-between; font-size: 11px; color: #6B7280;">
-                                <div>Prepared By: Central Procurement</div>
-                                <div>Authorized Signatory: Project Director</div>
-                              </div>
-                            `;
-
-                            const module = await import('html2pdf.js');
-                            const html2pdfFunc = module.default || module;
-                            const opt = {
-                              margin: [0.3, 0.3, 0.3, 0.3],
-                              filename: `Purchase_Order_${viewingItem.po_no || 'Voucher'}.pdf`,
-                              image: { type: 'jpeg', quality: 0.98 },
-                              html2canvas: { scale: 2, useCORS: true, logging: false },
-                              jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-                            };
-
-                            await html2pdfFunc().set(opt).from(container).save();
-                            toast.success('Purchase Order PDF downloaded.');
-                          } catch (err) {
-                            console.error('PDF export error:', err);
-                            toast.error('Failed to generate PDF download.');
-                          }
-                        }}
-                      >
-                        <Download className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Download PDF
-                      </Button>
-                    </>
-                  );
-                })()}
-              </div>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

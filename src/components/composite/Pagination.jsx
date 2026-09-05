@@ -4,18 +4,22 @@ import { Button } from '../ui/Button';
 export function Pagination({ 
   currentPage = 1, 
   totalPages = 1, 
-  totalResults = 0,
-  pageSize = 10,
+  totalResults,
+  totalItems,
+  pageSize,
+  itemsPerPage,
   onPageChange,
   disabled = false
 }) {
-  const startResult = totalResults === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endResult = Math.min(currentPage * pageSize, totalResults);
+  const count = totalResults !== undefined ? totalResults : (totalItems !== undefined ? totalItems : 0);
+  const size = pageSize || itemsPerPage || 10;
+  const startResult = count === 0 ? 0 : (currentPage - 1) * size + 1;
+  const endResult = Math.min(currentPage * size, count);
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
       <div className="text-sm text-text-secondary">
-        Showing <span className="font-medium text-text-primary">{startResult}</span> to <span className="font-medium text-text-primary">{endResult}</span> of <span className="font-medium text-text-primary">{totalResults}</span> results
+        Showing <span className="font-medium text-text-primary">{startResult}</span> to <span className="font-medium text-text-primary">{endResult}</span> of <span className="font-medium text-text-primary">{count}</span> results
       </div>
       
       <div className="flex items-center gap-2">

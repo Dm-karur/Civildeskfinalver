@@ -50,7 +50,7 @@ const EMPTY_FORM = {
   tax_amount: 0,
   freight_amount: '0',
   grand_total: 0,
-  items: [{ material_id: '', uom_id: '', ordered_qty: '100', unit_rate: '0', taxable_amount: 0, tax_amount: 0, request_item_id: null }]
+  items: [{ material_id: '', uom_id: '', ordered_qty: '', unit_rate: '0', taxable_amount: 0, tax_amount: 0, request_item_id: null }]
 };
 
 export function PurchaseOrdersPage() {
@@ -60,6 +60,11 @@ export function PurchaseOrdersPage() {
     if (!o) return false;
     const s = String(o.status_name || o.status || '').toLowerCase().trim();
     return s === 'draft' || s === 'pending' || s === 'pending approval' || s === 'submitted';
+  };
+  const isApproved = (o) => {
+    if (!o) return false;
+    const s = String(o.status_name || o.status || '').toUpperCase().trim();
+    return s.includes('APPROV') || s.includes('RECEIV') || s.includes('COMPLET') || s.includes('ACTIVE') || s.includes('ORDER');
   };
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -323,6 +328,173 @@ export function PurchaseOrdersPage() {
     });
   }, [paged, detailsMap]);
 
+  // PDF Export Handler
+  const handleDownloadPdf = async (item) => {
+    if (!item) return;
+    if (!isApproved(item)) {
+      toast.warning('PDF & Print available after PO is Approved by Admin.');
+      return;
+    }
+    toast.info('Preparing Purchase Order PDF...');
+    try {
+      let poData = item;
+      if (!poData.items || poData.items.length === 0) {
+        if (detailsMap[item.id]) {
+          poData = { ...item, ...detailsMap[item.id] };
+        } else {
+          try {
+            const res = await materialManagementApi.purchaseOrders.get(item.id);
+            const fetched = res?.data?.material_purchase_order ?? res?.material_purchase_order;
+            if (fetched) {
+              poData = { ...item, ...fetched };
+              setDetailsMap(prev => ({ ...prev, [item.id]: fetched }));
+            }
+          } catch (e) {
+            console.error('Failed to fetch PO details for PDF:', e);
+          }
+        }
+      }
+
+      const itemsList = poData.items || [];
+      const calcTaxable = Number(poData.taxable_amount || itemsList.reduce((acc, i) => acc + (Number(i.ordered_qty || 0) * Number(i.unit_rate || 0)), 0));
+      const calcTax = Number(poData.tax_amount || Math.round(calcTaxable * 0.18));
+      const calcFreight = Number(poData.freight_amount || 0);
+      const calcGrandTotal = Number(poData.grand_total || poData.total_amount || (calcTaxable + calcTax + calcFreight));
+      const supplierName = getSupplierName(poData.supplier_id) || poData.supplier_name || '—';
+      const supplierObj = suppliers.find(s => String(s.id) === String(poData.supplier_id));
+
+      const container = document.createElement('div');
+      container.style.width = '750px';
+      container.style.padding = '28px';
+      container.style.fontFamily = 'Arial, sans-serif';
+      container.style.background = '#ffffff';
+      container.style.color = '#1f2937';
+
+      container.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0284C7; padding-bottom: 15px; margin-bottom: 20px;">
+          <div>
+            <h1 style="font-size: 22px; font-weight: bold; color: #0284C7; margin: 0; letter-spacing: 0.5px;">CIVIL DESK ERP</h1>
+            <p style="font-size: 11px; color: #4B5563; margin: 3px 0 0 0;">Official Purchase Order Voucher</p>
+          </div>
+          <div style="text-align: right;">
+            <h2 style="font-size: 16px; font-weight: bold; margin: 0; color: #111827;">${poData.po_no || 'PO VOUCHER'}</h2>
+            <p style="font-size: 11px; color: #6B7280; margin: 3px 0 0 0;">Date: ${poData.po_date || new Date().toISOString().split('T')[0]}</p>
+            <p style="font-size: 10px; color: #059669; font-weight: bold; margin: 2px 0 0 0; text-transform: uppercase;">Status: ${poData.status_name || poData.status || 'Active'}</p>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 20px; border: 1px solid #E5E7EB; border-radius: 6px; padding: 12px; background: #F9FAFB;">
+          <div style="width: 48%;">
+            <strong style="color: #0284C7; display: block; margin-bottom: 6px; font-size: 11px; text-transform: uppercase;">PROJECT & DELIVERY DETAILS</strong>
+            <div style="margin-bottom: 3px;"><span style="color: #6B7280;">Project:</span> <strong>${poData.project_name || '—'}</strong></div>
+            <div style="margin-bottom: 3px;"><span style="color: #6B7280;">Site Location:</span> <strong>${poData.site_name || 'Main Site Yard'}</strong></div>
+            <div><span style="color: #6B7280;">Expected Delivery:</span> <strong>${poData.expected_delivery_date || '—'}</strong></div>
+          </div>
+          <div style="width: 48%; text-align: right;">
+            <strong style="color: #0284C7; display: block; margin-bottom: 6px; font-size: 11px; text-transform: uppercase;">VENDOR / SUPPLIER DETAILS</strong>
+            <div style="margin-bottom: 3px;"><span style="color: #6B7280;">Supplier:</span> <strong>${supplierName}</strong></div>
+            <div style="margin-bottom: 3px;"><span style="color: #6B7280;">GSTIN:</span> <strong>${poData.supplier_gstin || supplierObj?.gstin || '—'}</strong></div>
+            <div><span style="color: #6B7280;">Contact:</span> ${supplierObj?.phone || supplierObj?.mobile || supplierObj?.email || '—'}</div>
+          </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 20px;">
+          <thead>
+            <tr style="background: #0284C7; color: white;">
+              <th style="padding: 8px; text-align: left;">Item Description</th>
+              <th style="padding: 8px; text-align: center;">UOM</th>
+              <th style="padding: 8px; text-align: right;">Ordered Qty</th>
+              <th style="padding: 8px; text-align: right;">Unit Rate (₹)</th>
+              <th style="padding: 8px; text-align: right;">GST (18%)</th>
+              <th style="padding: 8px; text-align: right;">Total (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsList.length === 0 ? `
+              <tr>
+                <td colspan="6" style="padding: 16px; text-align: center; color: #9CA3AF;">No line items detailed in this purchase order.</td>
+              </tr>
+            ` : itemsList.map((item, idx) => {
+              const qty = Number(item.ordered_qty || item.requested_qty || 0);
+              const rate = Number(item.unit_rate || item.rate || 0);
+              const txable = Number(item.taxable_amount ?? (qty * rate));
+              const tx = Number(item.tax_amount ?? Math.round(txable * 0.18));
+              const tot = Number(item.total_amount ?? (txable + tx));
+              const baseUom = uoms.find(u => String(u.id) === String(item.uom_id));
+              const matObj = materials.find(m => String(m.id) === String(item.material_id));
+              const desc = item.material_name || (item.material_code ? `${item.material_code} - ${item.material_name}` : matObj ? `${matObj.material_code} - ${matObj.material_name}` : `Material #${item.material_id}`);
+              const spec = item.specification || item.variant || item.size || '';
+              return `
+                <tr style="border-bottom: 1px solid #E5E7EB; background: ${idx % 2 === 0 ? '#FFFFFF' : '#F9FAFB'};">
+                  <td style="padding: 8px;">
+                    <strong>${desc}</strong>
+                    ${spec ? `<br/><small style="color: #6B7280; font-style: italic;">Variant: ${spec}</small>` : ''}
+                  </td>
+                  <td style="padding: 8px; text-align: center; color: #4B5563;">${baseUom?.unit_code || item.uom_name || 'Nos'}</td>
+                  <td style="padding: 8px; text-align: right; font-weight: bold;">${qty}</td>
+                  <td style="padding: 8px; text-align: right;">₹${rate.toLocaleString('en-IN')}</td>
+                  <td style="padding: 8px; text-align: right; color: #6B7280;">₹${tx.toLocaleString('en-IN')}</td>
+                  <td style="padding: 8px; text-align: right; font-weight: bold; color: #111827;">₹${tot.toLocaleString('en-IN')}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: space-between; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 6px; padding: 12px; margin-bottom: 20px; font-size: 11px;">
+          <div>
+            <span style="font-size: 9px; color: #065F46; text-transform: uppercase; font-weight: bold; display: block;">Taxable Value</span>
+            <span style="font-size: 13px; font-weight: bold; font-family: monospace;">₹${calcTaxable.toLocaleString('en-IN')}</span>
+          </div>
+          <div>
+            <span style="font-size: 9px; color: #065F46; text-transform: uppercase; font-weight: bold; display: block;">GST Total (18%)</span>
+            <span style="font-size: 13px; font-weight: bold; font-family: monospace;">₹${calcTax.toLocaleString('en-IN')}</span>
+          </div>
+          <div>
+            <span style="font-size: 9px; color: #065F46; text-transform: uppercase; font-weight: bold; display: block;">Freight & Logistics</span>
+            <span style="font-size: 13px; font-weight: bold; font-family: monospace;">₹${calcFreight.toLocaleString('en-IN')}</span>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 9px; color: #064E3B; text-transform: uppercase; font-weight: bold; display: block;">Grand Total</span>
+            <span style="font-size: 15px; font-weight: 800; color: #047857; font-family: monospace;">₹${calcGrandTotal.toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+
+        ${poData.notes ? `
+          <div style="border: 1px solid #E5E7EB; padding: 10px; border-radius: 6px; margin-bottom: 20px; background: #F9FAFB;">
+            <strong style="font-size: 11px; color: #374151; display: block; margin-bottom: 2px;">Commercial Notes & Terms:</strong>
+            <p style="font-size: 11px; color: #4B5563; margin: 0; font-style: italic;">"${poData.notes}"</p>
+          </div>
+        ` : ''}
+
+        <div style="margin-top: 35px; border-top: 1px solid #E5E7EB; padding-top: 15px; display: flex; justify-content: space-between; font-size: 11px; color: #6B7280;">
+          <div>
+            <p style="margin: 0 0 30px 0;">Prepared By: Central Procurement</p>
+            <p style="margin: 0; font-size: 10px;">Computer Generated Purchase Order</p>
+          </div>
+          <div style="text-align: right;">
+            <p style="margin: 0 0 30px 0;">Authorized Signatory</p>
+            <p style="margin: 0; font-size: 10px;">Civil Desk ERP Authorization</p>
+          </div>
+        </div>
+      `;
+
+      const opt = {
+        margin: [0.3, 0.3, 0.3, 0.3],
+        filename: `Purchase_Order_${poData.po_no || 'Voucher'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(opt).from(container).save();
+      toast.success('Purchase Order PDF downloaded successfully.');
+    } catch (err) {
+      console.error('PDF export error:', err);
+      toast.error('Failed to generate PDF download.');
+    }
+  };
+
   // Form Handlers
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -356,7 +528,7 @@ export function PurchaseOrdersPage() {
       po_no: `PO-2026-${String(Date.now()).slice(-4)}`,
       po_date: today,
       expected_delivery_date: defaultDelivery,
-      items: [{ material_id: '', uom_id: '', ordered_qty: '100', unit_rate: '0', taxable_amount: 0, tax_amount: 0, request_item_id: null }]
+      items: [{ material_id: '', uom_id: '', ordered_qty: '', unit_rate: '0', taxable_amount: 0, tax_amount: 0, request_item_id: null }]
     });
     setErrors({});
     setIsAddOpen(true);
@@ -922,6 +1094,17 @@ export function PurchaseOrdersPage() {
                             >
                               <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                             </Button>
+                            {isApproved(o) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                title="Download PDF"
+                                onClick={() => handleDownloadPdf(o)}
+                              >
+                                <Download className="w-3.5 h-3.5 text-emerald-600 hover:text-emerald-700" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -976,9 +1159,14 @@ export function PurchaseOrdersPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
+                <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
+                  {isApproved(o) && (
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-emerald-700 border-emerald-200 hover:bg-emerald-50" onClick={() => handleDownloadPdf(o)}>
+                      <Download className="w-3 h-3 mr-1 text-emerald-600" /> PDF
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(o)}>
-                    <Eye className="w-3 h-3 mr-1" /> View PO Voucher
+                    <Eye className="w-3 h-3 mr-1" /> View PO
                   </Button>
                 </div>
               </div>
@@ -1155,7 +1343,29 @@ export function PurchaseOrdersPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                {isApproved(viewingItem) ? (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => window.print()}>
+                      <Printer className="w-3.5 h-3.5 mr-1 text-primary" /> Print PO
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-300"
+                      onClick={() => handleDownloadPdf(viewingItem)}
+                    >
+                      <Download className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Download PDF
+                    </Button>
+                  </>
+                ) : (
+                  <div className="p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-[11px] flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>PDF & Print available after PO is Approved by Admin.</span>
+                  </div>
+                )}
+              </div>
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

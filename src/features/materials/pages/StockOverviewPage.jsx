@@ -15,19 +15,19 @@ import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { toast } from '../../../components/composite/Toast';
-import { materialManagementApi, materialsApi, projectsApi } from '../../../api/apiservice';
-
-
+import { materialManagementApi, materialsApi, projectsApi, sitesApi } from '../../../api/apiservice';
 
 export function StockOverviewPage() {
   const [stock, setStock] = useState([]);
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
+  const [sites, setSites] = useState([]);
   const [uoms, setUoms] = useState([]);
   const [materials, setMaterials] = useState([]);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [selectedSiteId, setSelectedSiteId] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [healthFilter, setHealthFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -41,13 +41,17 @@ export function StockOverviewPage() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      projectsApi.list(),
-      materialsApi.masters(),
-      materialsApi.catalogue.list()
-    ]).then(([resProj, resMasters, resCat]) => {
+      projectsApi.list().catch(() => ({ data: [] })),
+      sitesApi.list().catch(() => ({ data: [] })),
+      materialsApi.masters().catch(() => ({ data: {} })),
+      materialsApi.catalogue.list().catch(() => ({ data: [] }))
+    ]).then(([resProj, resSites, resMasters, resCat]) => {
       const pList = resProj?.data?.projects ?? resProj?.projects ?? [];
       const parsedProjects = Array.isArray(pList) ? pList : [];
       setProjects(parsedProjects);
+
+      const sList = resSites?.data?.sites ?? resSites?.sites ?? (Array.isArray(resSites) ? resSites : []);
+      setSites(Array.isArray(sList) ? sList : []);
 
       const uList = resMasters?.data?.masters?.units ?? resMasters?.masters?.units ?? [];
       setUoms(Array.isArray(uList) ? uList : []);
@@ -86,6 +90,8 @@ export function StockOverviewPage() {
           const mapped = list.map(item => {
             const mat = materials.find(m => String(m.id) === String(item.material_id));
             const uom = uoms.find(u => String(u.id) === String(item.base_uom_id));
+            const site = sites.find(s => String(s.id) === String(item.site_id));
+            const proj = projects.find(p => String(p.id) === String(item.project_id));
             
             const available = Number(item.available_qty || 0);
             const minQty = Number(item.minimum_stock_qty || 0);
@@ -102,6 +108,8 @@ export function StockOverviewPage() {
               ...item,
               category_name: mat?.category_name || 'Uncategorized',
               uom_name: uom?.unit_name || uom?.unit_code || '',
+              site_name: site?.site_name || '',
+              project_name: proj?.project_name || '',
               status: health,
               stock_value: Math.round(available * Number(mat?.standard_rate || 0))
             };
@@ -116,7 +124,7 @@ export function StockOverviewPage() {
         setStock([]);
       })
       .finally(() => setLoading(false));
-  }, [selectedProjectId, materials, uoms]);
+  }, [selectedProjectId, materials, uoms, sites, projects]);
 
   const handlePrint = () => {
     window.print();
@@ -131,6 +139,8 @@ export function StockOverviewPage() {
 
   const filtered = useMemo(() => {
     return stock.filter(s => {
+      if (selectedProjectId !== 'all' && String(s.project_id) !== String(selectedProjectId)) return false;
+      if (selectedSiteId !== 'all' && String(s.site_id) !== String(selectedSiteId)) return false;
       if (categoryFilter !== 'all' && s.category_name !== categoryFilter) return false;
       if (healthFilter !== 'all' && s.status !== healthFilter) return false;
       if (search) {
@@ -138,12 +148,14 @@ export function StockOverviewPage() {
         const code = (s.material_code || '').toLowerCase();
         const name = (s.material_name || '').toLowerCase();
         const cat = (s.category_name || '').toLowerCase();
+        const site = (s.site_name || '').toLowerCase();
+        const proj = (s.project_name || '').toLowerCase();
         const store = (s.primary_store || '').toLowerCase();
-        if (!code.includes(q) && !name.includes(q) && !cat.includes(q) && !store.includes(q)) return false;
+        if (!code.includes(q) && !name.includes(q) && !cat.includes(q) && !site.includes(q) && !proj.includes(q) && !store.includes(q)) return false;
       }
       return true;
     });
-  }, [stock, categoryFilter, healthFilter, search]);
+  }, [stock, selectedProjectId, selectedSiteId, categoryFilter, healthFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -213,7 +225,24 @@ export function StockOverviewPage() {
                   ...projects.map(p => ({ value: String(p.id), label: p.project_name }))
                 ]}
                 value={selectedProjectId}
-                onChange={setSelectedProjectId}
+                onChange={(val) => {
+                  setSelectedProjectId(val);
+                  setSelectedSiteId('all');
+                }}
+                className="text-xs h-8"
+              />
+            </div>
+
+            <div className="w-full sm:w-40">
+              <Select
+                options={[
+                  { value: 'all', label: 'All Sites' },
+                  ...sites
+                    .filter(s => selectedProjectId === 'all' || String(s.project_id) === String(selectedProjectId))
+                    .map(s => ({ value: String(s.id), label: s.site_name }))
+                ]}
+                value={selectedSiteId}
+                onChange={setSelectedSiteId}
                 className="text-xs h-8"
               />
             </div>
@@ -325,7 +354,8 @@ export function StockOverviewPage() {
                             {s.material_name}
                           </span>
                           <span className="text-[10px] text-text-muted truncate">
-                            {s.category_name} {s.primary_store ? `• ${s.primary_store}` : ''}
+                            {s.site_name ? `${s.site_name}` : s.category_name}
+                            {s.project_name ? ` • ${s.project_name}` : ''}
                           </span>
                         </div>
                       </td>
@@ -378,7 +408,7 @@ export function StockOverviewPage() {
                 <div>
                   <span className="font-mono text-[10px] font-bold text-primary block">{s.material_code}</span>
                   <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{s.material_name}</h4>
-                  <span className="text-[11px] text-text-muted">{s.category_name}</span>
+                  <span className="text-[11px] text-text-muted">{s.site_name || s.category_name}</span>
                 </div>
                 <Badge
                   variant={getStatusVariant(s.status)}
