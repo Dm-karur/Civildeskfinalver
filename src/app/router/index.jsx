@@ -116,6 +116,8 @@ import { PaymentCertificatesPage } from '../../features/subcontracts/pages/Payme
 import { SubcontractRABillsPage } from '../../features/subcontracts/pages/SubcontractRABillsPage';
 import { RABillApprovalPage } from '../../features/subcontracts/pages/RABillApprovalPage';
 import { SubcontractPaymentsPage } from '../../features/subcontracts/pages/SubcontractPaymentsPage';
+import { SubcontractorWeeklyPaymentsPage } from '../../features/subcontracts/pages/SubcontractorWeeklyPaymentsPage';
+import { MaistrySlipPage } from '../../features/subcontracts/pages/MaistrySlipPage';
 import { PackageCompletionPage } from '../../features/subcontracts/pages/PackageCompletionPage';
 import { RetentionLedgerPage } from '../../features/subcontracts/pages/RetentionLedgerPage';
 // Phase 3 — Client Billing & Receivables
@@ -338,6 +340,8 @@ export const router = createBrowserRouter([
           { path: 'subcontracts/ra-bills', element: R('ra_bills.view', SubcontractRABillsPage) },
           { path: 'subcontracts/bill-approval', element: R('ra_bills.certify', RABillApprovalPage) },
           { path: 'subcontracts/payments', element: R('payments.view', SubcontractPaymentsPage) },
+          { path: 'subcontracts/weekly-payments', element: R('payments.view', SubcontractorWeeklyPaymentsPage) },
+          { path: 'subcontracts/weekly-payments/new', element: R('payments.view', MaistrySlipPage) },
           { path: 'subcontracts/completion', element: R('work_progress.view', PackageCompletionPage) },
           { path: 'subcontracts/retention', element: R('ra_bills.view', RetentionLedgerPage) },
           { path: 'subcontracts/reports', element: R('report.view', SubcontractReportPage) },

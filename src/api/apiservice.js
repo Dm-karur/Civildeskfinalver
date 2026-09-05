@@ -410,6 +410,7 @@ export const subcontractsApi = {
     measurements: subcontractDocument('measurements'),
     raBills: subcontractDocument('ra-bills'),
     payments: subcontractDocument('payments', false),
+    weeklyPayments: subcontractDocument('weekly-payments', false),
 };
 
 export const expensesApi = {

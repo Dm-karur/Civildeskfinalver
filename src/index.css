@@ -134,5 +134,14 @@
     overflow: visible !important;
     max-height: none !important;
   }
+  #maistry-printable-slip, #maistry-printable-slip * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  #maistry-printable-slip input {
+    border: none !important;
+    background: transparent !important;
+  }
 }
 

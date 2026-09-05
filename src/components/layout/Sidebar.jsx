@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   Settings,
+  HardHat,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { navigationApi } from '../../api/apiservice';
@@ -20,6 +21,7 @@ const ICONS = Object.freeze({
   'folder-cog': FolderCog,
   settings: Settings,
   menu: Menu,
+  'hard-hat': HardHat,
 });
 
 function NavigationItem({ item, openByDepth, onToggle, onNavigate, depth = 0 }) {
@@ -128,6 +130,34 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
                 { item_code: 'SUB_LIST', item_name: 'Subcontractors', route_path: '/masters/subcontractors' }
               ]
             });
+          }
+
+          // Find the "Subcontract Management" section/menu
+          const subNode = processedItems.find(i =>
+            i.item_name === 'Subcontract Management' ||
+            i.item_code === 'SUBCONTRACT_MANAGEMENT' ||
+            i.item_code === 'SUBCONTRACTS' ||
+            i.item_name === 'Subcontracts'
+          );
+
+          if (subNode && subNode.children) {
+            const hasWeekly = subNode.children.some(c => c.route_path === '/subcontracts/weekly-payments');
+            if (!hasWeekly) {
+              const payIdx = subNode.children.findIndex(c =>
+                c.route_path === '/subcontracts/payments' ||
+                c.item_code === 'SUBCONTRACTOR_PAYMENTS'
+              );
+              const weeklyItem = {
+                item_code: 'SUBCONTRACTOR_WEEKLY_PAYMENTS',
+                item_name: 'Weekly Payments',
+                route_path: '/subcontracts/weekly-payments'
+              };
+              if (payIdx !== -1) {
+                subNode.children.splice(payIdx + 1, 0, weeklyItem);
+              } else {
+                subNode.children.push(weeklyItem);
+              }
+            }
           }
           setNavigation(processedItems);
         }

@@ -1,3 +1,4 @@
+import React, { isValidElement } from 'react';
 import { ArrowUpRight, ArrowDownRight, ArrowRight } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { cn } from '../../utils/cn';
@@ -26,6 +27,16 @@ export function KpiCard({
     neutral: 'bg-surface-muted text-text-secondary',
   };
 
+  const renderIcon = () => {
+    if (!icon) return null;
+    if (isValidElement(icon)) return icon;
+    if (typeof icon === 'function' || (typeof icon === 'object' && icon !== null && icon.$$typeof)) {
+      const IconComponent = icon;
+      return <IconComponent className="w-4 h-4" />;
+    }
+    return icon;
+  };
+
   if (loading) {
     return (
       <Card className={cn("animate-pulse flex items-center gap-2.5 px-3 py-2", className)}>
@@ -42,7 +53,7 @@ export function KpiCard({
   return (
     <Card className={cn("flex flex-row items-center gap-2.5 px-3 py-2", className)}>
       <div className={cn("w-9 h-9 rounded-lg flex flex-shrink-0 items-center justify-center [&>svg]:w-4 [&>svg]:h-4", iconBgClasses[status])}>
-        {icon}
+        {renderIcon()}
       </div>
 
       <div className="flex-1 min-w-0 flex flex-col justify-center">
