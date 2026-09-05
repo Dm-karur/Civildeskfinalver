@@ -642,10 +642,16 @@ export function SubcontractorTypesPage() {
                 </div>
 
                 <FormField label="Unit of Measure">
-                  <Input
-                    placeholder="e.g. shift, nos"
+                  <Select
+                    options={[
+                      { value: 'Shift', label: 'Shift' },
+                      { value: 'Hours', label: 'Hours' },
+                      { value: 'Day', label: 'Day' }
+                    ]}
+                    placeholder="Select Unit..."
                     value={templateForm.uom}
-                    onChange={(e) => handleTemplateFormChange('uom', e.target.value)}
+                    onChange={(val) => handleTemplateFormChange('uom', val)}
+                    className="w-full"
                   />
                 </FormField>
 

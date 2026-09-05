@@ -21,6 +21,7 @@ import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, budgetsApi, request } from '../../../api/apiservice';
 
+import { UnderDevelopment } from '../../masters/pages/UnderDevelopment';
 
 
 const EMPTY_FORM = {
@@ -37,7 +38,7 @@ const EMPTY_FORM = {
   decision_note: '',
 };
 
-export function BudgetRevisionsPage() {
+export function BudgetRevisionsPage_Future() {
   const [projects, setProjects] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [revisions, setRevisions] = useState([]);
@@ -715,5 +716,14 @@ export function BudgetRevisionsPage() {
         onCancel={() => setDeleteRev(null)}
       />
     </PageContainer>
+  );
+}
+
+export function BudgetRevisionsPage() {
+  return (
+    <UnderDevelopment 
+      title="Budget Revisions" 
+      featureName="Budget Management"
+    />
   );
 }
