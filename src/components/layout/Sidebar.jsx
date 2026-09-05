@@ -24,10 +24,19 @@ const ICONS = Object.freeze({
   'hard-hat': HardHat,
 });
 
-function NavigationItem({ item, openByDepth, onToggle, onNavigate, depth = 0 }) {
+function NavigationItem({ item, openByDepth, onToggle, onNavigate, dismissedBadges = [], onDismissBadge, depth = 0 }) {
   const Icon = ICONS[item.icon_key] ?? Menu;
   const children = item.children ?? [];
   const expanded = openByDepth[depth] === item.item_code;
+
+  const hasNewChild = (node) => {
+    if (['/subcontracts/weekly-payments', '/masters/subcontractor-types', '/masters/equipment-master'].includes(node.route_path) && !dismissedBadges.includes(node.route_path)) {
+      return true;
+    }
+    return (node.children || []).some(hasNewChild);
+  };
+  const showNewBadge = hasNewChild(item);
+  const isNewLeaf = ['/subcontracts/weekly-payments', '/masters/subcontractor-types', '/masters/equipment-master'].includes(item.route_path) && !dismissedBadges.includes(item.route_path);
 
   if (item.item_type === 'DIVIDER') return <div className="my-2 h-px bg-white/10" />;
   if (item.item_type === 'SECTION') {
@@ -38,7 +47,10 @@ function NavigationItem({ item, openByDepth, onToggle, onNavigate, depth = 0 }) 
     return (
       <NavLink
         to={item.route_path}
-        onClick={onNavigate}
+        onClick={(e) => {
+          if (isNewLeaf && onDismissBadge) onDismissBadge(item.route_path);
+          if (onNavigate) onNavigate(e);
+        }}
         style={{ paddingLeft: `${8 + (depth * 16)}px` }}
         className={({ isActive }) => clsx(
           'flex h-10 items-center gap-3 rounded-sm px-2 text-[13px] font-medium transition-colors',
@@ -47,6 +59,7 @@ function NavigationItem({ item, openByDepth, onToggle, onNavigate, depth = 0 }) 
       >
         {depth === 0 ? <Icon className="h-5 w-5 shrink-0" /> : <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-60" />}
         <span className="truncate">{item.item_name}</span>
+        {showNewBadge && <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider">New</span>}
       </NavLink>
     );
   }
@@ -63,6 +76,7 @@ function NavigationItem({ item, openByDepth, onToggle, onNavigate, depth = 0 }) 
         <span className="flex min-w-0 items-center gap-3">
           {depth === 0 ? <Icon className="h-5 w-5 shrink-0" /> : <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-60" />}
           <span className="truncate">{item.item_name}</span>
+          {showNewBadge && <span className="ml-2 rounded-full bg-primary/20 text-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">New</span>}
         </span>
         {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </button>
@@ -75,6 +89,8 @@ function NavigationItem({ item, openByDepth, onToggle, onNavigate, depth = 0 }) 
               openByDepth={openByDepth}
               onToggle={onToggle}
               onNavigate={onNavigate}
+              dismissedBadges={dismissedBadges}
+              onDismissBadge={onDismissBadge}
               depth={depth + 1}
             />
           ))}
@@ -90,6 +106,22 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
   const [navigation, setNavigation] = useState([]);
   const [error, setError] = useState('');
   const [openByDepth, setOpenByDepth] = useState({});
+  const [dismissedBadges, setDismissedBadges] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('dismissed_new_badges') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const handleDismissBadge = (path) => {
+    setDismissedBadges(prev => {
+      if (prev.includes(path)) return prev;
+      const next = [...prev, path];
+      localStorage.setItem('dismissed_new_badges', JSON.stringify(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     let active = true;
@@ -212,6 +244,8 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
                 return next;
               })}
               onNavigate={onCloseMobile}
+              dismissedBadges={dismissedBadges}
+              onDismissBadge={handleDismissBadge}
             />
           ))}
         </nav>
