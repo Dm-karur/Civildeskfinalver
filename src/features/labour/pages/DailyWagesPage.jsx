@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Building2, Plus, Wallet, Search, CheckCircle2,
-  MapPin, Clock, ArrowRight, ShieldCheck, UserCircle,
+  MapPin, Clock, ArrowRight, ShieldCheck, UserCircle, Eye,
   FileText, Trash2, Tag, Calendar, ArrowLeft
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -31,6 +31,7 @@ export function DailyWagesPage() {
 
   // Add Wages Form State
   const [selectedSite, setSelectedSite] = useState(null);
+  const [viewingSite, setViewingSite] = useState(null);
   const [subcontractors, setSubcontractors] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [selectedSubcontractorId, setSelectedSubcontractorId] = useState('');
@@ -206,13 +207,149 @@ export function DailyWagesPage() {
   const pagedSites = filteredSites.slice((page - 1) * perPage, page * perPage);
 
   const getSiteWageStatus = (siteId) => {
-    const hasSubmitted = dailyWagesList.some(w => String(w.site_id) === String(siteId));
-    return hasSubmitted ? 'SUBMITTED' : 'PENDING';
+    const today = new Date().toISOString().split('T')[0];
+    const hasSubmittedToday = dailyWagesList.some(w => String(w.site_id) === String(siteId) && w.date === today);
+    return hasSubmittedToday ? 'SUBMITTED' : 'PENDING';
   };
 
   const getStatusVariant = (status) => {
     return status === 'SUBMITTED' ? 'success' : 'warning';
   };
+
+  if (viewingSite) {
+    const today = new Date().toISOString().split('T')[0];
+    const todaysEntries = dailyWagesList.filter(w => String(w.site_id) === String(viewingSite.id) && w.date === today);
+
+    return (
+      <PageContainer>
+        <div className="flex items-center gap-3 mb-4">
+          <button 
+            onClick={() => setViewingSite(null)}
+            className="p-2 -ml-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-muted transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-text-primary">View Submitted Wages</h1>
+            <p className="text-[13px] text-text-secondary">For {viewingSite.site_name} on {today}</p>
+          </div>
+        </div>
+
+        {todaysEntries.length === 0 ? (
+          <div className="bg-surface rounded-xl border border-border shadow-sm p-8 text-center text-text-muted">
+            No wages submitted for today yet.
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {todaysEntries.map((entry, index) => {
+              const sub = subcontractors.find(s => String(s.id) === String(entry.subcontractor_id));
+              
+              const allEntryItems = [];
+              if (entry.entries) {
+                Object.keys(entry.entries).forEach(itemId => {
+                  if (!String(itemId).startsWith('custom-')) {
+                    const t = templates.find(temp => String(temp.id) === String(itemId));
+                    if (t) {
+                      allEntryItems.push({
+                        ...t,
+                        shift: entry.entries[itemId],
+                        rate: entry.rates?.[itemId] || 0,
+                        remarks: entry.remarks?.[itemId] || ''
+                      });
+                    }
+                  }
+                });
+              }
+              if (entry.customItems) {
+                entry.customItems.forEach(ci => {
+                  if (entry.entries?.[ci.id]) {
+                    allEntryItems.push({
+                      ...ci,
+                      shift: entry.entries[ci.id],
+                      rate: entry.rates?.[ci.id] || 0,
+                      remarks: entry.remarks?.[ci.id] || ''
+                    });
+                  }
+                });
+              }
+
+              const entryTotal = allEntryItems.reduce((acc, item) => acc + (Number(item.shift) * Number(item.rate)), 0);
+
+              return (
+                <div key={entry.id || index} className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
+                  <div className="bg-primary/5 p-4 border-b border-border flex justify-between items-center">
+                    <div>
+                      <h3 className="font-bold text-text-primary">{sub?.contractor_name || 'Unknown Subcontractor'}</h3>
+                      <p className="text-[12px] text-text-secondary">{sub?.subcontractor_type_label || 'Trade'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[12px] text-text-secondary font-medium">Total Wages</p>
+                      <p className="font-bold text-primary">₹{entryTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-[12px]">
+                      <thead className="bg-surface-muted text-text-secondary text-[10px] uppercase font-bold border-b border-border">
+                        <tr>
+                          <th className="px-4 py-3">Item</th>
+                          <th className="px-4 py-3 text-center">Type</th>
+                          <th className="px-4 py-3 text-center">Unit</th>
+                          <th className="px-4 py-3 text-center">Qty</th>
+                          <th className="px-4 py-3 text-center">Rate (₹)</th>
+                          <th className="px-4 py-3 text-center">Amount (₹)</th>
+                          <th className="px-4 py-3">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {allEntryItems.map(item => {
+                          const amount = Number(item.shift) * Number(item.rate);
+                          const isExpense = item.classification === 'Expense' || item.classification === 'Expenses';
+                          const isEquipment = item.classification === 'Equipment';
+                          const badgeColors = isExpense ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                                              isEquipment ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                              'bg-indigo-100 text-indigo-800 border-indigo-200';
+                          return (
+                            <tr key={item.id} className="hover:bg-surface-muted/30">
+                              <td className="px-4 py-2.5 font-bold text-text-primary">{item.description}</td>
+                              <td className="px-4 py-2.5 text-center">
+                                <Badge className={`text-[9px] uppercase tracking-wider font-bold gap-1 py-0.5 px-2 ${badgeColors}`}>
+                                  {item.classification}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-2.5 text-center text-text-secondary">{item.uom}</td>
+                              <td className="px-4 py-2.5 text-center font-bold">{item.shift}</td>
+                              <td className="px-4 py-2.5 text-center">{Number(item.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td className="px-4 py-2.5 text-center font-bold text-text-primary">
+                                ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </td>
+                              <td className="px-4 py-2.5 text-text-secondary">{item.remarks || '—'}</td>
+                            </tr>
+                          );
+                        })}
+                        {allEntryItems.length === 0 && (
+                          <tr>
+                            <td colSpan="7" className="px-4 py-8 text-center text-text-muted text-[13px]">
+                              No items recorded for this entry.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {entry.globalRemarks && (
+                    <div className="p-4 border-t border-border bg-surface-muted/30">
+                      <p className="text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1">Overall Remarks</p>
+                      <p className="text-[13px] text-text-primary">{entry.globalRemarks}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </PageContainer>
+    );
+  }
 
   if (selectedSite) {
     return (
@@ -596,13 +733,27 @@ export function DailyWagesPage() {
                         </Badge>
                       </td>
                       <td className="px-3 py-2.5 text-center">
-                        <Button
-                          variant="primary"
-                          onClick={() => handleOpenWages(site)}
-                          className="h-6 text-[12px] px-1.5 shadow-sm font-medium"
-                        >
-                          Add Wages
-                        </Button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          {getSiteWageStatus(site.id) === 'SUBMITTED' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setViewingSite(site)} 
+                              className="text-primary hover:bg-primary/10 h-7 w-7"
+                              title="View Submitted Wages"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="h-7 text-[11px] px-3 font-semibold"
+                            onClick={() => handleOpenWages(site)}
+                          >
+                            Add Wages
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -650,13 +801,24 @@ export function DailyWagesPage() {
                 </div>
               </div>
 
-              <Button
-                variant={getSiteWageStatus(site.id) === 'SUBMITTED' ? 'outline' : 'primary'}
-                className="w-full h-10 text-[13px] font-semibold rounded-lg shadow-xs"
-                onClick={() => handleOpenWages(site)}
-              >
-                {getSiteWageStatus(site.id) === 'SUBMITTED' ? 'Update Daily Wages' : 'Add Daily Wages'}
-              </Button>
+              <div className="flex items-center gap-2">
+                {getSiteWageStatus(site.id) === 'SUBMITTED' && (
+                  <Button 
+                    variant="outline" 
+                    className="h-10 px-3 text-primary border-primary/20 shadow-xs"
+                    onClick={() => setViewingSite(site)}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                )}
+                <Button
+                  variant={getSiteWageStatus(site.id) === 'SUBMITTED' ? 'outline' : 'primary'}
+                  className="flex-1 h-10 text-[13px] font-semibold rounded-lg shadow-xs"
+                  onClick={() => handleOpenWages(site)}
+                >
+                  Add Wages
+                </Button>
+              </div>
             </div>
           ))}
           <div className="pt-2">

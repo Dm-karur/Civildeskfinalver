@@ -10,6 +10,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
+import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Textarea } from '../../../components/ui/Textarea';
 import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
@@ -49,6 +50,17 @@ export function SubcontractorTypesPage() {
       return [];
     }
   });
+
+  const [equipmentMasters, setEquipmentMasters] = useState([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('mock_equipment_master');
+      if (stored) {
+        setEquipmentMasters(JSON.parse(stored).filter(e => e.is_active));
+      }
+    } catch {}
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -151,7 +163,8 @@ export function SubcontractorTypesPage() {
       classification: 'Labour',
       description: '',
       trade_category: item.type_name,
-      uom: 'shift',
+      uom: 'Shift',
+      custom_uom: '',
       default_rate: '0.00',
       is_active: true,
       calculate_maistry: false
@@ -169,17 +182,44 @@ export function SubcontractorTypesPage() {
       toast.error('Item Description is required');
       return;
     }
-    
+
+    let finalUom = templateForm.uom;
+    if (templateForm.uom === 'Others') {
+      if (!templateForm.custom_uom.trim()) {
+        toast.error('Please specify the custom Unit of Measure');
+        return;
+      }
+      finalUom = templateForm.custom_uom.trim();
+    }
+
     const newId = templates.length > 0 ? Math.max(...templates.map(t => t.id)) + 1 : 1;
+    const { custom_uom, ...restForm } = templateForm;
     const newTemplate = {
       id: newId,
       type_id: selectedType.id,
-      ...templateForm
+      ...restForm,
+      uom: finalUom
     };
     setTemplates(prev => [...prev, newTemplate]);
 
     toast.success('Template item created successfully.');
     setIsTemplateOpen(false);
+  };
+
+  const handleSaveTemplateRates = async () => {
+    try {
+      // Backend Team: Replace this with your actual PUT request to update templates
+      // const payload = templates.filter(t => t.type_id === viewingItem.id);
+      // await apiService.put(`/subcontractor-types/${viewingItem.id}/templates`, { templates: payload });
+
+      // Update local storage for mock purposes
+      localStorage.setItem('mock_subcontractor_templates', JSON.stringify(templates));
+
+      toast.success('Template rates saved successfully');
+      setViewingItem(null);
+    } catch (error) {
+      toast.error('Failed to save template rates');
+    }
   };
 
   const handleDragStart = (e, id) => {
@@ -204,7 +244,7 @@ export function SubcontractorTypesPage() {
       const copy = [...prev];
       const dragIdx = copy.findIndex(t => t.id === draggedId);
       const dropIdx = copy.findIndex(t => t.id === targetId);
-      
+
       if (dragIdx > -1 && dropIdx > -1) {
         const [draggedItem] = copy.splice(dragIdx, 1);
         copy.splice(dropIdx, 0, draggedItem);
@@ -327,7 +367,7 @@ export function SubcontractorTypesPage() {
                         </span>
                       </td>
                       <td className="px-3 py-2 text-center">
-                        <Badge 
+                        <Badge
                           variant={item.is_active ? 'success' : 'neutral'}
                           className="text-[9px] font-bold uppercase tracking-wider h-5 px-2 inline-flex items-center"
                         >
@@ -344,15 +384,6 @@ export function SubcontractorTypesPage() {
                             onClick={() => setViewingItem(item)}
                           >
                             <Eye className="h-3.5 w-3.5 text-blue-500 hover:text-blue-600" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Add Template Item"
-                            onClick={() => handleOpenTemplate(item)}
-                          >
-                            <Plus className="h-4 w-4 text-emerald-500 hover:text-emerald-600" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -391,14 +422,14 @@ export function SubcontractorTypesPage() {
                   <span className="font-mono text-[10px] font-bold text-primary block">{item.type_code}</span>
                   <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{item.type_name}</h4>
                 </div>
-                <Badge 
+                <Badge
                   variant={item.is_active ? 'success' : 'neutral'}
                   className="text-[9px] font-bold uppercase tracking-wider h-5 px-2 inline-flex items-center"
                 >
                   {item.is_active ? 'Active' : 'Inactive'}
                 </Badge>
               </div>
-              
+
               <div className="text-xs pt-1 border-t border-border/60 text-text-secondary">
                 <span className="block text-[10px] uppercase font-bold text-text-muted mb-1">Description</span>
                 {item.description || 'No description provided'}
@@ -408,9 +439,6 @@ export function SubcontractorTypesPage() {
                 <div className="flex items-center gap-1.5">
                   <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-blue-600 border-blue-200 bg-blue-50" onClick={() => setViewingItem(item)}>
                     <Eye className="w-3 h-3 mr-1" /> View
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-emerald-600 border-emerald-200 bg-emerald-50" onClick={() => handleOpenTemplate(item)}>
-                    <Plus className="w-3 h-3 mr-1" /> Add
                   </Button>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -535,43 +563,60 @@ export function SubcontractorTypesPage() {
             ) : (
               <div className="border border-border rounded-lg divide-y divide-border overflow-hidden shadow-xs">
                 {templates.filter(t => t.type_id === viewingItem?.id).map(t => (
-                  <div 
-                    key={t.id} 
+                  <div
+                    key={t.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, t.id)}
                     onDragEnd={handleDragEnd}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, t.id)}
-                    className="p-3 bg-surface hover:bg-surface-muted/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-move border-b border-border last:border-0"
+                    className="p-3 bg-surface hover:bg-surface-muted/50 transition-colors flex flex-col sm:flex-row sm:items-center gap-3 cursor-move border-b border-border last:border-0"
                   >
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className="pt-0.5 text-border hover:text-text-secondary transition-colors hidden sm:block">
-                        <GripVertical className="w-4 h-4" />
+                    <div className="pt-0.5 text-border hover:text-text-secondary transition-colors hidden sm:block shrink-0">
+                      <GripVertical className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      {/* Name and classification */}
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <Badge variant="neutral" className="text-[9px] uppercase tracking-wider font-bold shrink-0">
+                          {t.classification}
+                        </Badge>
+                        <span className="font-semibold text-text-primary text-[13px] truncate">
+                          {t.description}
+                        </span>
+                        {t.calculate_maistry && (
+                          <span className="text-amber-700 font-sans font-medium text-[10px] bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-flex items-center shrink-0">
+                            <ShieldCheck className="w-3 h-3 mr-1" /> Maistry Scope
+                          </span>
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <Badge variant="neutral" className="text-[9px] uppercase tracking-wider font-bold">
-                            {t.classification}
-                          </Badge>
-                          <span className="font-semibold text-text-primary text-[13px] truncate">
-                            {t.description}
-                          </span>
+
+                      {/* Columns */}
+                      <div className="flex items-center gap-4 sm:w-[250px] shrink-0 justify-between text-[12px]">
+                        <div className="flex-1 flex justify-end">
+                          <div className="relative w-24">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-secondary text-[11px]">₹</span>
+                            <Input
+                              type="number"
+                              value={t.default_rate}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setTemplates(prev => prev.map(tmpl => tmpl.id === t.id ? { ...tmpl, default_rate: val } : tmpl));
+                              }}
+                              className="h-7 w-full pl-6 pr-2 text-[12px] text-right font-medium"
+                            />
+                          </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-text-secondary">
-                          <span className="font-mono">
-                            Rate: <span className="font-semibold text-text-primary">₹{t.default_rate}</span>/{t.uom}
-                          </span>
-                          {t.calculate_maistry && (
-                            <span className="text-amber-700 font-sans font-medium text-[10px] bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-flex items-center">
-                              <ShieldCheck className="w-3 h-3 mr-1" /> Maistry Scope
-                            </span>
-                          )}
+                        <div className="w-16 text-text-secondary text-center">
+                          {t.uom}
+                        </div>
+                        <div className="w-16 flex justify-end">
+                          <Badge variant={t.is_active ? 'success' : 'neutral'} className="text-[9px] h-5 shrink-0">
+                            {t.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
                         </div>
                       </div>
                     </div>
-                    <Badge variant={t.is_active ? 'success' : 'neutral'} className="text-[9px] h-5 self-start sm:self-auto shrink-0">
-                      {t.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
                   </div>
                 ))}
               </div>
@@ -579,15 +624,17 @@ export function SubcontractorTypesPage() {
           </div>
         </EntityEditModal.Body>
         <EntityEditModal.Footer>
-          <Button variant="outline" onClick={() => setViewingItem(null)}>
-            Close
-          </Button>
-          <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={() => {
-            handleOpenTemplate(viewingItem);
-            setViewingItem(null);
-          }}>
-            Add Template Item
-          </Button>
+          <div className="flex justify-end gap-2 w-full">
+            <Button variant="outline" onClick={handleSaveTemplateRates}>
+              Save Changes
+            </Button>
+            <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={() => {
+              handleOpenTemplate(viewingItem);
+              setViewingItem(null);
+            }}>
+              Add Template Item
+            </Button>
+          </div>
         </EntityEditModal.Footer>
       </EntityEditModal>
 
@@ -622,11 +669,20 @@ export function SubcontractorTypesPage() {
 
                 <div className="sm:col-span-2">
                   <FormField label="Item Description / Name" required>
-                    <Input
-                      placeholder="e.g. Carpenter, Scaffolding Pipe Set, Mixer"
-                      value={templateForm.description}
-                      onChange={(e) => handleTemplateFormChange('description', e.target.value)}
-                    />
+                    {templateForm.classification === 'Equipment' ? (
+                      <SearchableSelect
+                        options={equipmentMasters.map(e => ({ value: e.name, label: e.name }))}
+                        value={templateForm.description}
+                        onChange={(val) => handleTemplateFormChange('description', val)}
+                        placeholder="Search equipment..."
+                      />
+                    ) : (
+                      <Input
+                        placeholder="e.g. Carpenter, Scaffolding Pipe Set, Mixer"
+                        value={templateForm.description}
+                        onChange={(e) => handleTemplateFormChange('description', e.target.value)}
+                      />
+                    )}
                   </FormField>
                 </div>
 
@@ -646,13 +702,27 @@ export function SubcontractorTypesPage() {
                     options={[
                       { value: 'Shift', label: 'Shift' },
                       { value: 'Hours', label: 'Hours' },
-                      { value: 'Day', label: 'Day' }
+                      { value: 'Day', label: 'Day' },
+                      { value: 'Numbers', label: 'Numbers' },
+                      { value: 'Quantity', label: 'Quantity' },
+                      { value: 'Rental', lable: 'Rental' },
+                      { value: 'Others', label: 'Others' }
+
                     ]}
                     placeholder="Select Unit..."
                     value={templateForm.uom}
                     onChange={(val) => handleTemplateFormChange('uom', val)}
                     className="w-full"
                   />
+                  {templateForm.uom === 'Others' && (
+                    <div className="mt-2">
+                      <Input
+                        placeholder="Enter custom unit (e.g. sqft)"
+                        value={templateForm.custom_uom || ''}
+                        onChange={(e) => handleTemplateFormChange('custom_uom', e.target.value)}
+                      />
+                    </div>
+                  )}
                 </FormField>
 
                 <FormField label="Default Rate (₹)">
@@ -664,12 +734,12 @@ export function SubcontractorTypesPage() {
                     onChange={(e) => handleTemplateFormChange('default_rate', e.target.value)}
                   />
                 </FormField>
-                
+
                 <div className="sm:col-span-2 pt-2 border-t border-border mt-2 space-y-3">
                   <label className="flex items-center gap-2 cursor-pointer group">
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer" 
+                    <input
+                      type="checkbox"
+                      className="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
                       checked={templateForm.is_active}
                       onChange={(e) => handleTemplateFormChange('is_active', e.target.checked)}
                     />
@@ -678,7 +748,7 @@ export function SubcontractorTypesPage() {
                     </span>
                   </label>
 
-                 
+
                 </div>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>

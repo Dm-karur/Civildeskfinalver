@@ -177,6 +177,7 @@ import { WageRatesPage } from '../../features/masters/pages/WageRatesPage';
 import { CrewsPage } from '../../features/masters/pages/CrewsPage';
 import { LabourContractorsPage } from '../../features/masters/pages/LabourMasterPages';
 import { MaterialCategoriesPage } from '../../features/masters/pages/MaterialCategoriesPage';
+import { EquipmentMasterPage } from '../../features/masters/pages/EquipmentMasterPage';
 import { BrandsPage } from '../../features/masters/pages/BrandsPage';
 import { WarehousesPage } from '../../features/masters/pages/WarehousesPage';
 import { VendorsPage } from '../../features/masters/pages/VendorsPage';
@@ -430,6 +431,7 @@ export const router = createBrowserRouter([
 
           // ─── Masters — Materials & Procurement ───────────
           { path: 'masters/material-categories', element: R('materials.view', MaterialCategoriesPage) },
+          { path: 'masters/equipment-master', element: <EquipmentMasterPage /> },
           { path: 'masters/materials', element: R('materials.view', MaterialCataloguePage) },
           { path: 'masters/brands', element: R('materials.view', BrandsPage) },
           { path: 'masters/material-units', element: R('materials.view', UnitsOfMeasurementPage) },

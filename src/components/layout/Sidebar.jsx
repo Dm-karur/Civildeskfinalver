@@ -130,6 +130,13 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
                 { item_code: 'SUB_LIST', item_name: 'Subcontractors', route_path: '/masters/subcontractors' }
               ]
             });
+            mastersNode.children.push({
+              item_code: 'EQUIPMENT_MASTER',
+              item_name: 'Equipment Master',
+              item_type: null,
+              icon_key: 'briefcase',
+              route_path: '/masters/equipment-master'
+            });
           }
 
           // Find the "Subcontract Management" section/menu
