@@ -23,6 +23,7 @@ import { toast } from '../../../components/composite/Toast';
 import { WorkflowTimeline } from '../../../components/composite/WorkflowTimeline';
 import { projectsApi, materialManagementApi, sitesApi, mastersApi, materialsApi, usersApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
+import { parseSpecification, formatSpecification } from './MaterialRequestFormPage';
 
 const EMPTY_FORM = {
   project_id: '',
@@ -32,7 +33,7 @@ const EMPTY_FORM = {
   priority_id: '',
   purpose: '',
   is_boq_required: false,
-  items: [{ material_id: '', specification: '', requested_qty: '', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }]
+  items: [{ material_id: '', brand: '', size: '', variant: '', supplier_id: '', requested_qty: '', remarks: '', uom_id: '', estimated_rate: '0' }]
 };
 
 export function MaterialRequestsPage() {
@@ -946,15 +947,21 @@ export function MaterialRequestsPage() {
                         const itemVendor = vendors.find(v => String(v.id) === String(item.supplier_id || item.vendor_id || item.material_supplier_id));
                         const mat = materials.find(m => String(m.id) === String(item.material_id));
                         const itemSpec = item.specification || item.variant || item.size || item.spec || item.item_specification || item.material_variant || item.description || mat?.specification || mat?.variant || mat?.size;
+                        const parsedSpec = parseSpecification(itemSpec || '');
+                        const brand = item.brand || parsedSpec.brand;
+                        const size = item.size || parsedSpec.size;
+                        const variant = item.variant || parsedSpec.variant;
                         return (
                           <tr key={item.id || i} className="hover:bg-surface-muted/20">
                             <td className="p-2 font-medium text-text-primary">
                               <div>
                                 {item.material_code ? `${item.material_code} - ${item.material_name}` : item.material_name || `Material #${item.material_id}`}
                               </div>
-                              {(itemSpec || itemVendor || item.remarks) && (
-                                <div className="text-[10px] text-text-muted space-y-0.5 mt-0.5">
-                                  {itemSpec && <div><span className="font-semibold text-text-secondary">Variant:</span> {itemSpec}</div>}
+                              {(brand || size || variant || itemVendor || item.remarks) && (
+                                <div className="text-[11px] text-text-muted space-y-0.5 mt-1">
+                                  {brand && <div><span className="font-semibold text-text-secondary">Brand:</span> {brand}</div>}
+                                  {size && <div><span className="font-semibold text-text-secondary">Size:</span> {size}</div>}
+                                  {variant && <div><span className="font-semibold text-text-secondary">Variant:</span> {variant}</div>}
                                   {itemVendor && <div><span className="font-semibold text-text-secondary">Vendor:</span> {itemVendor.supplier_name || itemVendor.name || itemVendor.company_name}</div>}
                                   {item.remarks && <div><span className="font-semibold text-text-secondary">Remarks:</span> {item.remarks}</div>}
                                 </div>
@@ -1071,10 +1078,10 @@ export function MaterialRequestsPage() {
 
                   return (
                     <div key={idx} className="bg-surface-muted/30 p-3 rounded-lg border border-border/60">
-                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
-                        {/* 1. Material * */}
-                        <div className="sm:col-span-3">
-                          <FormField label={idx === 0 ? "Material *" : ""} required error={itemErr.material_id}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-12 gap-2.5 items-end">
+                        {/* 1. Material */}
+                        <div className="sm:col-span-2 md:col-span-4 xl:col-span-3">
+                          <FormField label={idx === 0 ? "Material" : ""} required error={itemErr.material_id}>
                             <Select
                               options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
                               value={item.material_id}
@@ -1084,7 +1091,7 @@ export function MaterialRequestsPage() {
                                 nextItems[idx] = {
                                   ...nextItems[idx],
                                   material_id: v,
-                                  uom_id: mat ? String(mat.base_uom_id) : '',
+                                  uom_id: mat ? String(mat.base_uom_id || mat.unit_id || '') : '',
                                   estimated_rate: mat?.standard_rate ? String(mat.standard_rate) : '0'
                                 };
                                 handleFormChange('items', nextItems);
@@ -1094,43 +1101,53 @@ export function MaterialRequestsPage() {
                           </FormField>
                         </div>
 
-                        {/* 2. Variant */}
-                        <div className="sm:col-span-2">
-                          <FormField label={idx === 0 ? "Variant" : ""}>
+                        {/* 2. Brand */}
+                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
+                          <FormField label={idx === 0 ? "Brand" : ""}>
                             <Input
-                              value={item.specification || ''}
+                              value={item.brand || ''}
                               onChange={(e) => {
                                 const nextItems = [...form.items];
-                                nextItems[idx] = { ...nextItems[idx], specification: e.target.value };
+                                nextItems[idx] = { ...nextItems[idx], brand: e.target.value };
                                 handleFormChange('items', nextItems);
                               }}
-                              placeholder="e.g. 12mm, Fe500D"
+                              placeholder="e.g. Tata"
                             />
                           </FormField>
                         </div>
 
-                        {/* 3. Required Qty * */}
-                        <div className="sm:col-span-2">
-                          <FormField label={idx === 0 ? "Required Qty *" : ""} required error={itemErr.requested_qty}>
+                        {/* 3. Size */}
+                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
+                          <FormField label={idx === 0 ? "Size" : ""}>
                             <Input
-                              type="number"
-                              step="any"
-                              min="0.01"
-                              value={item.requested_qty}
+                              value={item.size || ''}
                               onChange={(e) => {
-                                const val = e.target.value;
-                                if (Number(val) < 0) return;
                                 const nextItems = [...form.items];
-                                nextItems[idx] = { ...nextItems[idx], requested_qty: val };
+                                nextItems[idx] = { ...nextItems[idx], size: e.target.value };
                                 handleFormChange('items', nextItems);
                               }}
-                              placeholder="0.00"
+                              placeholder="e.g. 12mm"
                             />
                           </FormField>
                         </div>
 
-                        {/* 4. Vendor (Optional) */}
-                        <div className="sm:col-span-2">
+                        {/* 4. Varient */}
+                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
+                          <FormField label={idx === 0 ? "Varient" : ""}>
+                            <Input
+                              value={item.variant || ''}
+                              onChange={(e) => {
+                                const nextItems = [...form.items];
+                                nextItems[idx] = { ...nextItems[idx], variant: e.target.value };
+                                handleFormChange('items', nextItems);
+                              }}
+                              placeholder="e.g. Fe500D"
+                            />
+                          </FormField>
+                        </div>
+
+                        {/* 5. Vendor */}
+                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-2">
                           <FormField label={idx === 0 ? "Vendor" : ""}>
                             <Select
                               options={[
@@ -1148,8 +1165,28 @@ export function MaterialRequestsPage() {
                           </FormField>
                         </div>
 
-                        {/* 5. Remarks (Optional) */}
-                        <div className="sm:col-span-2">
+                        {/* 6. Required Quantity */}
+                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
+                          <FormField label={idx === 0 ? "Required Quantity" : ""} required error={itemErr.requested_qty}>
+                            <Input
+                              type="number"
+                              step="any"
+                              min="0.01"
+                              value={item.requested_qty}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (Number(val) < 0) return;
+                                const nextItems = [...form.items];
+                                nextItems[idx] = { ...nextItems[idx], requested_qty: val };
+                                handleFormChange('items', nextItems);
+                              }}
+                              placeholder="0.00"
+                            />
+                          </FormField>
+                        </div>
+
+                        {/* 7. Remarks */}
+                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-2">
                           <FormField label={idx === 0 ? "Remarks" : ""}>
                             <Input
                               value={item.remarks || ''}
@@ -1158,13 +1195,13 @@ export function MaterialRequestsPage() {
                                 nextItems[idx] = { ...nextItems[idx], remarks: e.target.value };
                                 handleFormChange('items', nextItems);
                               }}
-                              placeholder="e.g. Need ISI certified"
+                              placeholder="e.g. ISI certified"
                             />
                           </FormField>
                         </div>
 
-                        {/* 6. Delete Item icon */}
-                        <div className={`sm:col-span-1 flex items-center justify-center ${idx === 0 ? 'sm:pb-0.5' : 'sm:pb-0'}`}>
+                        {/* Action / Delete */}
+                        <div className={`sm:col-span-1 md:col-span-2 xl:col-span-1 flex items-center justify-center ${idx === 0 ? 'sm:pb-0.5' : 'sm:pb-0'}`}>
                           {form.items.length > 1 && (
                             <Button
                               type="button"
@@ -1194,7 +1231,7 @@ export function MaterialRequestsPage() {
                   onClick={() => {
                     const nextItems = [
                       ...form.items,
-                      { material_id: '', specification: '', requested_qty: '', supplier_id: '', remarks: '', uom_id: '', estimated_rate: '0' }
+                      { material_id: '', brand: '', size: '', variant: '', supplier_id: '', requested_qty: '', remarks: '', uom_id: '', estimated_rate: '0' }
                     ];
                     handleFormChange('items', nextItems);
                   }}
