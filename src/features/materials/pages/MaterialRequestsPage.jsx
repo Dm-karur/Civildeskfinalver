@@ -32,8 +32,9 @@ const EMPTY_FORM = {
   required_by_date: '',
   priority_id: '',
   purpose: '',
+  remarks: '',
   is_boq_required: false,
-  items: [{ material_id: '', brand: '', size: '', variant: '', supplier_id: '', requested_qty: '', remarks: '', uom_id: '', estimated_rate: '0' }]
+  items: [{ material_id: '', brand: '', size: '', variant: '', supplier_id: '', requested_qty: '', uom_id: '', estimated_rate: '0' }]
 };
 
 export function MaterialRequestsPage() {
@@ -281,7 +282,7 @@ export function MaterialRequestsPage() {
 
       const preparedItems = form.items.map(item => {
         const mat = materials.find(m => String(m.id) === String(item.material_id));
-        const specVal = item.specification || item.variant || item.size || item.spec || item.item_specification || item.material_variant || mat?.specification || mat?.variant || null;
+        const specVal = formatSpecification(item.brand, item.size, item.variant) || item.specification || item.variant || item.size || null;
         const suppId = item.supplier_id ? Number(item.supplier_id) : null;
         return {
           material_id: Number(item.material_id),
@@ -289,19 +290,24 @@ export function MaterialRequestsPage() {
           requested_qty: Number(item.requested_qty),
           estimated_rate: Number(item.estimated_rate || 0),
           specification: specVal,
+          specification_note: specVal,
           variant: specVal,
           spec: specVal,
           item_specification: specVal,
           material_variant: specVal,
           size: specVal,
           description: specVal,
-          remarks: item.remarks || null,
+          remarks: null,
           supplier_id: suppId,
           vendor_id: suppId,
           material_supplier_id: suppId,
           preferred_supplier_id: suppId
         };
       });
+
+      const combinedPurpose = form.remarks 
+        ? (form.purpose ? `${form.purpose} | Remarks: ${form.remarks}` : form.remarks)
+        : (form.purpose || 'Site Material Requirement');
 
       if (requestId) {
         // Update header
@@ -311,7 +317,8 @@ export function MaterialRequestsPage() {
           request_date: form.request_date || new Date().toISOString().split('T')[0],
           required_by_date: form.required_by_date || new Date().toISOString().split('T')[0],
           priority_id: Number(form.priority_id),
-          purpose: form.purpose || ''
+          purpose: combinedPurpose,
+          remarks: form.remarks || ''
         });
 
         // Sync items
@@ -345,7 +352,8 @@ export function MaterialRequestsPage() {
           request_date: form.request_date || new Date().toISOString().split('T')[0],
           required_by_date: form.required_by_date || new Date().toISOString().split('T')[0],
           priority_id: Number(form.priority_id),
-          purpose: form.purpose || 'Site Material Requirement',
+          purpose: combinedPurpose,
+          remarks: form.remarks || '',
           items: preparedItems
         });
 
@@ -1080,7 +1088,7 @@ export function MaterialRequestsPage() {
                     <div key={idx} className="bg-surface-muted/30 p-3 rounded-lg border border-border/60">
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-12 gap-2.5 items-end">
                         {/* 1. Material */}
-                        <div className="sm:col-span-2 md:col-span-4 xl:col-span-3">
+                        <div className="sm:col-span-2 md:col-span-4 xl:col-span-4">
                           <FormField label={idx === 0 ? "Material" : ""} required error={itemErr.material_id}>
                             <Select
                               options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
@@ -1102,7 +1110,7 @@ export function MaterialRequestsPage() {
                         </div>
 
                         {/* 2. Brand */}
-                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
+                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-2">
                           <FormField label={idx === 0 ? "Brand" : ""}>
                             <Input
                               value={item.brand || ''}
@@ -1185,21 +1193,6 @@ export function MaterialRequestsPage() {
                           </FormField>
                         </div>
 
-                        {/* 7. Remarks */}
-                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-2">
-                          <FormField label={idx === 0 ? "Remarks" : ""}>
-                            <Input
-                              value={item.remarks || ''}
-                              onChange={(e) => {
-                                const nextItems = [...form.items];
-                                nextItems[idx] = { ...nextItems[idx], remarks: e.target.value };
-                                handleFormChange('items', nextItems);
-                              }}
-                              placeholder="e.g. ISI certified"
-                            />
-                          </FormField>
-                        </div>
-
                         {/* Action / Delete */}
                         <div className={`sm:col-span-1 md:col-span-2 xl:col-span-1 flex items-center justify-center ${idx === 0 ? 'sm:pb-0.5' : 'sm:pb-0'}`}>
                           {form.items.length > 1 && (
@@ -1231,7 +1224,7 @@ export function MaterialRequestsPage() {
                   onClick={() => {
                     const nextItems = [
                       ...form.items,
-                      { material_id: '', brand: '', size: '', variant: '', supplier_id: '', requested_qty: '', remarks: '', uom_id: '', estimated_rate: '0' }
+                      { material_id: '', brand: '', size: '', variant: '', supplier_id: '', requested_qty: '', uom_id: '', estimated_rate: '0' }
                     ];
                     handleFormChange('items', nextItems);
                   }}
@@ -1240,6 +1233,17 @@ export function MaterialRequestsPage() {
                   Add Another Item
                 </Button>
               </div>
+            </EntityEditModal.Section>
+
+            <EntityEditModal.Section title="General Remarks">
+              <FormField>
+                <Textarea
+                  rows={3}
+                  value={form.remarks || ''}
+                  onChange={(e) => handleFormChange('remarks', e.target.value)}
+                  placeholder="Enter any additional instructions or general remarks for this material request..."
+                />
+              </FormField>
             </EntityEditModal.Section>
           </EntityEditModal.Body>
 

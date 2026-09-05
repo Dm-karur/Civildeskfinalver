@@ -55,7 +55,6 @@ const EMPTY_ITEM = {
   variant: '',
   supplier_id: '',
   requested_qty: '',
-  remarks: '',
   uom_id: '',
   estimated_rate: '0'
 };
@@ -67,6 +66,7 @@ const EMPTY_FORM = {
   required_by_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   priority_id: '',
   purpose: '',
+  remarks: '',
   is_boq_required: false,
   items: [{ ...EMPTY_ITEM }]
 };
@@ -127,13 +127,22 @@ export function MaterialRequestFormPage() {
         materialManagementApi.requests.get(id).then(res => {
           const fullReq = res?.data?.material_request ?? res?.material_request ?? {};
           const reqItems = fullReq.items || [];
+          let purposeVal = fullReq.purpose || '';
+          let remarksVal = fullReq.remarks || '';
+          if (!remarksVal && purposeVal.includes(' | Remarks: ')) {
+            const parts = purposeVal.split(' | Remarks: ');
+            purposeVal = parts[0];
+            remarksVal = parts.slice(1).join(' | Remarks: ');
+          }
+
           setForm({
             project_id: String(fullReq.project_id || ''),
             site_id: String(fullReq.site_id || ''),
             request_date: fullReq.request_date || new Date().toISOString().split('T')[0],
             required_by_date: fullReq.required_by_date || '',
             priority_id: String(fullReq.priority_id || ''),
-            purpose: fullReq.purpose || '',
+            purpose: purposeVal,
+            remarks: remarksVal,
             items: reqItems.length > 0 ? reqItems.map(i => {
               const parsed = parseSpecification(i.specification || i.specification_note || i.item_specification || '');
               return {
@@ -144,7 +153,6 @@ export function MaterialRequestFormPage() {
                 variant: i.variant || parsed.variant || '',
                 supplier_id: String(i.supplier_id || i.vendor_id || i.material_supplier_id || ''),
                 requested_qty: String(i.requested_qty ?? ''),
-                remarks: i.remarks || '',
                 uom_id: String(i.uom_id || ''),
                 estimated_rate: String(i.estimated_rate || '0')
               };
@@ -226,13 +234,17 @@ export function MaterialRequestFormPage() {
           brand: item.brand?.trim() || null,
           size: item.size?.trim() || null,
           variant: item.variant?.trim() || null,
-          remarks: item.remarks?.trim() || null,
+          remarks: null,
           supplier_id: suppId,
           vendor_id: suppId,
           material_supplier_id: suppId,
           preferred_supplier_id: suppId
         };
       });
+
+      const combinedPurpose = form.remarks 
+        ? (form.purpose ? `${form.purpose} | Remarks: ${form.remarks}` : form.remarks)
+        : (form.purpose || 'Site Material Requirement');
 
       if (id) {
         // Edit
@@ -242,7 +254,8 @@ export function MaterialRequestFormPage() {
           request_date: form.request_date || new Date().toISOString().split('T')[0],
           required_by_date: form.required_by_date || new Date().toISOString().split('T')[0],
           priority_id: Number(form.priority_id),
-          purpose: form.purpose || ''
+          purpose: combinedPurpose,
+          remarks: form.remarks || ''
         });
 
         // Sync items
@@ -276,7 +289,8 @@ export function MaterialRequestFormPage() {
           request_date: form.request_date || new Date().toISOString().split('T')[0],
           required_by_date: form.required_by_date || new Date().toISOString().split('T')[0],
           priority_id: Number(form.priority_id),
-          purpose: form.purpose || 'Site Material Requirement',
+          purpose: combinedPurpose,
+          remarks: form.remarks || '',
           items: preparedItems
         });
 
@@ -394,7 +408,7 @@ export function MaterialRequestFormPage() {
                     <div key={idx} className="bg-surface-muted/30 p-4 rounded-lg border border-border/60">
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-12 gap-3 items-end">
                         {/* 1. Material Dropdown */}
-                        <div className="sm:col-span-2 md:col-span-4 xl:col-span-3">
+                        <div className="sm:col-span-2 md:col-span-4 xl:col-span-4">
                           <FormField label={idx === 0 ? "Material" : ""} required error={itemErr.material_id}>
                             <Select
                               options={materials.map(m => ({ value: String(m.id), label: `${m.material_code} - ${m.material_name}` }))}
@@ -416,7 +430,7 @@ export function MaterialRequestFormPage() {
                         </div>
 
                         {/* 2. Brand */}
-                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-1">
+                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-2">
                           <FormField label={idx === 0 ? "Brand" : ""}>
                             <Input
                               value={item.brand || ''}
@@ -499,21 +513,6 @@ export function MaterialRequestFormPage() {
                           </FormField>
                         </div>
 
-                        {/* 7. Remarks */}
-                        <div className="sm:col-span-1 md:col-span-2 xl:col-span-2">
-                          <FormField label={idx === 0 ? "Remarks" : ""}>
-                            <Input
-                              value={item.remarks || ''}
-                              onChange={(e) => {
-                                const nextItems = [...form.items];
-                                nextItems[idx] = { ...nextItems[idx], remarks: e.target.value };
-                                handleFormChange('items', nextItems);
-                              }}
-                              placeholder="e.g. ISI certified"
-                            />
-                          </FormField>
-                        </div>
-
                         {/* Action / Delete Button */}
                         <div className={`sm:col-span-1 md:col-span-2 xl:col-span-1 flex items-center justify-center ${idx === 0 ? 'sm:pb-0.5' : 'sm:pb-0'}`}>
                           {form.items.length > 1 && (
@@ -554,6 +553,18 @@ export function MaterialRequestFormPage() {
                   Add Another Item
                 </Button>
               </div>
+            </div>
+
+            <div className="border-t border-border pt-4">
+                <h3 className="text-sm font-semibold text-text-primary mb-3">General Remarks</h3>
+                <FormField>
+                    <Textarea
+                        rows={3}
+                        value={form.remarks || ''}
+                        onChange={(e) => handleFormChange('remarks', e.target.value)}
+                        placeholder="Enter any additional instructions or general remarks for this material request..."
+                    />
+                </FormField>
             </div>
           </div>
           <div className="px-6 py-4 border-t border-border bg-surface-muted/20 flex items-center justify-end gap-3">
