@@ -1,255 +1,254 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  GitBranch, CheckCircle2, Clock, AlertCircle, IndianRupee,
-  TrendingUp, TrendingDown, Plus, Edit, Trash2, Search, Filter,
-  Eye, FileText, ArrowRight, ShieldCheck, Wallet
+  Layers,
+  CheckCircle2,
+  Clock,
+  IndianRupee,
+  Plus,
+  RotateCcw,
+  Eye,
+  MoreVertical,
+  Check,
+  XCircle,
+  Trash2,
+  Send,
+  TrendingUp,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
-import { DataTableContainer } from '../../../components/composite/DataTableContainer';
-import { Pagination } from '../../../components/composite/Pagination';
-import { SearchField } from '../../../components/composite/SearchField';
 import { KpiCard } from '../../../components/composite/KpiCard';
-import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Badge } from '../../../components/ui/Badge';
 import { Select } from '../../../components/ui/Select';
-import { Input } from '../../../components/ui/Input';
-import { Textarea } from '../../../components/ui/Textarea';
+import { SearchField } from '../../../components/composite/SearchField';
 import { FormField } from '../../../components/composite/FormField';
-import { EntityEditModal } from '../../../components/composite/EntityEditModal';
-import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, budgetsApi, request } from '../../../api/apiservice';
+import { budgetsApi, projectsApi } from '../../../api/apiservice';
+import { useAuth } from '../../auth/context/AuthContext';
+import { BudgetRevisionFormModal } from '../components/BudgetRevisionFormModal';
+import { BudgetRevisionDetailModal } from '../components/BudgetRevisionDetailModal';
 
-import { UnderDevelopment } from '../../masters/pages/UnderDevelopment';
-
-
-const EMPTY_FORM = {
-  project_id: '',
-  budget_id: '',
-  revision_no: '1',
-  revision_date: '',
-  previous_total: '0',
-  revised_total: '0',
-  variance_amount: '0',
-  status_name: 'Pending Approval',
-  requested_by_name: '',
-  reason: '',
-  decision_note: '',
-};
-
-export function BudgetRevisionsPage_Future() {
+export function BudgetRevisionsPage() {
+  const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [revisions, setRevisions] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Filters
-  const [selectedProjectId, setSelectedProjectId] = useState('all');
-  const [selectedBudgetId, setSelectedBudgetId] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const perPage = 10;
+  const [filters, setFilters] = useState({
+    project_id: 'all',
+    budget_id: 'all',
+    status: 'all',
+  });
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Modals
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingRev, setEditingRev] = useState(null);
-  const [viewingRev, setViewingRev] = useState(null);
-  const [deleteRev, setDeleteRev] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [viewingRevision, setViewingRevision] = useState(null); // { budgetId, revisionId }
+  const [activeMenuId, setActiveMenuId] = useState(null);
+  const menuRef = useRef(null);
 
-  const fetchRevisions = async () => {
-    setLoading(true);
-    try {
-      const res = await request.get('/budget-revisions');
-      setRevisions(Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
-    } catch (error) {
-      // Ignore if it fails (e.g. 404 because backend is missing)
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Workflow confirmation dialog
+  const [confirmAction, setConfirmAction] = useState(null); // { type: 'submit'|'approve'|'reject'|'delete', item: rev }
+  const [actionComments, setActionComments] = useState('');
+  const [actionSubmitting, setActionSubmitting] = useState(false);
 
-  // Initial Load: Projects, Budgets
+  // Close context menu on outside click
   useEffect(() => {
-    Promise.all([
-      projectsApi.list().catch(() => ({ data: { projects: [] } })),
-      budgetsApi.list().catch(() => ({ data: { project_budgets: [] } })),
-    ]).then(([pRes, bRes]) => {
-      const pList = pRes?.data?.projects || pRes?.projects || [];
-      const bList = bRes?.data?.project_budgets || bRes?.project_budgets || [];
-      setProjects(Array.isArray(pList) ? pList : []);
-      setBudgets(Array.isArray(bList) ? bList : []);
-    });
-    
-    fetchRevisions();
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setActiveMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Form Handlers
-  const handleOpenAdd = () => {
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
-    const availableBudgets = budgets.filter(b => String(b.project_id) === String(defaultProj));
-    const targetBudget = availableBudgets[0] || budgets[0];
-    const prevAmount = targetBudget?.total_amount || 21625000;
-
-    setForm({
-      ...EMPTY_FORM,
-      project_id: defaultProj,
-      budget_id: targetBudget?.id ? String(targetBudget.id) : '1',
-      revision_no: String(revisions.length + 1),
-      revision_date: new Date().toISOString().split('T')[0],
-      previous_total: String(prevAmount),
-      revised_total: String(Number(prevAmount) + 500000),
-      variance_amount: '500000',
-      requested_by_name: 'Current User',
-    });
-    setErrors({});
-    setIsAddOpen(true);
-  };
-
-  const handleOpenEdit = (rev) => {
-    setForm({
-      project_id: String(rev.project_id || '1'),
-      budget_id: String(rev.budget_id || '1'),
-      revision_no: String(rev.revision_no || '1'),
-      revision_date: rev.revision_date ? rev.revision_date.split(' ')[0] : '',
-      previous_total: String(rev.previous_total || '0'),
-      revised_total: String(rev.revised_total || '0'),
-      variance_amount: String(rev.variance_amount || '0'),
-      status_name: rev.status_name || 'Pending Approval',
-      requested_by_name: rev.requested_by_name || '',
-      reason: rev.reason || '',
-      decision_note: rev.decision_note || '',
-    });
-    setErrors({});
-    setEditingRev(rev);
-  };
-
-  const handleFormChange = (field, value) => {
-    setForm(prev => {
-      const next = { ...prev, [field]: value };
-      if (field === 'revised_total' || field === 'previous_total') {
-        const rev = Number(field === 'revised_total' ? value : prev.revised_total) || 0;
-        const old = Number(field === 'previous_total' ? value : prev.previous_total) || 0;
-        next.variance_amount = String(rev - old);
+  // Fetch Projects and Approved Budgets
+  useEffect(() => {
+    Promise.allSettled([
+      projectsApi.list(),
+      budgetsApi.list(),
+    ]).then(([projRes, budRes]) => {
+      if (projRes.status === 'fulfilled') {
+        const raw = projRes.value;
+        const list = Array.isArray(raw) ? raw : (raw?.data?.projects ?? raw?.projects ?? (Array.isArray(raw?.data) ? raw.data : []));
+        setProjects(Array.isArray(list) ? list : []);
       }
-      return next;
+      if (budRes.status === 'fulfilled') {
+        const raw = budRes.value;
+        const list = raw?.data?.project_budgets ?? raw?.project_budgets ?? raw?.data?.data ?? (Array.isArray(raw) ? raw : []);
+        setBudgets(Array.isArray(list) ? list : []);
+      }
     });
-    setErrors(prev => ({ ...prev, [field]: null }));
-  };
+  }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const errs = {};
-    if (!form.reason.trim()) errs.reason = 'Variance reason / justification is required';
-    if (!form.budget_id) errs.budget_id = 'Target budget is required';
+  // Fetch Revisions across budgets
+  useEffect(() => {
+    setLoading(true);
 
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
-    }
+    // Fetch revisions for all budgets or selected budget
+    budgetsApi.list()
+      .then(async (res) => {
+        const budgetList = res?.data?.project_budgets ?? res?.project_budgets ?? res?.data?.data ?? (Array.isArray(res) ? res : []);
+        const approvedBudgets = (Array.isArray(budgetList) ? budgetList : []).filter(
+          (b) => String(b.status_code || b.status_name || b.status || '').toUpperCase() === 'APPROVED' || (b.revision_count && Number(b.revision_count) > 0)
+        );
 
-    setSaving(true);
-    try {
-      const newRev = {
-        project_id: Number(form.project_id || 1),
-        budget_id: Number(form.budget_id),
-        revision_no: Number(form.revision_no || 1),
-        revision_date: form.revision_date || new Date().toISOString().split('T')[0],
-        previous_total: Number(form.previous_total || 0),
-        revised_total: Number(form.revised_total || 0),
-        variance_amount: Number(form.variance_amount || 0),
-        status_name: form.status_name || 'Pending Approval',
-        requested_by_name: form.requested_by_name || 'QS Engineer',
-        reason: form.reason.trim(),
-        decision_note: form.decision_note || '',
-      };
+        // Filter by selected budget if specific
+        const targetBudgets = filters.budget_id !== 'all'
+          ? approvedBudgets.filter((b) => String(b.id) === String(filters.budget_id))
+          : approvedBudgets;
 
-      if (editingRev?.id) {
-        await request.patch(`/budget-revisions/${editingRev.id}`, newRev);
-        toast.success('Budget revision updated.');
-      } else {
-        await request.post('/budget-revisions', newRev);
-        toast.success('Budget revision created successfully.');
+        // Fetch revisions for these target budgets in parallel
+        const revPromises = targetBudgets.map((b) =>
+          budgetsApi.revisions.list(b.id)
+            .then((r) => {
+              const list = r?.data?.budget_revisions ?? r?.budget_revisions ?? r?.data?.revisions ?? r?.revisions ?? (Array.isArray(r?.data) ? r.data : []);
+              return (Array.isArray(list) ? list : []).map((rev) => ({
+                ...rev,
+                budget_id: b.id,
+                budget_code: b.budget_code,
+                budget_name: b.budget_name,
+                project_id: b.project_id,
+                project_name: b.project_name || projects.find((p) => p.id === b.project_id)?.project_name || 'Project',
+              }));
+            })
+            .catch(() => [])
+        );
+
+        const results = await Promise.all(revPromises);
+        const flattened = results.flat().sort((a, b) => new Date(b.created_at || b.revision_date || 0) - new Date(a.created_at || a.revision_date || 0));
+        setRevisions(flattened);
+      })
+      .catch(() => setRevisions([]))
+      .finally(() => setLoading(false));
+  }, [refreshKey, filters.budget_id, projects]);
+
+  const refresh = () => setRefreshKey((k) => k + 1);
+
+  // Filter and search revisions
+  const filteredRevisions = useMemo(() => {
+    return revisions.filter((rev) => {
+      if (filters.project_id !== 'all' && String(rev.project_id) !== String(filters.project_id)) {
+        return false;
       }
-
-      fetchRevisions();
-      setIsAddOpen(false);
-      setEditingRev(null);
-    } catch (err) {
-      console.error(err);
-      toast.error(err?.message || 'Failed to save budget revision.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteRev?.id) return;
-    try {
-      await request.delete(`/budget-revisions/${deleteRev.id}`);
-      toast.success('Revision deleted.');
-      fetchRevisions();
-    } catch (error) {
-      toast.error('Failed to delete revision.');
-    } finally {
-      setDeleteRev(null);
-    }
-  };
-
-  // Filtered List
-  const filtered = useMemo(() => {
-    return revisions.filter(rev => {
-      if (selectedProjectId !== 'all' && String(rev.project_id) !== String(selectedProjectId)) return false;
-      if (selectedBudgetId !== 'all' && String(rev.budget_id) !== String(selectedBudgetId)) return false;
-      if (statusFilter !== 'all') {
-        const s = (rev.status_name || '').toLowerCase();
-        if (statusFilter === 'Approved' && !s.includes('approved')) return false;
-        if (statusFilter === 'Pending' && !s.includes('pending') && !s.includes('review')) return false;
-        if (statusFilter === 'Draft' && !s.includes('draft')) return false;
+      if (filters.status !== 'all') {
+        const s = String(rev.status_code || rev.status_name || rev.status || '').toLowerCase();
+        if (filters.status === 'draft' && !s.includes('draft')) return false;
+        if (filters.status === 'submitted' && !(s.includes('submit') || s.includes('review') || s.includes('pending'))) return false;
+        if (filters.status === 'approved' && !s.includes('approv')) return false;
+        if (filters.status === 'rejected' && !s.includes('reject')) return false;
       }
-      if (search) {
-        const q = search.toLowerCase();
-        const bCode = (rev.budget_code || '').toLowerCase();
-        const bName = (rev.budget_name || '').toLowerCase();
-        const pName = (rev.project_name || '').toLowerCase();
-        const reason = (rev.reason || '').toLowerCase();
-        if (!bCode.includes(q) && !bName.includes(q) && !pName.includes(q) && !reason.includes(q)) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const no = `rev-${String(rev.revision_no || '').padStart(2, '0')}`.toLowerCase();
+        const code = String(rev.budget_code || '').toLowerCase();
+        const name = String(rev.budget_name || '').toLowerCase();
+        const reason = String(rev.reason || '').toLowerCase();
+        const prj = String(rev.project_name || '').toLowerCase();
+        if (!no.includes(q) && !code.includes(q) && !name.includes(q) && !reason.includes(q) && !prj.includes(q)) {
+          return false;
+        }
       }
       return true;
     });
-  }, [revisions, selectedProjectId, selectedBudgetId, statusFilter, search]);
+  }, [revisions, filters, searchQuery]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
+  // KPIs
+  const kpis = useMemo(() => {
+    let draft = 0;
+    let submitted = 0;
+    let approved = 0;
+    let totalVariance = 0;
 
-  // Metrics
-  const approvedCount = useMemo(() => revisions.filter(r => (r.status_name || '').includes('Approved')).length, [revisions]);
-  const pendingCount = useMemo(() => revisions.filter(r => (r.status_name || '').includes('Pending') || (r.status_name || '').includes('Review')).length, [revisions]);
-  const netVariance = useMemo(() => revisions.reduce((acc, r) => acc + Number(r.variance_amount || 0), 0), [revisions]);
+    revisions.forEach((rev) => {
+      const s = String(rev.status_code || rev.status_name || rev.status || '').toLowerCase();
+      const variance = Number(rev.variance_amount || 0);
+      totalVariance += variance;
+      if (s.includes('draft')) draft++;
+      else if (s.includes('submit') || s.includes('pending') || s.includes('review')) submitted++;
+      else if (s.includes('approv')) approved++;
+    });
 
-  const getStatusVariant = (status) => {
-    const s = String(status || '').toLowerCase();
-    if (s.includes('approved')) return 'success';
-    if (s.includes('pending') || s.includes('review')) return 'warning';
-    if (s.includes('rejected')) return 'error';
+    return {
+      total: revisions.length,
+      draft,
+      submitted,
+      approved,
+      totalVariance,
+    };
+  }, [revisions]);
+
+  const hasActiveFilters = Boolean(
+    (filters.project_id && filters.project_id !== 'all') ||
+    (filters.budget_id && filters.budget_id !== 'all') ||
+    (filters.status && filters.status !== 'all') ||
+    searchQuery
+  );
+
+  const resetFilters = () => {
+    setFilters({ project_id: 'all', budget_id: 'all', status: 'all' });
+    setSearchQuery('');
+  };
+
+  // Status badge variant
+  const getVariant = (s) => {
+    const v = String(s || '').toUpperCase();
+    if (v.includes('APPROV')) return 'success';
+    if (v.includes('SUBMIT') || v.includes('PENDING')) return 'warning';
+    if (v.includes('REJECT')) return 'error';
     return 'neutral';
+  };
+
+  // Workflow confirmation execution
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
+    const { type, item } = confirmAction;
+    setActionSubmitting(true);
+    try {
+      if (type === 'submit') {
+        await budgetsApi.revisions.submit(item.budget_id, item.id, { comments: actionComments || undefined });
+        toast.success('Budget revision submitted for approval.');
+      } else if (type === 'approve') {
+        await budgetsApi.revisions.approve(item.budget_id, item.id, { comments: actionComments || undefined });
+        toast.success('Budget revision approved. Master baseline updated.');
+      } else if (type === 'reject') {
+        if (!actionComments.trim()) {
+          toast.error('Rejection comments are required.');
+          setActionSubmitting(false);
+          return;
+        }
+        await budgetsApi.revisions.reject(item.budget_id, item.id, { comments: actionComments });
+        toast.success('Budget revision rejected.');
+      } else if (type === 'delete') {
+        await budgetsApi.revisions.remove(item.budget_id, item.id);
+        toast.success('Budget revision deleted.');
+      }
+      setConfirmAction(null);
+      setActionComments('');
+      refresh();
+    } catch (err) {
+      toast.error(err?.message || `Failed to ${type} budget revision.`);
+    } finally {
+      setActionSubmitting(false);
+    }
   };
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'BOQ & Project Budget', href: '/budgets' },
-    { label: 'Budget Revisions' }
+    { label: 'Budget Revisions' },
   ];
 
   return (
     <PageContainer>
       <PageHeader
-        title="Budget Revisions & Variance Analysis"
+        title="Budget Revisions"
         breadcrumbs={breadcrumbs}
+        description="Track, review, and control project budget revisions, baseline adjustments, and variance impact."
       />
 
       <div className="flex flex-col gap-3 sm:gap-4 w-full">
@@ -257,473 +256,489 @@ export function BudgetRevisionsPage_Future() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard
             label="Total Revisions"
-            value={revisions.length}
+            value={kpis.total}
             status="primary"
-            icon={<GitBranch className="w-4 h-4" />}
+            icon={<Layers className="w-4 h-4" />}
           />
           <KpiCard
             label="Approved Revisions"
-            value={approvedCount}
+            value={kpis.approved}
             status="success"
             icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
-            label="Pending Review"
-            value={pendingCount}
+            label="Pending Approval"
+            value={kpis.submitted}
             status="warning"
             icon={<Clock className="w-4 h-4 text-amber-500" />}
           />
           <KpiCard
-            label="Net Cost Variance"
-            value={`+ ₹${(netVariance / 100000).toFixed(1)} L`}
-            status={netVariance > 0 ? 'warning' : 'neutral'}
-            icon={<TrendingUp className="w-4 h-4 text-red-500" />}
+            label="Net Variance Impact"
+            value={`${kpis.totalVariance >= 0 ? '+' : ''}₹${(kpis.totalVariance / 100000).toFixed(1)} L`}
+            status={kpis.totalVariance >= 0 ? 'success' : 'neutral'}
+            icon={<TrendingUp className="w-4 h-4 text-sky-500" />}
           />
         </div>
 
-        {/* Filter and Project/Budget Selector Bar */}
+        {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
           <div className="flex flex-wrap items-center gap-2 flex-1">
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:w-44">
               <Select
+                className="text-xs h-8"
                 options={[
                   { value: 'all', label: 'All Projects' },
-                  ...projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))
+                  ...projects.map((p) => ({
+                    value: String(p.id),
+                    label: `${p.project_code || 'PRJ'} - ${p.project_name || p.name}`,
+                  })),
                 ]}
-                value={selectedProjectId}
-                onChange={(val) => {
-                  setSelectedProjectId(val);
-                  setSelectedBudgetId('all');
-                }}
-                className="text-xs h-8"
+                value={filters.project_id}
+                onChange={(value) => setFilters((c) => ({ ...c, project_id: value }))}
               />
             </div>
 
             <div className="w-full sm:w-48">
               <Select
+                className="text-xs h-8"
                 options={[
                   { value: 'all', label: 'All Budgets' },
-                  ...budgets
-                    .filter(b => selectedProjectId === 'all' || String(b.project_id) === String(selectedProjectId))
-                    .map(b => ({ value: String(b.id), label: `${b.budget_code} - ${b.budget_name}` }))
+                  ...budgets.map((b) => ({
+                    value: String(b.id),
+                    label: `${b.budget_code} - ${b.budget_name || 'Budget'}`,
+                  })),
                 ]}
-                value={selectedBudgetId}
-                onChange={setSelectedBudgetId}
-                className="text-xs h-8"
+                value={filters.budget_id}
+                onChange={(value) => setFilters((c) => ({ ...c, budget_id: value }))}
               />
             </div>
 
             <div className="w-full sm:w-36">
               <Select
-                options={[
-                  { value: 'all', label: 'All Status' },
-                  { value: 'Approved', label: 'Approved' },
-                  { value: 'Pending', label: 'Pending Review' },
-                  { value: 'Draft', label: 'Draft' },
-                ]}
-                value={statusFilter}
-                onChange={setStatusFilter}
                 className="text-xs h-8"
+                options={[
+                  { value: 'all', label: 'All Statuses' },
+                  { value: 'draft', label: 'Draft' },
+                  { value: 'submitted', label: 'Pending Approval' },
+                  { value: 'approved', label: 'Approved' },
+                  { value: 'rejected', label: 'Rejected' },
+                ]}
+                value={filters.status}
+                onChange={(value) => setFilters((c) => ({ ...c, status: value }))}
               />
             </div>
 
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:w-56">
               <SearchField
-                placeholder="Search revision, reason..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search rev no, budget, reason..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-8 px-2 text-text-muted hover:text-text-primary"
+                onClick={resetFilters}
+                title="Reset all filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Reset
+              </Button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Plus className="w-3.5 h-3.5" />}
-              onClick={handleOpenAdd}
-              className="text-xs h-8 shadow-xs"
-            >
-              Request Revision
-            </Button>
+            {hasPermission('budget.revise') && (
+              <Button
+                variant="primary"
+                size="sm"
+                className="text-xs h-8 shadow-xs"
+                leftIcon={<Plus className="w-3.5 h-3.5" />}
+                onClick={() => setIsCreateOpen(true)}
+              >
+                Create Revision
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Desktop & Tablet Table (No horizontal scroll, 100% fluid) */}
-        <div className="hidden sm:block">
-          <DataTableContainer
-            pagination={
-              <Pagination
-                currentPage={page}
-                totalPages={totalPages}
-                totalItems={filtered.length}
-                itemsPerPage={perPage}
-                onPageChange={setPage}
-                onItemsPerPageChange={() => {}}
-              />
-            }
-          >
-            <table className="w-full text-left text-[12px] table-auto">
+        {/* Fluid Zero-Scroll Table - Desktop View */}
+        <div className="hidden sm:block border border-border rounded-lg overflow-hidden bg-surface shadow-xs">
+          {loading ? (
+            <div className="py-16 text-center text-text-muted text-xs">Loading budget revisions...</div>
+          ) : filteredRevisions.length === 0 ? (
+            <div className="py-16 text-center text-text-muted text-xs">
+              No budget revisions found matching the selected criteria.
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs">
               <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
                   <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2 w-28">Revision Tag</th>
-                  <th className="px-3 py-2">Budget & Project</th>
-                  <th className="px-3 py-2 hidden md:table-cell">Date & Requester</th>
-                  <th className="px-3 py-2 text-right">Previous (₹)</th>
-                  <th className="px-3 py-2 text-right">Revised (₹)</th>
-                  <th className="px-3 py-2 text-right">Variance (₹)</th>
+                  <th className="px-3 py-2">Revision</th>
+                  <th className="px-3 py-2">Parent Budget</th>
+                  <th className="px-3 py-2">Project</th>
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2">Reason / Scope</th>
+                  <th className="px-3 py-2 text-right">Previous Baseline</th>
+                  <th className="px-3 py-2 text-right">Net Variance</th>
+                  <th className="px-3 py-2 text-right">Revised Baseline</th>
                   <th className="px-3 py-2 text-center w-28">Status</th>
-                  <th className="px-3 py-2 text-center w-20">Actions</th>
+                  <th className="px-3 py-2 w-28 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {loading ? (
-                  <tr>
-                    <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      Loading budget revisions...
-                    </td>
-                  </tr>
-                ) : paged.length === 0 ? (
-                  <tr>
-                    <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      No budget revisions found matching criteria.
-                    </td>
-                  </tr>
-                ) : (
-                  paged.map((rev, idx) => {
-                    const variancePct = rev.previous_total > 0 ? ((rev.variance_amount / rev.previous_total) * 100).toFixed(1) : 0;
-                    const isPositive = Number(rev.variance_amount) > 0;
+                {filteredRevisions.map((rev, idx) => {
+                  const variance = Number(rev.variance_amount || 0);
+                  const statusStr = String(rev.status_code || rev.status_name || rev.status || 'DRAFT').toUpperCase();
+                  const isDraft = statusStr.includes('DRAFT');
+                  const isPending = statusStr.includes('SUBMIT') || statusStr.includes('PENDING') || statusStr.includes('REVIEW');
 
-                    return (
-                      <tr key={rev.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
-                        <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
-                          {(page - 1) * perPage + idx + 1}
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                              Rev-{rev.revision_no}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-text-primary text-[12px] truncate" title={rev.budget_name}>
-                              {rev.budget_name}
-                            </span>
-                            <span className="text-[10px] text-text-muted font-mono truncate">
-                              {rev.budget_code} • {rev.project_code}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 hidden md:table-cell">
-                          <div className="flex flex-col text-[11px]">
-                            <span className="text-text-primary font-mono text-[10px]">{rev.revision_date}</span>
-                            <span className="text-text-muted text-[10px] truncate">{rev.requested_by_name}</span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono text-text-secondary text-[11px]">
-                          ₹{Number(rev.previous_total || 0).toLocaleString('en-IN')}
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono font-semibold text-text-primary text-[11px]">
-                          ₹{Number(rev.revised_total || 0).toLocaleString('en-IN')}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <span className={`font-mono font-bold text-[11px] ${isPositive ? 'text-red-600' : 'text-emerald-600'}`}>
-                            {isPositive ? '+' : ''}₹{Number(rev.variance_amount || 0).toLocaleString('en-IN')} ({variancePct}%)
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <Badge
-                            variant={getStatusVariant(rev.status_name)}
-                            className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
+                  return (
+                    <tr key={rev.id || idx} className="hover:bg-surface-muted/30 transition-colors">
+                      <td className="px-3 py-2 text-center text-text-muted text-[11px]">{idx + 1}</td>
+                      <td className="px-3 py-2 font-mono font-bold text-text-primary">
+                        REV-{String(rev.revision_no || idx + 1).padStart(2, '0')}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="font-mono font-semibold text-text-primary text-[11px]">{rev.budget_code}</div>
+                        <div className="text-[11px] text-text-secondary truncate max-w-[140px]" title={rev.budget_name}>
+                          {rev.budget_name || '—'}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-text-secondary max-w-[130px] truncate" title={rev.project_name}>
+                        {rev.project_name || '—'}
+                      </td>
+                      <td className="px-3 py-2 text-text-secondary font-mono text-[11px]">
+                        {rev.revision_date ? rev.revision_date.split('T')[0] : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-text-primary max-w-xs truncate" title={rev.reason}>
+                        {rev.reason || '—'}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-text-secondary">
+                        ₹{Number(rev.previous_total || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className={`px-3 py-2 text-right font-mono font-bold ${variance > 0 ? 'text-emerald-600' : variance < 0 ? 'text-rose-600' : 'text-text-muted'}`}>
+                        {variance > 0 ? '+' : ''}₹{variance.toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-text-primary">
+                        ₹{Number(rev.revised_total || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <Badge variant={getVariant(statusStr)} className="text-[9px] font-bold uppercase tracking-wide">
+                          {rev.status_name || statusStr}
+                        </Badge>
+                      </td>
+
+                      {/* Action Menu: View and Menu dropdown */}
+                      <td className="px-3 py-2 text-center relative">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setViewingRevision({ budgetId: rev.budget_id, revisionId: rev.id })}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors font-medium"
+                            title="View Revision Details"
                           >
-                            {rev.status_name}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              title="View Revision Details"
-                              onClick={() => setViewingRev(rev)}
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View</span>
+                          </button>
+
+                          {(isDraft || isPending) && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuId(activeMenuId === rev.id ? null : rev.id);
+                              }}
+                              className="p-1 text-text-secondary hover:text-text-primary hover:bg-surface-muted rounded transition-colors"
+                              title="Actions"
                             >
-                              <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              title="Edit Revision"
-                              onClick={() => handleOpenEdit(rev)}
-                            >
-                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              title="Delete"
-                              onClick={() => setDeleteRev(rev)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
-                            </Button>
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Dropdown Menu */}
+                        {activeMenuId === rev.id && (
+                          <div
+                            ref={menuRef}
+                            className="absolute right-3 top-8 z-30 w-44 rounded-md border border-border bg-surface shadow-lg py-1 text-left animate-in fade-in zoom-in-95 duration-100"
+                          >
+                            {isDraft && hasPermission('budget.revise') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  setConfirmAction({ type: 'submit', item: rev });
+                                }}
+                                className="w-full px-3 py-1.5 text-xs text-text-primary hover:bg-surface-muted flex items-center gap-2"
+                              >
+                                <Send className="w-3.5 h-3.5 text-sky-600" />
+                                Submit Revision
+                              </button>
+                            )}
+
+                            {isPending && hasPermission('budget.approve') && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    setConfirmAction({ type: 'approve', item: rev });
+                                  }}
+                                  className="w-full px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  Approve Revision
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    setConfirmAction({ type: 'reject', item: rev });
+                                  }}
+                                  className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                                >
+                                  <XCircle className="w-3.5 h-3.5" />
+                                  Reject Revision
+                                </button>
+                              </>
+                            )}
+
+                            {isDraft && hasPermission('budget.revise') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  setConfirmAction({ type: 'delete', item: rev });
+                                }}
+                                className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 border-t border-border mt-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Delete Revision
+                              </button>
+                            )}
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-          </DataTableContainer>
+          )}
         </div>
 
         {/* Mobile View - Cards List for Phones (< sm) */}
         <div className="block sm:hidden space-y-3">
-          {paged.map((rev, idx) => (
-            <div key={rev.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="font-mono text-[10px] font-bold text-primary block">Rev-{rev.revision_no} • {rev.budget_code}</span>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{rev.budget_name}</h4>
-                </div>
-                <Badge
-                  variant={getStatusVariant(rev.status_name)}
-                  className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
-                >
-                  {rev.status_name}
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Revised Budget</span>
-                  <span className="font-mono font-bold text-text-primary text-[11px]">₹{Number(rev.revised_total || 0).toLocaleString('en-IN')}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Variance</span>
-                  <span className="font-mono font-bold text-red-600 text-[11px]">+₹{Number(rev.variance_amount || 0).toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
-                <span className="text-[10px] text-text-muted font-mono">{rev.revision_date}</span>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingRev(rev)}>
-                    <Eye className="w-3 h-3 mr-1" /> View
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleOpenEdit(rev)}>
-                    <Edit className="w-3.5 h-3.5 text-text-secondary" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setDeleteRev(rev)}>
-                    <Trash2 className="w-3.5 h-3.5 text-error" />
-                  </Button>
-                </div>
-              </div>
+          {loading ? (
+            <div className="py-12 text-center text-text-muted text-xs bg-surface border border-border rounded-lg">
+              Loading budget revisions...
             </div>
-          ))}
+          ) : filteredRevisions.length === 0 ? (
+            <div className="py-12 text-center text-text-muted text-xs bg-surface border border-border rounded-lg">
+              No budget revisions found matching the selected criteria.
+            </div>
+          ) : (
+            filteredRevisions.map((rev, idx) => {
+              const variance = Number(rev.variance_amount || 0);
+              const statusStr = String(rev.status_code || rev.status_name || rev.status || 'DRAFT').toUpperCase();
+              const isDraft = statusStr.includes('DRAFT');
+              const isPending = statusStr.includes('SUBMIT') || statusStr.includes('PENDING') || statusStr.includes('REVIEW');
 
-          {/* Mobile Pagination */}
-          <div className="pt-2">
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              totalItems={filtered.length}
-              itemsPerPage={perPage}
-              onPageChange={setPage}
-              onItemsPerPageChange={() => {}}
-            />
-          </div>
+              return (
+                <div key={rev.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+                  {/* Top Bar: Rev Code, Parent Budget & Status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-xs font-bold text-primary">
+                          REV-{String(rev.revision_no || idx + 1).padStart(2, '0')}
+                        </span>
+                        <span className="text-[10px] text-text-muted font-mono">({rev.budget_code})</span>
+                      </div>
+                      <h4 className="font-semibold text-text-primary text-[13px] leading-snug truncate" title={rev.budget_name}>
+                        {rev.budget_name || 'Untitled Budget'}
+                      </h4>
+                      <span className="text-[11px] text-text-muted block truncate">{rev.project_name || 'No Project'}</span>
+                    </div>
+                    <Badge variant={getVariant(statusStr)} className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0">
+                      {rev.status_name || statusStr}
+                    </Badge>
+                  </div>
+
+                  {/* Reason if available */}
+                  {rev.reason && (
+                    <p className="text-xs text-text-secondary bg-surface-muted/50 rounded p-2 text-[11px] italic">
+                      "{rev.reason}"
+                    </p>
+                  )}
+
+                  {/* Key Metrics Grid */}
+                  <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-border/60">
+                    <div>
+                      <span className="text-[10px] text-text-muted block">Previous</span>
+                      <span className="font-mono font-medium text-text-secondary text-[11px]">
+                        ₹{Number(rev.previous_total || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="text-center">
+                      <span className="text-[10px] text-text-muted block">Variance</span>
+                      <span className={`font-mono font-bold text-[11px] ${variance > 0 ? 'text-emerald-600' : variance < 0 ? 'text-rose-600' : 'text-text-muted'}`}>
+                        {variance > 0 ? '+' : ''}₹{variance.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-text-muted block">Revised</span>
+                      <span className="font-mono font-bold text-text-primary text-[11px]">
+                        ₹{Number(rev.revised_total || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Footer with Date & Actions */}
+                  <div className="flex flex-wrap items-center justify-between pt-2 border-t border-border/60 text-xs gap-2">
+                    <span className="text-[10px] text-text-muted font-mono">
+                      {rev.revision_date ? rev.revision_date.split('T')[0] : '—'}
+                    </span>
+                    <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[11px] px-2"
+                        onClick={() => setViewingRevision({ budgetId: rev.budget_id, revisionId: rev.id })}
+                      >
+                        <Eye className="w-3 h-3 mr-1" /> View
+                      </Button>
+
+                      {isDraft && hasPermission('budget.revise') && (
+                        <>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-7 text-[11px] px-2 text-sky-600"
+                            onClick={() => setConfirmAction({ type: 'submit', item: rev })}
+                          >
+                            <Send className="w-3 h-3 mr-1" /> Submit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[11px] px-1.5 text-rose-500 hover:text-rose-700"
+                            onClick={() => setConfirmAction({ type: 'delete', item: rev })}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
+
+                      {isPending && hasPermission('budget.approve') && (
+                        <>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-7 text-[11px] px-2 text-emerald-600"
+                            onClick={() => setConfirmAction({ type: 'approve', item: rev })}
+                          >
+                            <Check className="w-3 h-3 mr-1" /> Approve
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[11px] px-2 text-rose-600"
+                            onClick={() => setConfirmAction({ type: 'reject', item: rev })}
+                          >
+                            <XCircle className="w-3 h-3 mr-1" /> Reject
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
-      {/* View Revision Modal */}
-      {viewingRev && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <GitBranch className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-text-primary">Budget Revision #{viewingRev.revision_no}</h3>
-                  <span className="text-[11px] font-mono text-text-muted">{viewingRev.budget_code} • {viewingRev.budget_name}</span>
-                </div>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setViewingRev(null)}>✕</Button>
-            </div>
+      {/* Create Revision Modal */}
+      <BudgetRevisionFormModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSaveSuccess={(bId) => {
+          refresh();
+        }}
+      />
 
-            <div className="p-5 space-y-4 overflow-y-auto text-xs">
-              <div className="grid grid-cols-3 gap-2 bg-surface-muted/30 p-3 rounded-lg border border-border text-center">
-                <div>
-                  <span className="text-text-muted block text-[10px] uppercase font-bold">Previous Total</span>
-                  <span className="font-mono text-text-secondary">₹{Number(viewingRev.previous_total || 0).toLocaleString('en-IN')}</span>
-                </div>
-                <div>
-                  <span className="text-text-muted block text-[10px] uppercase font-bold">Revised Total</span>
-                  <span className="font-mono font-bold text-text-primary">₹{Number(viewingRev.revised_total || 0).toLocaleString('en-IN')}</span>
-                </div>
-                <div>
-                  <span className="text-text-muted block text-[10px] uppercase font-bold">Cost Delta</span>
-                  <span className="font-mono font-bold text-red-600">+₹{Number(viewingRev.variance_amount || 0).toLocaleString('en-IN')}</span>
-                </div>
-              </div>
+      {/* Revision Detail Modal */}
+      {viewingRevision && (
+        <BudgetRevisionDetailModal
+          isOpen={Boolean(viewingRevision)}
+          budgetId={viewingRevision.budgetId}
+          revisionId={viewingRevision.revisionId}
+          onClose={() => setViewingRevision(null)}
+          onRefresh={refresh}
+        />
+      )}
 
-              <div className="border border-border rounded-lg p-3 space-y-2">
-                <div>
-                  <span className="text-text-muted text-[10px] uppercase font-bold block">Justification & Scope Escalation:</span>
-                  <p className="text-text-primary bg-surface-muted/30 p-2.5 rounded border border-border/50 whitespace-pre-wrap">{viewingRev.reason}</p>
-                </div>
-                {viewingRev.decision_note && (
-                  <div className="pt-2 border-t border-border">
-                    <span className="text-text-muted text-[10px] uppercase font-bold block mb-1">Approval Decision Note:</span>
-                    <p className="text-text-secondary bg-emerald-500/5 p-2 rounded border border-emerald-500/20">{viewingRev.decision_note}</p>
-                  </div>
+      {/* Confirmation & Workflow Action Modal */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="text-sm font-bold text-text-primary capitalize">
+              {confirmAction.type === 'submit' && 'Submit Revision for Approval'}
+              {confirmAction.type === 'approve' && 'Approve Budget Revision'}
+              {confirmAction.type === 'reject' && 'Reject Budget Revision'}
+              {confirmAction.type === 'delete' && 'Delete Draft Revision'}
+            </h3>
+            <p className="text-xs text-text-secondary">
+              {confirmAction.type === 'submit' && 'Submit this revision for management review. Baseline changes will become locked until approved.'}
+              {confirmAction.type === 'approve' && 'Approving this revision will immediately recalculate and replace the active project budget baseline.'}
+              {confirmAction.type === 'reject' && 'Provide a reason for rejecting this proposed budget revision.'}
+              {confirmAction.type === 'delete' && 'Are you sure you want to delete this draft revision? This action cannot be undone.'}
+            </p>
+
+            {confirmAction.type !== 'delete' && (
+              <FormField label={confirmAction.type === 'reject' ? 'Rejection Reason (Required)' : 'Remarks (Optional)'}>
+                <textarea
+                  value={actionComments}
+                  onChange={(e) => setActionComments(e.target.value)}
+                  placeholder="Enter remarks or justification..."
+                  rows={3}
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-xs text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </FormField>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => { setConfirmAction(null); setActionComments(''); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant={confirmAction.type === 'delete' || confirmAction.type === 'reject' ? 'danger' : 'primary'}
+                size="sm"
+                className="h-8 text-xs"
+                disabled={actionSubmitting || (confirmAction.type === 'reject' && !actionComments.trim())}
+                onClick={handleConfirmAction}
+              >
+                {actionSubmitting ? 'Processing...' : (
+                  confirmAction.type === 'submit' ? 'Confirm Submit' : (confirmAction.type === 'approve' ? 'Confirm Approval' : (confirmAction.type === 'reject' ? 'Confirm Reject' : 'Confirm Delete'))
                 )}
-              </div>
-            </div>
-
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => setViewingRev(null)}>Close</Button>
+              </Button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Add / Edit Revision Modal */}
-      <EntityEditModal
-        isOpen={Boolean(isAddOpen || editingRev)}
-        onClose={() => { setIsAddOpen(false); setEditingRev(null); }}
-      >
-        <EntityEditModal.Header
-          icon={GitBranch}
-          title={editingRev ? 'Edit Budget Revision Request' : 'Request Budget Revision'}
-          subtitle="Formulate formal budget variance proposals for management approval."
-          onClose={() => { setIsAddOpen(false); setEditingRev(null); }}
-        />
-        <form id="rev-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <EntityEditModal.Body>
-            <EntityEditModal.Section title="Budget Mapping">
-              <EntityEditModal.Grid>
-                <FormField label="Parent Project" required error={errors.project_id}>
-                  <Select
-                    options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
-                    value={form.project_id}
-                    onChange={(v) => {
-                      handleFormChange('project_id', v);
-                      const b = budgets.find(item => String(item.project_id) === String(v));
-                      if (b) {
-                        handleFormChange('budget_id', String(b.id));
-                        handleFormChange('previous_total', String(b.total_amount || 0));
-                      }
-                    }}
-                  />
-                </FormField>
-
-                <FormField label="Target Budget (Approved only)" required error={errors.budget_id}>
-                  <Select
-                    options={budgets
-                      .filter(b => (!form.project_id || String(b.project_id) === String(form.project_id)) && (b.status_code === 'APPROVED' || b.status_name === 'APPROVED'))
-                      .map(b => ({ value: String(b.id), label: `${b.budget_code} - ${b.budget_name}` }))}
-                    value={form.budget_id}
-                    onChange={(v) => {
-                      handleFormChange('budget_id', v);
-                      const b = budgets.find(item => String(item.id) === String(v));
-                      if (b) handleFormChange('previous_total', String(b.total_amount || 0));
-                    }}
-                  />
-                </FormField>
-
-                <FormField label="Revision Number">
-                  <Input
-                    type="number"
-                    value={form.revision_no}
-                    onChange={(e) => handleFormChange('revision_no', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Revision Date">
-                  <Input
-                    type="date"
-                    value={form.revision_date}
-                    onChange={(e) => handleFormChange('revision_date', e.target.value)}
-                  />
-                </FormField>
-              </EntityEditModal.Grid>
-            </EntityEditModal.Section>
-
-            <EntityEditModal.Section title="Financial Variance Comparison">
-              <EntityEditModal.Grid>
-                <FormField label="Previous Baseline Budget (₹)">
-                  <Input
-                    type="number"
-                    value={form.previous_total}
-                    onChange={(e) => handleFormChange('previous_total', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Proposed Revised Budget (₹)">
-                  <Input
-                    type="number"
-                    value={form.revised_total}
-                    onChange={(e) => handleFormChange('revised_total', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Net Variance Amount (₹)" className="md:col-span-2">
-                  <Input
-                    type="number"
-                    value={form.variance_amount}
-                    readOnly
-                    className="bg-surface-muted font-bold text-red-600"
-                  />
-                </FormField>
-
-                <FormField label="Revision Reason & Justification" required className="md:col-span-2" error={errors.reason}>
-                  <Textarea
-                    rows={3}
-                    value={form.reason}
-                    onChange={(e) => handleFormChange('reason', e.target.value)}
-                    placeholder="Describe specific engineering variations, market inflation, or extra quantities required..."
-                  />
-                </FormField>
-              </EntityEditModal.Grid>
-            </EntityEditModal.Section>
-          </EntityEditModal.Body>
-
-          <EntityEditModal.Footer
-            formId="rev-form"
-            submitLabel={editingRev ? 'Update Proposal' : 'Submit Revision Proposal'}
-            onCancel={() => { setIsAddOpen(false); setEditingRev(null); }}
-            isSubmitting={saving}
-          />
-        </form>
-      </EntityEditModal>
-
-      {/* Delete Confirmation */}
-      <ConfirmDialog
-        isOpen={Boolean(deleteRev)}
-        title="Delete Revision Request"
-        message={`Are you sure you want to delete Revision #${deleteRev?.revision_no}?`}
-        variant="danger"
-        confirmLabel="Delete"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteRev(null)}
-      />
     </PageContainer>
   );
 }
 
-export function BudgetRevisionsPage() {
-  return (
-    <UnderDevelopment 
-      title="Budget Revisions" 
-      featureName="Budget Management"
-    />
-  );
-}
+export default BudgetRevisionsPage;

@@ -100,6 +100,10 @@ export function BudgetListPage() {
           filters={filters}
           onFilterChange={(name, value) => setFilters((c) => ({ ...c, [name]: value }))}
           projects={projects}
+          onReset={() => {
+            setFilters({ project_id: 'all', status: 'all' });
+            setSearchQuery('');
+          }}
         />
 
         {/* Fluid Zero-Scroll Budget Table */}

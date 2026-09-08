@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileSpreadsheet, CheckCircle2, Clock, AlertCircle, TrendingUp, IndianRupee } from 'lucide-react';
+import { FileSpreadsheet, CheckCircle2, Clock, IndianRupee } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { KpiCard } from '../../../components/composite/KpiCard';
@@ -11,7 +11,10 @@ import { boqApi, projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 export function BoqListPage() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const isAdmin = Boolean(user?.is_super_admin) || String(user?.role_name || user?.role || '').toLowerCase().includes('admin');
+  const canCreate = isAdmin || hasPermission('boq.create');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingBoq, setEditingBoq] = useState(null);
@@ -37,12 +40,12 @@ export function BoqListPage() {
         if (Array.isArray(list)) {
           let draft = 0, submitted = 0, approved = 0, totalAmount = 0;
           list.forEach((b) => {
-            const s = String(b.status_name || b.status || b.status_code || '').toLowerCase();
+            const s = String(b.status_code || b.status_name || b.status || '').toUpperCase();
             const amt = Number(b.total_amount || b.grand_total || 0);
             totalAmount += amt;
-            if (s.includes('draft')) draft++;
-            else if (s.includes('submitted') || s.includes('review') || s.includes('pending')) submitted++;
-            else if (s.includes('approved')) approved++;
+            if (s.includes('DRAFT')) draft++;
+            else if (s.includes('REVIEW') || s.includes('SUBMITTED') || s.includes('PENDING')) submitted++;
+            else if (s.includes('APPROVED')) approved++;
           });
           setKpis({ total: list.length, draft, submitted, approved, totalAmount });
         }
@@ -58,9 +61,28 @@ export function BoqListPage() {
 
   const refresh = () => setRefreshKey((v) => v + 1);
 
+  const handleResetFilters = () => {
+    setFilters({ project_id: 'all', status: 'all' });
+    setSearchQuery('');
+  };
+
+  const formatTotalKpi = (amount) => {
+    if (amount >= 10000000) {
+      return `₹${(amount / 10000000).toFixed(2)} Cr`;
+    }
+    if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(2)} L`;
+    }
+    return `₹${Number(amount || 0).toLocaleString('en-IN')}`;
+  };
+
   return (
     <PageContainer>
-      <PageHeader title="BOQ Register" breadcrumbs={breadcrumbs} />
+      <PageHeader
+        title="BOQ Register"
+        breadcrumbs={breadcrumbs}
+        description="Master register of Bill of Quantities (BOQs) across projects with revision controls and approval workflows."
+      />
 
       <div className="flex flex-col gap-3 sm:gap-4 w-full">
         {/* Top-aligned KPI Summary Ribbon */}
@@ -84,8 +106,8 @@ export function BoqListPage() {
             icon={<Clock className="w-4 h-4 text-amber-500" />}
           />
           <KpiCard
-            label="Total Value"
-            value={`₹${(kpis.totalAmount / 100000).toFixed(1)} L`}
+            label="Total BOQ Value"
+            value={formatTotalKpi(kpis.totalAmount)}
             status="neutral"
             icon={<IndianRupee className="w-4 h-4 text-sky-500" />}
           />
@@ -96,10 +118,11 @@ export function BoqListPage() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onAdd={() => setIsAddOpen(true)}
-          canCreate={hasPermission('boq.create')}
+          canCreate={canCreate}
           filters={filters}
           onFilterChange={(name, value) => setFilters((c) => ({ ...c, [name]: value }))}
           projects={projects}
+          onReset={handleResetFilters}
         />
 
         {/* Fluid Zero-Scroll BOQ Table */}
@@ -119,3 +142,5 @@ export function BoqListPage() {
     </PageContainer>
   );
 }
+
+export default BoqListPage;

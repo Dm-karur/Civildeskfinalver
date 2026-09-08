@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Plus, RotateCcw } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { SearchField } from '../../../components/composite/SearchField';
@@ -11,10 +11,18 @@ export function BoqFilterBar({
   filters,
   onFilterChange,
   projects = [],
+  onReset,
 }) {
+  const hasActiveFilters = Boolean(
+    (filters.project_id && filters.project_id !== 'all') ||
+    (filters.status && filters.status !== 'all') ||
+    searchQuery
+  );
+
   return (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
       <div className="flex flex-wrap items-center gap-2 flex-1">
+        {/* Project Selector */}
         <div className="w-full sm:w-48">
           <Select
             className="text-xs h-8"
@@ -30,29 +38,44 @@ export function BoqFilterBar({
           />
         </div>
 
+        {/* Status Selector */}
         <div className="w-full sm:w-36">
           <Select
             className="text-xs h-8"
             options={[
-              { value: 'all', label: 'All Status' },
-              { value: 'approved', label: 'Approved' },
-              { value: 'review', label: 'Under Review' },
-              { value: 'submitted', label: 'Submitted' },
+              { value: 'all', label: 'All Statuses' },
               { value: 'draft', label: 'Draft' },
+              { value: 'under_review', label: 'Under Review' },
+              { value: 'approved', label: 'Approved' },
               { value: 'rejected', label: 'Rejected' },
             ]}
-            value={filters.status}
+            value={filters.status || 'all'}
             onChange={(value) => onFilterChange('status', value)}
           />
         </div>
 
-        <div className="w-full sm:w-56">
+        {/* Search */}
+        <div className="w-full sm:w-60">
           <SearchField
-            placeholder="Search BOQ code, name, project..."
+            placeholder="Search code, name, project..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
+
+        {/* Reset Filter Button */}
+        {hasActiveFilters && onReset && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs h-8 px-2 text-text-muted hover:text-text-primary"
+            onClick={onReset}
+            title="Reset all filters"
+          >
+            <RotateCcw className="w-3.5 h-3.5 mr-1" />
+            Reset
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-2 justify-end">
@@ -71,3 +94,5 @@ export function BoqFilterBar({
     </div>
   );
 }
+
+export default BoqFilterBar;

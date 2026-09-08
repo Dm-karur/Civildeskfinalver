@@ -147,46 +147,106 @@ export function PlannedRatesPage() {
             Please select a Project and BOQ to begin rate analysis.
           </div>
         ) : (
-          <DataTableContainer
-            pagination={
-              <Pagination currentPage={page} totalPages={totalPages} totalItems={filtered.length} itemsPerPage={perPage} onPageChange={setPage} onItemsPerPageChange={() => {}} />
-            }
-          >
-            <table className="w-full text-left text-[12px] table-auto">
-              <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border">
-                <tr>
-                  <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2 w-28">Item Code</th>
-                  <th className="px-3 py-2">Item Description</th>
-                  <th className="px-3 py-2 w-20 text-center">UOM</th>
-                  <th className="px-3 py-2 w-24 text-right">Quantity</th>
-                  <th className="px-3 py-2 w-32 text-right">Current Rate (₹)</th>
-                  <th className="px-3 py-2 w-32 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {paged.length === 0 ? (
-                  <tr><td colSpan={7} className="px-3 py-4 text-center text-text-secondary italic">No items found matching the current filters.</td></tr>
-                ) : paged.map((itm, index) => (
-                  <tr key={itm.id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-3 py-2 text-center text-text-secondary">{(page - 1) * perPage + index + 1}</td>
-                    <td className="px-3 py-2 font-medium text-white">{itm.item_code}</td>
-                    <td className="px-3 py-2 text-text-secondary truncate max-w-[200px]" title={itm.item_name}>{itm.item_name}</td>
-                    <td className="px-3 py-2 text-center">
-                      <span className="px-1.5 py-0.5 rounded-sm bg-white/5 border border-border/50 text-[10px] text-text-secondary">{itm.uom_name || 'Units'}</span>
-                    </td>
-                    <td className="px-3 py-2 text-right text-emerald-400 font-medium">{Number(itm.quantity || 0).toLocaleString('en-IN')}</td>
-                    <td className="px-3 py-2 text-right text-amber-400 font-medium">{Number(itm.rate || 0).toLocaleString('en-IN')}</td>
-                    <td className="px-3 py-2 text-right">
-                      <Button variant="secondary" size="xs" onClick={() => setRateModalItem(itm)} leftIcon={<Calculator className="w-3.5 h-3.5" />}>
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden sm:block">
+              <DataTableContainer
+                pagination={
+                  <Pagination currentPage={page} totalPages={totalPages} totalItems={filtered.length} itemsPerPage={perPage} onPageChange={setPage} onItemsPerPageChange={() => {}} />
+                }
+              >
+                <table className="w-full text-left text-[12px] table-auto">
+                  <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border">
+                    <tr>
+                      <th className="px-3 py-2 w-10 text-center">#</th>
+                      <th className="px-3 py-2 w-28">Item Code</th>
+                      <th className="px-3 py-2">Item Description</th>
+                      <th className="px-3 py-2 w-20 text-center">UOM</th>
+                      <th className="px-3 py-2 w-24 text-right">Quantity</th>
+                      <th className="px-3 py-2 w-32 text-right">Current Rate (₹)</th>
+                      <th className="px-3 py-2 w-32 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {paged.length === 0 ? (
+                      <tr><td colSpan={7} className="px-3 py-4 text-center text-text-secondary italic">No items found matching the current filters.</td></tr>
+                    ) : paged.map((itm, index) => (
+                      <tr key={itm.id} className="hover:bg-white/5 transition-colors">
+                        <td className="px-3 py-2 text-center text-text-secondary">{(page - 1) * perPage + index + 1}</td>
+                        <td className="px-3 py-2 font-medium text-white">{itm.item_code}</td>
+                        <td className="px-3 py-2 text-text-secondary truncate max-w-[200px]" title={itm.item_name}>{itm.item_name}</td>
+                        <td className="px-3 py-2 text-center">
+                          <span className="px-1.5 py-0.5 rounded-sm bg-white/5 border border-border/50 text-[10px] text-text-secondary">{itm.uom_name || 'Units'}</span>
+                        </td>
+                        <td className="px-3 py-2 text-right text-emerald-400 font-medium">{Number(itm.quantity || 0).toLocaleString('en-IN')}</td>
+                        <td className="px-3 py-2 text-right text-amber-400 font-medium">{Number(itm.rate || 0).toLocaleString('en-IN')}</td>
+                        <td className="px-3 py-2 text-right">
+                          <Button variant="secondary" size="xs" onClick={() => setRateModalItem(itm)} leftIcon={<Calculator className="w-3.5 h-3.5" />}>
+                            Manage Rates
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </DataTableContainer>
+            </div>
+
+            {/* Mobile View - Cards List for Phones (< sm) */}
+            <div className="block sm:hidden space-y-3">
+              {loading ? (
+                <div className="py-12 text-center text-text-muted text-xs bg-surface border border-border rounded-lg">
+                  Loading items...
+                </div>
+              ) : paged.length === 0 ? (
+                <div className="p-8 text-center text-text-secondary border border-border rounded-lg bg-surface text-xs italic">
+                  No items found matching the current filters.
+                </div>
+              ) : (
+                paged.map((itm) => (
+                  <div key={itm.id} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="font-mono text-[10px] font-bold text-primary block">{itm.item_code}</span>
+                        <h4 className="font-semibold text-text-primary text-[13px] leading-snug" title={itm.item_name}>
+                          {itm.item_name}
+                        </h4>
+                      </div>
+                      <span className="px-1.5 py-0.5 rounded-sm bg-white/5 border border-border/50 text-[10px] text-text-secondary shrink-0">
+                        {itm.uom_name || 'Units'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-border/60">
+                      <div>
+                        <span className="text-[10px] text-text-muted block">Quantity</span>
+                        <span className="font-mono font-medium text-emerald-400">{Number(itm.quantity || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-text-muted block">Current Rate</span>
+                        <span className="font-mono font-bold text-amber-400">₹{Number(itm.rate || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end pt-2 border-t border-border/60">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-7 text-xs px-2.5"
+                        onClick={() => setRateModalItem(itm)}
+                        leftIcon={<Calculator className="w-3.5 h-3.5" />}
+                      >
                         Manage Rates
                       </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </DataTableContainer>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div className="pt-2">
+                <Pagination currentPage={page} totalPages={totalPages} totalItems={filtered.length} itemsPerPage={perPage} onPageChange={setPage} onItemsPerPageChange={() => {}} />
+              </div>
+            </div>
+          </>
         )}
       </div>
 
