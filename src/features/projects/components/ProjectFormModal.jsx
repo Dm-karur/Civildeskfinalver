@@ -7,6 +7,7 @@ import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Textarea } from '../../../components/ui/Textarea';
 import { toast } from '../../../components/composite/Toast';
+import { generateProjectCode } from '../pages/ProjectCreatePage';
 
 const EMPTY_FORM = {
   project_code: '',
@@ -56,17 +57,33 @@ export function ProjectFormModal({ isOpen, project = null, onClose, onSaveSucces
       priority_id: String(project.priority_id ?? ''),
       branch_id: String(project.branch_id ?? ''),
       financial_year_id: String(project.financial_year_id ?? ''),
-    } : EMPTY_FORM);
+    } : {
+      ...EMPTY_FORM,
+      project_code: generateProjectCode([]),
+    });
     setErrors({});
     setLoadingMasters(true);
-    Promise.all([mastersApi.all(), clientsApi.list(), branchesApi.list()])
-      .then(([masterResponse, clientResponse, branchResponse]) => {
+    Promise.all([
+      mastersApi.all(),
+      clientsApi.list(),
+      branchesApi.list(),
+      projectsApi.list().catch(() => ({ data: [] })),
+    ])
+      .then(([masterResponse, clientResponse, branchResponse, projectResponse]) => {
         const masterData = masterResponse?.data ?? masterResponse ?? {};
         const clientList = clientResponse?.data?.clients ?? clientResponse?.clients ?? [];
         const branchList = branchResponse?.data?.branches ?? branchResponse?.branches ?? [];
+        const projectList = projectResponse?.data?.projects ?? projectResponse?.projects ?? (Array.isArray(projectResponse?.data) ? projectResponse.data : (Array.isArray(projectResponse) ? projectResponse : []));
         setMasters(masterData);
         setClients(Array.isArray(clientList) ? clientList : []);
         setBranches(Array.isArray(branchList) ? branchList : []);
+        if (!project) {
+          const autoCode = generateProjectCode(projectList);
+          setForm((prev) => ({
+            ...prev,
+            project_code: prev.project_code && prev.project_code !== generateProjectCode([]) ? prev.project_code : autoCode,
+          }));
+        }
       })
       .catch((error) => toast.error(error?.message || 'Unable to load project master data.'))
       .finally(() => setLoadingMasters(false));
@@ -141,7 +158,14 @@ export function ProjectFormModal({ isOpen, project = null, onClose, onSaveSucces
         <EntityEditModal.Body>
           <EntityEditModal.Section title="Project identity">
             <EntityEditModal.Grid>
-              <FormField label="Project Code" required error={errors.project_code}><Input value={form.project_code} onChange={(e) => change('project_code', e.target.value)} placeholder="PRJ-2026-001" /></FormField>
+              <FormField label="Project Code" required error={errors.project_code}>
+                <Input
+                  value={form.project_code}
+                  readOnly
+                  className="bg-surface-muted/60 cursor-not-allowed font-mono font-semibold text-primary select-all"
+                  placeholder={`PRJ-${new Date().getFullYear()}-001`}
+                />
+              </FormField>
               <FormField label="Project Name" required error={errors.project_name}><Input value={form.project_name} onChange={(e) => change('project_name', e.target.value)} /></FormField>
               <FormField label="Client" required error={errors.client_id}><Select value={form.client_id} onChange={(value) => change('client_id', value)} options={options(clients, ['client_name', 'name'])} placeholder="Select client" /></FormField>
               <FormField label="Branch" error={errors.branch_id}><Select value={form.branch_id} onChange={(value) => change('branch_id', value)} options={options(branches, ['branch_name', 'name'])} placeholder="Select branch" /></FormField>

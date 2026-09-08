@@ -16,6 +16,67 @@ import { Input } from '../../../components/ui/Input';
 import { FormField } from '../../../components/composite/FormField';
 import { toast } from '../../../components/composite/Toast';
 
+const INITIAL_SUBCONTRACTORS = [
+  {
+    id: 1,
+    contractor_code: 'SUB-2026-001',
+    contractor_name: 'sanjay',
+    phone: '-',
+    subcontractor_type_id: '1',
+    subcontractor_type_label: 'SUB-MAIS - Maistry',
+    is_active: true,
+  },
+  {
+    id: 2,
+    contractor_code: 'SUB-2026-002',
+    contractor_name: 'Murugan Carpentry',
+    phone: '9876543210',
+    subcontractor_type_id: '2',
+    subcontractor_type_label: 'SUB-CARP - Carpenter',
+    is_active: true,
+  },
+  {
+    id: 3,
+    contractor_code: 'SUB-2026-003',
+    contractor_name: 'Velu Centering Works',
+    phone: '9842112233',
+    subcontractor_type_id: '3',
+    subcontractor_type_label: 'SUB-CENT - Centering',
+    is_active: true,
+  },
+  {
+    id: 4,
+    contractor_code: 'SUB-2026-004',
+    contractor_name: 'Raja Bar Bending',
+    phone: '9944556677',
+    subcontractor_type_id: '4',
+    subcontractor_type_label: 'SUB-BAR - Bar Bender',
+    is_active: true,
+  },
+];
+
+const INITIAL_SUBCONTRACTOR_TEMPLATES = [
+  // Templates for Maistry (type_id: 1) - matches user requirements
+  { id: 1, type_id: 1, classification: 'Labour', description: 'MM', trade_category: 'Maistry', uom: 'Shift', default_rate: '500', is_active: true, calculate_maistry: false },
+  { id: 2, type_id: 1, classification: 'Labour', description: 'FM', trade_category: 'Maistry', uom: 'Shift', default_rate: '500', is_active: true, calculate_maistry: false },
+  { id: 3, type_id: 1, classification: 'Equipment', description: 'Concrete Mixer', trade_category: 'Maistry', uom: 'Shift', default_rate: '1000', is_active: true, calculate_maistry: false },
+
+  // Templates for Carpenter (type_id: 2)
+  { id: 4, type_id: 2, classification: 'Labour', description: 'Lead Carpenter', trade_category: 'Carpenter', uom: 'Shift', default_rate: '900', is_active: true, calculate_maistry: false },
+  { id: 5, type_id: 2, classification: 'Labour', description: 'Assistant Carpenter', trade_category: 'Carpenter', uom: 'Shift', default_rate: '650', is_active: true, calculate_maistry: false },
+  { id: 6, type_id: 2, classification: 'Equipment', description: 'Wood Cutting Machine', trade_category: 'Carpenter', uom: 'Shift', default_rate: '450', is_active: true, calculate_maistry: false },
+
+  // Templates for Centering (type_id: 3)
+  { id: 7, type_id: 3, classification: 'Labour', description: 'Centering Mestri', trade_category: 'Centering', uom: 'Shift', default_rate: '850', is_active: true, calculate_maistry: false },
+  { id: 8, type_id: 3, classification: 'Labour', description: 'Centering Helper', trade_category: 'Centering', uom: 'Shift', default_rate: '550', is_active: true, calculate_maistry: false },
+  { id: 9, type_id: 3, classification: 'Equipment', description: 'Scaffolding & Props Set', trade_category: 'Centering', uom: 'Shift', default_rate: '1200', is_active: true, calculate_maistry: false },
+
+  // Templates for Bar Bender (type_id: 4)
+  { id: 10, type_id: 4, classification: 'Labour', description: 'Bar Bender Skilled', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '850', is_active: true, calculate_maistry: false },
+  { id: 11, type_id: 4, classification: 'Labour', description: 'Bar Bender Helper', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '550', is_active: true, calculate_maistry: false },
+  { id: 12, type_id: 4, classification: 'Equipment', description: 'Rebar Bending & Cutting Unit', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '800', is_active: true, calculate_maistry: false },
+];
+
 const MOCK_SITES = [
   { id: 1, site_code: 'GOW783', site_name: 'gowtham site 1', project_code: 'GOW-001', project_name: 'gowtham sweets', site_type: 'Main Site', location: 'Site Area', incharge: 'ram', status: 'PLANNED' },
   { id: 2, site_code: 'SITE-020', site_name: 'Gowtham Tea stall', project_code: 'GOW-001', project_name: 'gowtham sweets', site_type: 'Remote Site', location: 'Site Area', incharge: 'Assigned Lead', status: 'ACTIVE' },
@@ -29,16 +90,16 @@ export function DailyWagesPage() {
   const [page, setPage] = useState(1);
   const perPage = 10;
 
-  // Add Wages Form State
-  const [selectedSite, setSelectedSite] = useState(null);
+  // Add Wages Form State - Defaults to first site and sanjay for immediate development preview
+  const [selectedSite, setSelectedSite] = useState(() => MOCK_SITES[0]);
   const [viewingSite, setViewingSite] = useState(null);
-  const [subcontractors, setSubcontractors] = useState([]);
-  const [templates, setTemplates] = useState([]);
-  const [selectedSubcontractorId, setSelectedSubcontractorId] = useState('');
+  const [subcontractors, setSubcontractors] = useState(INITIAL_SUBCONTRACTORS);
+  const [templates, setTemplates] = useState(INITIAL_SUBCONTRACTOR_TEMPLATES);
+  const [selectedSubcontractorId, setSelectedSubcontractorId] = useState('1');
   const [wageDate, setWageDate] = useState(() => new Date().toISOString().split('T')[0]);
   
   const [wageEntries, setWageEntries] = useState({});
-  const [wageRates, setWageRates] = useState({});
+  const [wageRates, setWageRates] = useState({ 1: '500', 2: '500', 3: '1000' });
   const [wageRemarks, setWageRemarks] = useState({});
   const [globalRemarks, setGlobalRemarks] = useState('');
   const [customItems, setCustomItems] = useState([]);
@@ -50,24 +111,42 @@ export function DailyWagesPage() {
 
   useEffect(() => {
     try {
-      const subs = JSON.parse(localStorage.getItem('mock_subcontractors_master') || '[]');
-      setSubcontractors(subs);
-      const tmpl = JSON.parse(localStorage.getItem('mock_subcontractor_templates') || '[]');
-      setTemplates(tmpl);
+      const savedSubs = localStorage.getItem('mock_subcontractors_master');
+      const parsedSubs = savedSubs ? JSON.parse(savedSubs) : null;
+      let finalSubs = INITIAL_SUBCONTRACTORS;
+      if (parsedSubs && Array.isArray(parsedSubs) && parsedSubs.length > 0) {
+        const existingIds = new Set(parsedSubs.map(p => String(p.id)));
+        const missing = INITIAL_SUBCONTRACTORS.filter(init => !existingIds.has(String(init.id)));
+        finalSubs = missing.length > 0 ? [...parsedSubs, ...missing] : parsedSubs;
+      }
+      setSubcontractors(finalSubs);
+      localStorage.setItem('mock_subcontractors_master', JSON.stringify(finalSubs));
+
+      const savedTmpl = localStorage.getItem('mock_subcontractor_templates');
+      const parsedTmpl = savedTmpl ? JSON.parse(savedTmpl) : null;
+      let finalTmpl = INITIAL_SUBCONTRACTOR_TEMPLATES;
+      if (parsedTmpl && Array.isArray(parsedTmpl) && parsedTmpl.length > 0) {
+        const existingIds = new Set(parsedTmpl.map(p => String(p.id)));
+        const missing = INITIAL_SUBCONTRACTOR_TEMPLATES.filter(init => !existingIds.has(String(init.id)));
+        finalTmpl = missing.length > 0 ? [...parsedTmpl, ...missing] : parsedTmpl;
+      }
+      setTemplates(finalTmpl);
+      localStorage.setItem('mock_subcontractor_templates', JSON.stringify(finalTmpl));
+
       const wages = JSON.parse(localStorage.getItem('mock_daily_wages') || '[]');
       setDailyWagesList(wages);
     } catch {
-      setSubcontractors([]);
-      setTemplates([]);
+      setSubcontractors(INITIAL_SUBCONTRACTORS);
+      setTemplates(INITIAL_SUBCONTRACTOR_TEMPLATES);
       setDailyWagesList([]);
     }
   }, []);
 
   const handleOpenWages = (site) => {
     setSelectedSite(site);
-    setSelectedSubcontractorId('');
+    setSelectedSubcontractorId('1');
     setWageEntries({});
-    setWageRates({});
+    setWageRates({ 1: '500', 2: '500', 3: '1000' });
     setWageRemarks({});
     setGlobalRemarks('');
     setCustomItems([]);
@@ -83,7 +162,7 @@ export function DailyWagesPage() {
   const selectedSub = subcontractors.find(s => String(s.id) === String(selectedSubcontractorId));
   const availableTemplates = useMemo(() => {
     if (!selectedSub) return [];
-    return templates.filter(t => String(t.type_id) === String(selectedSub.subcontractor_type_id) && t.is_active);
+    return templates.filter(t => String(t.type_id) === String(selectedSub.subcontractor_type_id) && Boolean(t.is_active));
   }, [selectedSub, templates]);
 
   // Set default rates when subcontractor changes
@@ -354,41 +433,41 @@ export function DailyWagesPage() {
   if (selectedSite) {
     return (
       <PageContainer>
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
           <button 
             onClick={handleCloseWages}
-            className="p-2 -ml-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-muted transition-colors"
+            className="p-1.5 sm:p-2 -ml-1 sm:-ml-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-muted transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-text-primary">Submit Daily Wages</h1>
-            <p className="text-[13px] text-text-secondary">For {selectedSite.site_name}</p>
+            <h1 className="text-lg sm:text-xl font-bold text-text-primary">Submit Daily Wages</h1>
+            <p className="text-xs sm:text-[13px] text-text-secondary">For {selectedSite.site_name}</p>
           </div>
         </div>
 
         <div className="bg-surface rounded-xl border border-border shadow-sm flex flex-col w-full mb-8">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border bg-primary/5 rounded-t-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center text-primary shadow-sm border border-border">
-                <FileText className="w-5 h-5" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-6 border-b border-border bg-primary/5 rounded-t-xl">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-surface flex items-center justify-center text-primary shadow-sm border border-border shrink-0">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-text-primary">New Daily Entry</h2>
-                <p className="text-[13px] text-text-secondary">Select subcontractor & date to auto-load trade items</p>
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-bold text-text-primary leading-tight">New Daily Entry</h2>
+                <p className="text-xs sm:text-[13px] text-text-secondary mt-0.5">Select subcontractor & date to auto-load trade items</p>
               </div>
             </div>
-            <Badge variant="success" className="bg-emerald-100 text-emerald-800 border-emerald-200 gap-1.5 px-3 py-1.5 shadow-sm font-bold">
+            <Badge variant="success" className="bg-emerald-100 text-emerald-800 border-emerald-200 gap-1.5 px-2.5 py-1 text-xs self-start sm:self-auto shadow-sm font-bold shrink-0">
               <Tag className="w-3.5 h-3.5" />
               {availableTemplates.length} items loaded
             </Badge>
           </div>
 
           <form onSubmit={handleSubmitWages} className="flex flex-col flex-1">
-            <div className="p-4 sm:p-6 space-y-6">
+            <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6">
               {/* Form Controls */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <FormField label="SUBCONTRACTOR" required>
                   <Select
                     leftIcon={<Search className="w-4 h-4 text-text-muted" />}
@@ -419,7 +498,7 @@ export function DailyWagesPage() {
                       type="date"
                       value={wageDate}
                       onChange={(e) => setWageDate(e.target.value)}
-                      className="w-full pl-10 h-11 border-2 focus:border-primary font-medium"
+                      className="w-full pl-10 h-10 sm:h-11 border-2 focus:border-primary font-medium text-xs sm:text-sm"
                     />
                     <Calendar className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
@@ -427,29 +506,30 @@ export function DailyWagesPage() {
               </div>
               
               {selectedSubcontractorId && (
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3.5 flex items-center gap-2.5 text-[13px] text-primary shadow-sm">
-                  <CheckCircle2 className="w-4.5 h-4.5" />
-                  <span className="font-semibold">Trade: {selectedSub?.subcontractor_type_label}</span>
-                  <span className="text-primary/70 px-1">•</span>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 sm:p-3.5 flex flex-wrap items-center gap-2 text-xs sm:text-[13px] text-primary shadow-sm">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span className="font-semibold">Trade: {selectedSub?.subcontractor_type_label || 'General'}</span>
+                  <span className="text-primary/70">•</span>
                   <span className="font-medium">{availableTemplates.length} trade items auto-loaded</span>
                 </div>
               )}
 
               {/* Filters & Table section */}
               {selectedSubcontractorId && (
-                <div className="space-y-4 pt-4 border-t border-border">
-                  <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
-                    <div className="w-full lg:w-96">
+                <div className="space-y-4 pt-3 sm:pt-4 border-t border-border">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div className="w-full sm:w-80">
                       <SearchField
                         placeholder="Filter loaded items (e.g. Mason, Tea)..."
                         value={itemSearch}
                         onChange={(e) => setItemSearch(e.target.value)}
-                        className="h-10"
+                        className="h-9 sm:h-10 text-xs sm:text-sm"
                       />
                     </div>
                   </div>
 
-                  <div className="border border-border rounded-xl overflow-x-auto shadow-sm">
+                  {/* Desktop Table View */}
+                  <div className="hidden sm:block border border-border rounded-xl overflow-x-auto shadow-sm">
                     <table className="w-full text-left text-[12px] table-fixed">
                       <thead className="bg-surface-muted text-text-secondary text-[10px] uppercase font-bold border-b border-border tracking-wider">
                         <tr>
@@ -582,20 +662,167 @@ export function DailyWagesPage() {
                       </tfoot>
                     </table>
                   </div>
+
+                  {/* Mobile Cards View (< sm) */}
+                  <div className="block sm:hidden space-y-3">
+                    {filteredTemplates.length === 0 ? (
+                      <div className="p-6 text-center text-text-muted text-xs bg-surface border border-border rounded-xl">
+                        No items found.
+                      </div>
+                    ) : (
+                      filteredTemplates.map((t, idx) => {
+                        const qty = Number(wageEntries[t.id] || 0);
+                        const rate = Number(wageRates[t.id] !== undefined ? wageRates[t.id] : (t.default_rate || 0));
+                        const amount = qty * rate;
+                        const isExpense = t.classification === 'Expense' || t.classification === 'Expenses';
+                        const isEquipment = t.classification === 'Equipment';
+                        const badgeColors = isExpense ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                                            isEquipment ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                            'bg-indigo-100 text-indigo-800 border-indigo-200';
+
+                        return (
+                          <div key={t.id} className="bg-surface border border-border rounded-xl p-3.5 shadow-xs space-y-3">
+                            {/* Card Header: #, Name, Classification Badge, Remove */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2 flex-1 min-w-0">
+                                <span className="w-5 h-5 rounded-full bg-surface-muted text-text-secondary font-mono text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                                  {idx + 1}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  {t.isCustom ? (
+                                    <Input 
+                                      value={t.description} 
+                                      onChange={(e) => handleCustomItemChange(t.id, 'description', e.target.value)}
+                                      className="h-8 text-[12px] font-bold w-full"
+                                      placeholder="Item Name"
+                                    />
+                                  ) : (
+                                    <h4 className="font-bold text-text-primary text-[13px] leading-snug">{t.description}</h4>
+                                  )}
+                                  
+                                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    {t.isCustom ? (
+                                      <Select 
+                                        value={t.classification}
+                                        onChange={(val) => handleCustomItemChange(t.id, 'classification', val)}
+                                        options={[
+                                          {value: 'Manpower', label: 'Manpower'},
+                                          {value: 'Equipment', label: 'Equipment'},
+                                          {value: 'Expense', label: 'Expense'}
+                                        ]}
+                                        className="h-7 text-[10px] w-28"
+                                      />
+                                    ) : (
+                                      <Badge className={`text-[8px] uppercase tracking-wider font-bold gap-1 py-0.5 px-1.5 ${badgeColors}`}>
+                                        {isExpense ? <Wallet className="w-2.5 h-2.5" /> : (isEquipment ? <Building2 className="w-2.5 h-2.5" /> : <UserCircle className="w-2.5 h-2.5" />)}
+                                        {t.classification}
+                                      </Badge>
+                                    )}
+                                    <span className="text-[10px] text-text-secondary bg-surface-muted px-1.5 py-0.5 rounded border border-border">
+                                      {t.isCustom ? (
+                                        <input 
+                                          value={t.uom} 
+                                          onChange={(e) => handleCustomItemChange(t.id, 'uom', e.target.value)}
+                                          className="w-12 bg-transparent text-center font-medium"
+                                          placeholder="Unit"
+                                        />
+                                      ) : `Unit: ${t.uom}`}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <button 
+                                type="button" 
+                                onClick={() => handleRemoveItem(t.id, t.isCustom)}
+                                className="p-1.5 text-text-muted hover:text-red-600 hover:bg-red-50 rounded-md transition-colors shrink-0"
+                                title="Clear / Remove"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            {/* Qty, Rate, Amount Inputs Grid */}
+                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/60">
+                              <div>
+                                <label className="block text-[10px] uppercase font-bold text-text-secondary mb-1">
+                                  Qty
+                                </label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  className="h-9 text-center font-bold text-xs"
+                                  placeholder="0"
+                                  value={wageEntries[t.id] || ''}
+                                  onChange={(e) => setWageEntries(prev => ({ ...prev, [t.id]: e.target.value }))}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] uppercase font-bold text-text-secondary mb-1">
+                                  Rate (₹)
+                                </label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  className="h-9 text-center font-medium text-xs"
+                                  placeholder="0"
+                                  value={wageRates[t.id] !== undefined ? wageRates[t.id] : (t.default_rate || '')}
+                                  onChange={(e) => setWageRates(prev => ({ ...prev, [t.id]: e.target.value }))}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] uppercase font-bold text-text-secondary mb-1">
+                                  Amount (₹)
+                                </label>
+                                <div className="h-9 flex items-center justify-center font-bold text-xs bg-surface-muted/60 rounded-md border border-border text-text-primary">
+                                  ₹{amount > 0 ? amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Remarks Input */}
+                            <div className="pt-1">
+                              <Input
+                                className="h-8 text-[11px]"
+                                placeholder="Remarks (optional)..."
+                                value={wageRemarks[t.id] || ''}
+                                onChange={(e) => setWageRemarks(prev => ({ ...prev, [t.id]: e.target.value }))}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+
+                    {/* Mobile Grand Total Card */}
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-text-secondary block">Grand Total</span>
+                        <span className="text-xs text-text-muted font-medium">{filledItemsCount} items filled</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-lg font-black text-emerald-600">
+                          ₹{totalWages.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                   
                   <div className="pt-2">
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddCustomItem} className="gap-2 text-primary border-primary/30 hover:bg-primary/5 font-semibold shadow-sm">
-                      <Plus className="w-4 h-4" />
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddCustomItem} className="gap-2 text-primary border-primary/30 hover:bg-primary/5 font-semibold shadow-sm text-xs">
+                      <Plus className="w-3.5 h-3.5" />
                       Add Custom Item
                     </Button>
                   </div>
                   
-                  <div className="pt-4">
-                    <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-2">
+                  <div className="pt-2 sm:pt-4">
+                    <label className="block text-[10px] sm:text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1.5 sm:mb-2">
                       REMARKS (OPTIONAL)
                     </label>
                     <textarea 
-                      className="w-full min-h-[80px] rounded-lg border border-border bg-surface p-3.5 text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-y shadow-sm"
+                      className="w-full min-h-[70px] sm:min-h-[80px] rounded-lg border border-border bg-surface p-3 text-xs sm:text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-y shadow-sm"
                       placeholder="Any additional site notes for the day..."
                       value={globalRemarks}
                       onChange={(e) => setGlobalRemarks(e.target.value)}
@@ -606,18 +833,18 @@ export function DailyWagesPage() {
             </div>
             
             {/* Footer */}
-            <div className="mt-auto border-t border-border bg-surface-muted/30 px-4 sm:px-6 py-4 flex items-center justify-between rounded-b-xl">
-              <div className="text-[13px] font-semibold text-text-secondary">
+            <div className="mt-auto border-t border-border bg-surface-muted/30 px-3.5 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-b-xl">
+              <div className="text-xs sm:text-[13px] font-semibold text-text-secondary text-center sm:text-left">
                 <span className="text-text-primary font-bold">{filledItemsCount}</span> of {allTemplates.length} items logged
               </div>
-              <div className="flex gap-3">
-                 <Button type="button" variant="outline" onClick={handleCloseWages} className="font-semibold px-6">
+              <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+                 <Button type="button" variant="outline" onClick={handleCloseWages} className="font-semibold flex-1 sm:flex-none px-4 sm:px-6 h-9 sm:h-10 text-xs sm:text-sm">
                    Cancel
                  </Button>
                  <Button 
                    type="submit" 
                    variant="primary" 
-                   className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 shadow-md"
+                   className="bg-gray-900 hover:bg-gray-800 text-white font-semibold flex-1 sm:flex-none px-4 sm:px-6 h-9 sm:h-10 text-xs sm:text-sm shadow-md truncate"
                    disabled={!selectedSubcontractorId || filledItemsCount === 0}
                  >
                    Submit Daily Log

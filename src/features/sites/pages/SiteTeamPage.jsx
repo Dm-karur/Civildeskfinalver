@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Users, UserCheck, Shield, Plus, Edit, Trash2, Search, Briefcase,
-  MapPin, Star, UserPlus, Calendar, Activity, Layers, CheckCircle2
+  MapPin, Star, UserPlus, Calendar, Activity, Layers, CheckCircle2, Eye
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -63,6 +63,7 @@ export function SiteTeamPage() {
   // Modals
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [viewingMember, setViewingMember] = useState(null);
   const [deleteMember, setDeleteMember] = useState(null);
   const [form, setForm] = useState(EMPTY_MEMBER_FORM);
   const [errors, setErrors] = useState({});
@@ -376,7 +377,7 @@ export function SiteTeamPage() {
                   <th className="px-3 py-2 hidden lg:table-cell">Responsibility</th>
                   <th className="px-3 py-2 hidden md:table-cell">Assignment Period</th>
                   <th className="px-3 py-2 text-center w-20">Status</th>
-                  <th className="px-3 py-2 text-center w-16">Actions</th>
+                  <th className="px-3 py-2 text-center w-20">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -466,6 +467,15 @@ export function SiteTeamPage() {
                               variant="ghost"
                               size="sm"
                               className="h-6 w-6 p-0"
+                              title="View Staff Details"
+                              onClick={() => setViewingMember(member)}
+                            >
+                              <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
                               title="Edit Site Assignment"
                               onClick={() => handleOpenEdit(member)}
                             >
@@ -535,11 +545,14 @@ export function SiteTeamPage() {
                   <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
                     <span className="text-[10px] text-text-muted font-mono">{member.assignment_start ? member.assignment_start.split(' ')[0] : '—'}</span>
                     <div className="flex items-center gap-1.5">
-                      <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(member)}>
-                        <Edit className="w-3 h-3 mr-1" /> Edit
+                      <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingMember(member)}>
+                        <Eye className="w-3 h-3 mr-1" /> View
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setDeleteMember(member)}>
-                        <Trash2 className="w-3.5 h-3.5 text-error" />
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Edit" onClick={() => handleOpenEdit(member)}>
+                        <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Delete" onClick={() => setDeleteMember(member)}>
+                        <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
                       </Button>
                     </div>
                   </div>
@@ -689,6 +702,87 @@ export function SiteTeamPage() {
           />
         </form>
       </EntityEditModal>
+
+      {/* View Staff Details Modal */}
+      {viewingMember && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                  {((viewingMember.first_name || viewingMember.name || 'S')[0]).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">
+                    {`${viewingMember.first_name || ''} ${viewingMember.last_name || ''}`.trim() || viewingMember.name || 'Staff Member'}
+                  </h3>
+                  <span className="text-[11px] text-text-muted">{viewingMember.email || viewingMember.phone || 'No contact specified'}</span>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setViewingMember(null)}>✕</Button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto text-xs">
+              <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Role</span>
+                  <span className="font-semibold text-text-primary">{viewingMember.role_name || viewingMember.team_role_name || 'Site Staff'}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Status</span>
+                  <Badge variant={viewingMember.is_active ? 'success' : 'neutral'} className="text-[8px]">
+                    {viewingMember.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Assigned Site</span>
+                  <span className="font-medium text-text-primary">{viewingMember.site_name || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Authority</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {viewingMember.is_primary === 1 && (
+                      <Badge variant="warning" className="text-[8px] h-3.5 px-1 font-bold inline-flex items-center gap-0.5">
+                        <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" /> Incharge
+                      </Badge>
+                    )}
+                    {viewingMember.can_approve === 1 && (
+                      <Badge variant="info" className="text-[8px] h-3.5 px-1 font-bold inline-flex items-center gap-0.5">
+                        <Shield className="w-2.5 h-2.5" /> Approver
+                      </Badge>
+                    )}
+                    {!viewingMember.is_primary && !viewingMember.can_approve && (
+                      <span className="text-text-secondary text-[11px]">Standard</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Assignment Start</span>
+                  <span className="font-mono">{viewingMember.assignment_start ? viewingMember.assignment_start.split(' ')[0] : '—'}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Assignment End</span>
+                  <span className="font-mono">{viewingMember.assignment_end ? viewingMember.assignment_end.split(' ')[0] : 'Ongoing'}</span>
+                </div>
+              </div>
+
+              {viewingMember.responsibility && (
+                <div className="border border-border rounded-lg p-3 space-y-1">
+                  <span className="font-bold text-text-primary block text-[11px]">Key Responsibilities & Scope:</span>
+                  <p className="text-text-secondary whitespace-pre-wrap">{viewingMember.responsibility}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setViewingMember(null)}>Close</Button>
+              <Button variant="primary" size="sm" onClick={() => { const m = viewingMember; setViewingMember(null); handleOpenEdit(m); }}>
+                <Edit className="w-3.5 h-3.5 mr-1" /> Edit
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation */}
       <ConfirmDialog

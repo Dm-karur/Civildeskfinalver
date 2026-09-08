@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   ClipboardList, CheckCircle2, Clock, AlertTriangle, Users,
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight, Sun,
-  CloudRain, ShieldCheck, Check, AlertCircle, Sparkles, Building, Layers, Printer, Send
+  CloudRain, ShieldCheck, Check, AlertCircle, Sparkles, Building, Layers, Send
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -226,10 +226,6 @@ export function DailyProgressReportsPage() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   // Safe Filtered List
   const filtered = useMemo(() => {
     return reports.filter(r => {
@@ -342,16 +338,6 @@ export function DailyProgressReportsPage() {
 
           <div className="flex items-center gap-2 justify-end">
             <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print DPR Register"
-            >
-              Print Register
-            </Button>
-            <Button
               variant="primary"
               size="sm"
               leftIcon={<Plus className="w-3.5 h-3.5" />}
@@ -454,7 +440,7 @@ export function DailyProgressReportsPage() {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
-                            title="View DPR Dossier 360"
+                            title="View DPR Dossier"
                             onClick={() => setViewingItem(r)}
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
@@ -524,7 +510,7 @@ export function DailyProgressReportsPage() {
 
               <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(r)}>
-                  <Eye className="w-3 h-3 mr-1" /> View 360
+                  <Eye className="w-3 h-3 mr-1" /> View
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(r)}>
                   <Edit className="w-3 h-3 mr-1" /> Edit
@@ -588,10 +574,7 @@ export function DailyProgressReportsPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print DPR Dossier
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

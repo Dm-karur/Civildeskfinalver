@@ -554,23 +554,23 @@ export function PurchaseOrderApprovalPage() {
               <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
             </div>
 
-            <div id="po-printable-area" className="p-5 space-y-4 overflow-y-auto text-xs bg-white flex-1">
+            <div id="po-printable-area" className="p-3 sm:p-5 space-y-4 overflow-y-auto text-xs bg-white flex-1">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-surface-muted/30 p-3 rounded-lg border border-border">
                 <div>
                   <span className="text-text-muted block text-[10px] uppercase font-bold">Project</span>
-                  <span className="font-semibold text-text-primary">{viewingItem.project_name || viewingItem.project_code || '—'}</span>
+                  <span className="font-semibold text-text-primary truncate block">{viewingItem.project_name || viewingItem.project_code || '—'}</span>
                 </div>
                 <div>
                   <span className="text-text-muted block text-[10px] uppercase font-bold">Supplier GSTIN</span>
-                  <span className="font-mono text-text-primary">{viewingItem.supplier_gstin || '—'}</span>
+                  <span className="font-mono text-text-primary truncate block">{viewingItem.supplier_gstin || '—'}</span>
                 </div>
                 <div>
                   <span className="text-text-muted block text-[10px] uppercase font-bold">Target Delivery</span>
-                  <span className="font-mono text-text-primary">{viewingItem.expected_delivery_date || '—'}</span>
+                  <span className="font-mono text-text-primary truncate block">{viewingItem.expected_delivery_date || '—'}</span>
                 </div>
                 <div>
                   <span className="text-text-muted block text-[10px] uppercase font-bold">Approval Status</span>
-                  <span className="font-semibold text-emerald-600">{viewingItem.status || viewingItem.status_name || 'APPROVED'}</span>
+                  <span className="font-semibold text-emerald-600 truncate block">{viewingItem.status || viewingItem.status_name || 'APPROVED'}</span>
                 </div>
               </div>
 
@@ -586,59 +586,115 @@ export function PurchaseOrderApprovalPage() {
                     <div key={gIdx} className="border border-border rounded-lg overflow-hidden bg-surface shadow-2xs">
                       <div className="bg-surface-muted/60 px-3.5 py-2 border-b border-border flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Truck className="w-4 h-4 text-primary" />
-                          <span className="font-bold text-text-primary text-[11px] uppercase tracking-wider">{vendorName}</span>
+                          <Truck className="w-4 h-4 text-primary shrink-0" />
+                          <span className="font-bold text-text-primary text-[11px] uppercase tracking-wider truncate max-w-[200px] sm:max-w-none">{vendorName}</span>
                         </div>
-                        <span className="text-[10px] font-mono text-text-muted">{itemsList.length} Item(s)</span>
+                        <span className="text-[10px] font-mono text-text-muted shrink-0">{itemsList.length} Item(s)</span>
                       </div>
-                      <table className="w-full text-left text-[11px]">
-                        <thead className="bg-surface-muted/40 font-bold text-text-secondary border-b border-border">
-                          <tr>
-                            <th className="p-2">Material Item</th>
-                            <th className="p-2 text-center">UOM</th>
-                            <th className="p-2 text-right">Ordered Qty</th>
-                            <th className="p-2 text-right">Unit Rate (₹)</th>
-                            <th className="p-2 text-right">Tax (₹)</th>
-                            <th className="p-2 text-right">Total Amount (₹)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {itemsList.map((item, i) => {
-                            const baseUom = uoms.find(u => String(u.id) === String(item.uom_id));
-                            const qty = Number(item.ordered_qty || item.requested_qty || item.quantity || 0);
-                            const rate = Number(item.unit_rate || item.rate || item.estimated_rate || 0);
-                            const taxable = Number(item.taxable_amount !== undefined && item.taxable_amount !== null ? item.taxable_amount : qty * rate);
-                            const tax = Number(item.tax_amount !== undefined && item.tax_amount !== null ? item.tax_amount : Math.round(taxable * 0.18));
-                            const lineTotal = Number(item.total_amount !== undefined && item.total_amount !== null ? item.total_amount : taxable + tax);
 
-                            return (
-                              <tr key={item.id || i} className="hover:bg-surface-muted/20">
-                                <td className="p-2 font-medium text-text-primary">
-                                  {item.material_code ? `${item.material_code} - ${item.material_name}` : item.material_name || `Material #${item.material_id}`}
-                                  {item.specification && (
-                                    <span className="block text-[10px] text-text-muted italic">{item.specification}</span>
+                      {/* Desktop Table View */}
+                      <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-left text-[11px]">
+                          <thead className="bg-surface-muted/40 font-bold text-text-secondary border-b border-border">
+                            <tr>
+                              <th className="p-2">Material Item</th>
+                              <th className="p-2 text-center">UOM</th>
+                              <th className="p-2 text-right">Ordered Qty</th>
+                              <th className="p-2 text-right">Unit Rate (₹)</th>
+                              <th className="p-2 text-right">Tax (₹)</th>
+                              <th className="p-2 text-right">Total Amount (₹)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {itemsList.map((item, i) => {
+                              const baseUom = uoms.find(u => String(u.id) === String(item.uom_id));
+                              const qty = Number(item.ordered_qty || item.requested_qty || item.quantity || 0);
+                              const rate = Number(item.unit_rate || item.rate || item.estimated_rate || 0);
+                              const taxable = Number(item.taxable_amount !== undefined && item.taxable_amount !== null ? item.taxable_amount : qty * rate);
+                              const tax = Number(item.tax_amount !== undefined && item.tax_amount !== null ? item.tax_amount : Math.round(taxable * 0.18));
+                              const lineTotal = Number(item.total_amount !== undefined && item.total_amount !== null ? item.total_amount : taxable + tax);
+
+                              return (
+                                <tr key={item.id || i} className="hover:bg-surface-muted/20">
+                                  <td className="p-2 font-medium text-text-primary">
+                                    {item.material_code ? `${item.material_code} - ${item.material_name}` : item.material_name || `Material #${item.material_id}`}
+                                    {item.specification && (
+                                      <span className="block text-[10px] text-text-muted italic">{item.specification}</span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 text-center font-mono text-text-secondary">
+                                    {baseUom?.unit_code || 'Nos'}
+                                  </td>
+                                  <td className="p-2 text-right font-mono font-medium">
+                                    {qty}
+                                  </td>
+                                  <td className="p-2 text-right font-mono">
+                                    ₹{rate.toLocaleString('en-IN')}
+                                  </td>
+                                  <td className="p-2 text-right font-mono text-text-secondary">
+                                    ₹{tax.toLocaleString('en-IN')}
+                                  </td>
+                                  <td className="p-2 text-right font-mono font-semibold text-text-primary">
+                                    ₹{lineTotal.toLocaleString('en-IN')}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobile Card View */}
+                      <div className="block sm:hidden divide-y divide-border p-2.5 space-y-2.5">
+                        {itemsList.map((item, i) => {
+                          const baseUom = uoms.find(u => String(u.id) === String(item.uom_id));
+                          const qty = Number(item.ordered_qty || item.requested_qty || item.quantity || 0);
+                          const rate = Number(item.unit_rate || item.rate || item.estimated_rate || 0);
+                          const taxable = Number(item.taxable_amount !== undefined && item.taxable_amount !== null ? item.taxable_amount : qty * rate);
+                          const tax = Number(item.tax_amount !== undefined && item.tax_amount !== null ? item.tax_amount : Math.round(taxable * 0.18));
+                          const lineTotal = Number(item.total_amount !== undefined && item.total_amount !== null ? item.total_amount : taxable + tax);
+
+                          return (
+                            <div key={item.id || i} className="bg-surface-muted/30 rounded-lg p-2.5 space-y-2 border border-border/60">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <span className="font-semibold text-text-primary text-xs block leading-tight truncate">
+                                    {item.material_name || `Material #${item.material_id}`}
+                                  </span>
+                                  {item.material_code && (
+                                    <span className="text-[10px] text-text-muted font-mono block">Code: {item.material_code}</span>
                                   )}
-                                </td>
-                                <td className="p-2 text-center font-mono text-text-secondary">
+                                  {item.specification && (
+                                    <span className="text-[10px] text-text-muted italic block">Variant: {item.specification}</span>
+                                  )}
+                                </div>
+                                <Badge variant="neutral" className="font-mono text-[10px] shrink-0">
                                   {baseUom?.unit_code || 'Nos'}
-                                </td>
-                                <td className="p-2 text-right font-mono font-medium">
-                                  {qty}
-                                </td>
-                                <td className="p-2 text-right font-mono">
-                                  ₹{rate.toLocaleString('en-IN')}
-                                </td>
-                                <td className="p-2 text-right font-mono text-text-secondary">
-                                  ₹{tax.toLocaleString('en-IN')}
-                                </td>
-                                <td className="p-2 text-right font-mono font-semibold text-text-primary">
-                                  ₹{lineTotal.toLocaleString('en-IN')}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                </Badge>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-border/50 text-[11px]">
+                                <div>
+                                  <span className="text-[9px] text-text-muted uppercase font-bold block">Ordered Qty</span>
+                                  <span className="font-mono font-bold text-text-primary">{qty}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[9px] text-text-muted uppercase font-bold block">Unit Rate</span>
+                                  <span className="font-mono text-text-secondary">₹{rate.toLocaleString('en-IN')}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[9px] text-text-muted uppercase font-bold block">Tax (18%)</span>
+                                  <span className="font-mono text-text-secondary">₹{tax.toLocaleString('en-IN')}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[9px] text-text-muted uppercase font-bold block">Total Amount</span>
+                                  <span className="font-mono font-bold text-emerald-700">₹{lineTotal.toLocaleString('en-IN')}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   ))
                 )}
@@ -652,7 +708,7 @@ export function PurchaseOrderApprovalPage() {
                   const calcGrandTotal = Number(viewingItem.grand_total || viewingItem.total_amount || (calcTaxable + calcTax + calcFreight));
 
                   return (
-                    <div className="grid grid-cols-4 gap-2 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100 text-center font-mono">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100 text-center font-mono">
                       <div>
                         <span className="text-[9px] text-emerald-800 uppercase font-bold block">Taxable Amt</span>
                         <span className="font-bold text-[11px] text-text-primary">₹{calcTaxable.toLocaleString('en-IN')}</span>

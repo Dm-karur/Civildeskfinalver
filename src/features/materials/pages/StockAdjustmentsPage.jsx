@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   SlidersHorizontal, CheckCircle2, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
-  ShieldCheck, Check, AlertCircle, Sparkles, Printer, AlertTriangle, ArrowUpDown, ArrowUpFromLine, XCircle
+  ShieldCheck, Check, AlertCircle, Sparkles, AlertTriangle, ArrowUpDown, ArrowUpFromLine, XCircle
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -368,10 +368,6 @@ export function StockAdjustmentsPage() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   // Filtered List
   const filtered = useMemo(() => {
     return adjustments.filter(a => {
@@ -461,16 +457,6 @@ export function StockAdjustmentsPage() {
           </div>
 
           <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print Audit Register"
-            >
-              Print Register
-            </Button>
             <Button
               variant="primary"
               size="sm"
@@ -746,10 +732,7 @@ export function StockAdjustmentsPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print SAN Slip
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

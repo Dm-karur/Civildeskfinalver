@@ -572,8 +572,11 @@ export function WorkLocationsPage() {
                       <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingLoc(loc)}>
                         <Eye className="w-3 h-3 mr-1" /> View
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleOpenEdit(loc)}>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Edit" onClick={() => handleOpenEdit(loc)}>
                         <Edit className="w-3.5 h-3.5 text-text-secondary" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Delete" onClick={() => setDeleteLoc(loc)}>
+                        <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
                       </Button>
                     </div>
                   </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Boxes, CheckCircle2, AlertTriangle, IndianRupee, Layers,
-  Search, Filter, Eye, Edit, Plus, ArrowRight, Printer,
+  Search, Filter, Eye, Edit, Plus, ArrowRight,
   ShieldCheck, AlertCircle, Sparkles, TrendingDown, ArrowUpRight
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -125,10 +125,6 @@ export function StockOverviewPage() {
       })
       .finally(() => setLoading(false));
   }, [selectedProjectId, materials, uoms, sites, projects]);
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   // Filtered List
   const categoriesList = useMemo(() => {
@@ -281,19 +277,6 @@ export function StockOverviewPage() {
               />
             </div>
           </div>
-
-          <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print Stock Register"
-            >
-              Print Register
-            </Button>
-          </div>
         </div>
 
         {/* Desktop & Tablet Table (No horizontal scroll, 100% fluid) */}
@@ -432,7 +415,7 @@ export function StockOverviewPage() {
               <div className="flex items-center justify-between pt-1 border-t border-border/60 text-xs">
                 <span className="text-[10px] text-text-muted font-mono truncate">{s.primary_store}</span>
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(s)}>
-                  <Eye className="w-3 h-3 mr-1" /> View 360
+                  <Eye className="w-3 h-3 mr-1" /> View
                 </Button>
               </div>
             </div>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowDownToLine, CheckCircle2, XCircle, Clock, IndianRupee, Truck,
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight, ShieldCheck,
-  Check, AlertCircle, Sparkles, Building, Layers, Printer, MoreVertical,
+  Check, AlertCircle, Sparkles, Building, Layers, MoreVertical,
   RotateCcw, FileText, CheckCheck, PackageCheck, Send
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -865,7 +865,8 @@ export function ProcurementGoodsReceiptPage() {
                   Ensure <em>Accepted Qty + Rejected Qty = Received Qty</em>.
                 </div>
 
-                <div className="border border-border rounded-lg overflow-hidden">
+                {/* Desktop QC Table */}
+                <div className="hidden sm:block border border-border rounded-lg overflow-hidden overflow-x-auto">
                   <table className="w-full text-left text-[11px]">
                     <thead className="bg-surface-muted/60 font-semibold text-text-secondary border-b border-border">
                       <tr>
@@ -1002,6 +1003,133 @@ export function ProcurementGoodsReceiptPage() {
                   </table>
                 </div>
 
+                {/* Mobile QC Cards */}
+                <div className="block sm:hidden space-y-3">
+                  {inspectForm.items.map((it, idx) => (
+                    <div key={it.id || idx} className="bg-surface-muted/30 border border-border rounded-lg p-3 space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-semibold text-text-primary text-xs block">{it.material_name}</span>
+                        <Badge variant="neutral" className="font-mono text-[10px] shrink-0">{it.uom_name}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-[10px] text-text-muted uppercase font-bold">Received Qty:</span>
+                        <span className="font-mono font-bold text-text-primary">{it.received_qty}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Accepted *</label>
+                          <Input
+                            type="number"
+                            step="any"
+                            min="0"
+                            max={it.received_qty}
+                            value={it.accepted_qty}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const rec = Number(it.received_qty || 0);
+                              const acc = Number(val || 0);
+                              const rej = Math.max(0, rec - acc);
+                              let targetStatus = it.quality_status_id;
+                              if (acc === rec) {
+                                targetStatus = qcStatusOptions.find(o => o.label.toLowerCase().includes('pass'))?.value || targetStatus;
+                              } else if (acc === 0 && rej > 0) {
+                                targetStatus = qcStatusOptions.find(o => o.label.toLowerCase().includes('fail'))?.value || targetStatus;
+                              } else if (acc > 0 && rej > 0) {
+                                targetStatus = qcStatusOptions.find(o => o.label.toLowerCase().includes('part'))?.value || targetStatus;
+                              }
+                              const nextItems = [...inspectForm.items];
+                              nextItems[idx] = {
+                                ...it,
+                                accepted_qty: val,
+                                rejected_qty: String(rej),
+                                quality_status_id: targetStatus
+                              };
+                              setInspectForm(prev => ({ ...prev, items: nextItems }));
+                            }}
+                            className="h-8 text-xs font-mono font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Rejected</label>
+                          <Input
+                            type="number"
+                            step="any"
+                            min="0"
+                            max={it.received_qty}
+                            value={it.rejected_qty}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const rec = Number(it.received_qty || 0);
+                              const rej = Number(val || 0);
+                              const acc = Math.max(0, rec - rej);
+                              let targetStatus = it.quality_status_id;
+                              if (rej === 0 && acc === rec) {
+                                targetStatus = qcStatusOptions.find(o => o.label.toLowerCase().includes('pass'))?.value || targetStatus;
+                              } else if (acc === 0 && rej > 0) {
+                                targetStatus = qcStatusOptions.find(o => o.label.toLowerCase().includes('fail'))?.value || targetStatus;
+                              } else if (acc > 0 && rej > 0) {
+                                targetStatus = qcStatusOptions.find(o => o.label.toLowerCase().includes('part'))?.value || targetStatus;
+                              }
+                              const nextItems = [...inspectForm.items];
+                              nextItems[idx] = {
+                                ...it,
+                                rejected_qty: val,
+                                accepted_qty: String(acc),
+                                quality_status_id: targetStatus
+                              };
+                              setInspectForm(prev => ({ ...prev, items: nextItems }));
+                            }}
+                            className="h-8 text-xs font-mono font-bold text-red-600"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-text-muted block mb-1">QC Status</label>
+                        <Select
+                          options={qcStatusOptions}
+                          value={it.quality_status_id}
+                          onChange={(v) => {
+                            const rec = Number(it.received_qty || 0);
+                            const selectedOpt = qcStatusOptions.find(o => o.value === v);
+                            const lbl = (selectedOpt?.label || '').toLowerCase();
+                            let newAcc = it.accepted_qty;
+                            let newRej = it.rejected_qty;
+                            if (lbl.includes('pass')) {
+                              newAcc = String(rec);
+                              newRej = '0';
+                            } else if (lbl.includes('fail') || lbl.includes('reject')) {
+                              newAcc = '0';
+                              newRej = String(rec);
+                            }
+                            const nextItems = [...inspectForm.items];
+                            nextItems[idx] = {
+                              ...it,
+                              quality_status_id: v,
+                              accepted_qty: newAcc,
+                              rejected_qty: newRej
+                            };
+                            setInspectForm(prev => ({ ...prev, items: nextItems }));
+                          }}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Rejection Reason</label>
+                        <Input
+                          value={it.rejection_reason}
+                          onChange={(e) => {
+                            const nextItems = [...inspectForm.items];
+                            nextItems[idx] = { ...it, rejection_reason: e.target.value };
+                            setInspectForm(prev => ({ ...prev, items: nextItems }));
+                          }}
+                          placeholder="e.g. Moisture damage"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 <FormField label="Quality Engineer Remarks">
                   <Textarea
                     rows={2}
@@ -1123,7 +1251,7 @@ export function ProcurementGoodsReceiptPage() {
               <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
             </div>
 
-            <div className="p-5 space-y-4 overflow-y-auto text-xs flex-1">
+            <div className="p-3 sm:p-5 space-y-4 overflow-y-auto text-xs flex-1">
               {/* Properties Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-surface-muted/30 p-3 rounded-lg border border-border">
                 <div>
@@ -1165,7 +1293,8 @@ export function ProcurementGoodsReceiptPage() {
                 <span className="font-bold text-text-primary block text-[11px] uppercase tracking-wider">
                   Received Materials Reconciliation
                 </span>
-                <div className="border border-border rounded-lg overflow-hidden bg-surface">
+                {/* Desktop View */}
+                <div className="hidden sm:block border border-border rounded-lg overflow-hidden overflow-x-auto bg-surface">
                   <table className="w-full text-left text-[11px]">
                     <thead className="bg-surface-muted/60 font-semibold text-text-secondary border-b border-border">
                       <tr>
@@ -1204,6 +1333,55 @@ export function ProcurementGoodsReceiptPage() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile View */}
+                <div className="block sm:hidden space-y-2.5">
+                  {(viewingItem.items || detailsMap[viewingItem.id]?.items || []).map((it, i) => {
+                    const mat = materials.find(m => String(m.id) === String(it.material_id));
+                    const uom = uoms.find(u => String(u.id) === String(it.uom_id));
+                    const rec = Number(it.received_qty || 0);
+                    const rate = Number(it.unit_rate || 0);
+                    const tot = rec * rate;
+
+                    return (
+                      <div key={i} className="bg-surface border border-border rounded-lg p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="font-semibold text-text-primary text-xs block leading-tight truncate">
+                              {it.material_name || mat?.material_name || `Material #${it.material_id}`}
+                            </span>
+                            {it.specification && (
+                              <span className="text-[10px] text-text-muted italic block">Variant: {it.specification}</span>
+                            )}
+                          </div>
+                          <Badge variant="neutral" className="font-mono text-[10px] shrink-0">
+                            {uom?.unit_code || it.uom_name || 'Nos'}
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-1.5 p-2 bg-surface-muted/30 rounded border border-border/50 text-center text-[11px]">
+                          <div>
+                            <span className="text-[9px] text-text-muted uppercase font-bold block">Received</span>
+                            <span className="font-mono font-bold text-text-primary">{rec}</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-emerald-800 uppercase font-bold block">Accepted</span>
+                            <span className="font-mono font-bold text-emerald-600">{it.accepted_qty ?? rec}</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-red-800 uppercase font-bold block">Rejected</span>
+                            <span className="font-mono font-bold text-red-600">{it.rejected_qty ?? 0}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40">
+                          <span className="text-text-muted">Rate: <span className="font-mono font-semibold text-text-secondary">₹{rate.toLocaleString('en-IN')}</span></span>
+                          <span className="text-text-muted">Total: <span className="font-mono font-bold text-emerald-700">₹{tot.toLocaleString('en-IN')}</span></span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Delivery Notes */}
@@ -1215,10 +1393,7 @@ export function ProcurementGoodsReceiptPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={() => window.print()}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print GRN Docket
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

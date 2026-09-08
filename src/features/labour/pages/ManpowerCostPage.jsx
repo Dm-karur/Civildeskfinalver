@@ -479,7 +479,7 @@ export function ManpowerCostPage() {
               <div className="flex items-center justify-between pt-1 border-t border-border/60 text-xs">
                 <span className="font-mono text-[10px] text-text-muted">{c.output_qty} {c.uom} (₹{c.unit_rate_actual}/{c.uom})</span>
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(c)}>
-                  <Eye className="w-3 h-3 mr-1" /> View 360
+                  <Eye className="w-3 h-3 mr-1" /> View
                 </Button>
               </div>
             </div>

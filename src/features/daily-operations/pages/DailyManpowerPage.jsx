@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Users, CheckCircle2, Clock, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
-  ShieldCheck, Check, AlertCircle, Sparkles, Printer, ArrowRight, HardHat
+  ShieldCheck, Check, AlertCircle, Sparkles, ArrowRight, HardHat
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -281,10 +281,6 @@ export function DailyManpowerPage() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   // Filtered List
   const filtered = useMemo(() => {
     return logs.filter(l => {
@@ -375,16 +371,6 @@ export function DailyManpowerPage() {
           </div>
 
           <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print Manpower Register"
-            >
-              Print Register
-            </Button>
             <Button
               variant="primary"
               size="sm"
@@ -488,7 +474,7 @@ export function DailyManpowerPage() {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
-                            title="View Gang 360"
+                            title="View Gang"
                             onClick={() => setViewingItem(l)}
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
@@ -543,7 +529,7 @@ export function DailyManpowerPage() {
 
               <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(l)}>
-                  <Eye className="w-3 h-3 mr-1" /> View Gang Log
+                  <Eye className="w-3 h-3 mr-1" /> View
                 </Button>
               </div>
             </div>

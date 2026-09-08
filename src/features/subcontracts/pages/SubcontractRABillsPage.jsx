@@ -343,16 +343,6 @@ export function SubcontractRABillsPage() {
 
           <div className="flex items-center gap-2 justify-end">
             <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print RA Bill Register"
-            >
-              Print Register
-            </Button>
-            <Button
               variant="primary"
               size="sm"
               leftIcon={<Plus className="w-3.5 h-3.5" />}
@@ -508,7 +498,7 @@ export function SubcontractRABillsPage() {
 
               <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(r)}>
-                  <Eye className="w-3 h-3 mr-1" /> View Full RA Bill
+                  <Eye className="w-3 h-3 mr-1" /> View
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(r)}>
                   <Edit className="w-3 h-3 mr-1" /> Edit
@@ -566,10 +556,7 @@ export function SubcontractRABillsPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print Certified RA Bill
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

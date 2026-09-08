@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   History, CheckCircle2, Clock, Calendar, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
-  ShieldCheck, Check, AlertCircle, Sparkles, Printer, ArrowRight, BookOpen
+  ShieldCheck, Check, AlertCircle, Sparkles, ArrowRight, BookOpen
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -76,10 +76,6 @@ export function DailyHistoryPage() {
       setLoading(false);
     }
   }, []);
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   const handleExport = () => {
     toast.success('Exporting Continuous Site Diary History to PDF / Excel...');
@@ -171,16 +167,6 @@ export function DailyHistoryPage() {
           </div>
 
           <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print Chronological Site Diary"
-            >
-              Print Site Diary
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -284,7 +270,7 @@ export function DailyHistoryPage() {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
-                            title="View Diary Entry 360"
+                            title="View Diary Entry"
                             onClick={() => setViewingItem(l)}
                           >
                             <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
@@ -323,7 +309,7 @@ export function DailyHistoryPage() {
 
               <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(l)}>
-                  <Eye className="w-3 h-3 mr-1" /> View Entry
+                  <Eye className="w-3 h-3 mr-1" /> View
                 </Button>
               </div>
             </div>
@@ -383,10 +369,7 @@ export function DailyHistoryPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print Certified Day Sheet
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

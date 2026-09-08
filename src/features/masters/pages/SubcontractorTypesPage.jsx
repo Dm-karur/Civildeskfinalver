@@ -17,6 +17,35 @@ import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 
+const INITIAL_SUBCONTRACTOR_TYPES = [
+  { id: 1, type_code: 'SUB-MAIS', type_name: 'Maistry', description: 'General labor contractor', is_active: 1 },
+  { id: 2, type_code: 'SUB-CARP', type_name: 'Carpenter', description: 'Woodwork and formwork', is_active: 1 },
+  { id: 3, type_code: 'SUB-CENT', type_name: 'Centering', description: 'Centering and scaffolding', is_active: 1 },
+  { id: 4, type_code: 'SUB-BAR', type_name: 'Bar Bender', description: 'Steel reinforcement', is_active: 1 },
+];
+
+const INITIAL_SUBCONTRACTOR_TEMPLATES = [
+  // Templates for Maistry (type_id: 1) - matches user requirements
+  { id: 1, type_id: 1, classification: 'Labour', description: 'MM', trade_category: 'Maistry', uom: 'Shift', default_rate: '500', is_active: true, calculate_maistry: false },
+  { id: 2, type_id: 1, classification: 'Labour', description: 'FM', trade_category: 'Maistry', uom: 'Shift', default_rate: '500', is_active: true, calculate_maistry: false },
+  { id: 3, type_id: 1, classification: 'Equipment', description: 'Concrete Mixer', trade_category: 'Maistry', uom: 'Shift', default_rate: '1000', is_active: true, calculate_maistry: false },
+
+  // Templates for Carpenter (type_id: 2)
+  { id: 4, type_id: 2, classification: 'Labour', description: 'Lead Carpenter', trade_category: 'Carpenter', uom: 'Shift', default_rate: '900', is_active: true, calculate_maistry: false },
+  { id: 5, type_id: 2, classification: 'Labour', description: 'Assistant Carpenter', trade_category: 'Carpenter', uom: 'Shift', default_rate: '650', is_active: true, calculate_maistry: false },
+  { id: 6, type_id: 2, classification: 'Equipment', description: 'Wood Cutting Machine', trade_category: 'Carpenter', uom: 'Shift', default_rate: '450', is_active: true, calculate_maistry: false },
+
+  // Templates for Centering (type_id: 3)
+  { id: 7, type_id: 3, classification: 'Labour', description: 'Centering Mestri', trade_category: 'Centering', uom: 'Shift', default_rate: '850', is_active: true, calculate_maistry: false },
+  { id: 8, type_id: 3, classification: 'Labour', description: 'Centering Helper', trade_category: 'Centering', uom: 'Shift', default_rate: '550', is_active: true, calculate_maistry: false },
+  { id: 9, type_id: 3, classification: 'Equipment', description: 'Scaffolding & Props Set', trade_category: 'Centering', uom: 'Shift', default_rate: '1200', is_active: true, calculate_maistry: false },
+
+  // Templates for Bar Bender (type_id: 4)
+  { id: 10, type_id: 4, classification: 'Labour', description: 'Bar Bender Skilled', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '850', is_active: true, calculate_maistry: false },
+  { id: 11, type_id: 4, classification: 'Labour', description: 'Bar Bender Helper', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '550', is_active: true, calculate_maistry: false },
+  { id: 12, type_id: 4, classification: 'Equipment', description: 'Rebar Bending & Cutting Unit', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '800', is_active: true, calculate_maistry: false },
+];
+
 const EMPTY_FORM = {
   type_code: '',
   type_name: '',
@@ -24,30 +53,34 @@ const EMPTY_FORM = {
   is_active: '1',
 };
 
-// Initial mock data to give the user something to see
-const INITIAL_DATA = [
-  { id: 1, type_code: 'SUB-MAIS', type_name: 'Maistry', description: 'General labor contractor', is_active: 1 },
-  { id: 2, type_code: 'SUB-CARP', type_name: 'Carpenter', description: 'Woodwork and formwork', is_active: 1 },
-  { id: 3, type_code: 'SUB-CENT', type_name: 'Centering', description: 'Centering and scaffolding', is_active: 1 },
-  { id: 4, type_code: 'SUB-BAR', type_name: 'Bar Bender', description: 'Steel reinforcement', is_active: 1 },
-];
-
 export function SubcontractorTypesPage() {
   const [types, setTypes] = useState(() => {
     try {
       const saved = localStorage.getItem('mock_subcontractor_types');
-      return saved ? JSON.parse(saved) : INITIAL_DATA;
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
+        return INITIAL_SUBCONTRACTOR_TYPES;
+      }
+      const existingIds = new Set(parsed.map(p => String(p.id)));
+      const missing = INITIAL_SUBCONTRACTOR_TYPES.filter(init => !existingIds.has(String(init.id)));
+      return missing.length > 0 ? [...parsed, ...missing] : parsed;
     } catch {
-      return INITIAL_DATA;
+      return INITIAL_SUBCONTRACTOR_TYPES;
     }
   });
 
   const [templates, setTemplates] = useState(() => {
     try {
       const saved = localStorage.getItem('mock_subcontractor_templates');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
+        return INITIAL_SUBCONTRACTOR_TEMPLATES;
+      }
+      const existingIds = new Set(parsed.map(p => String(p.id)));
+      const missing = INITIAL_SUBCONTRACTOR_TEMPLATES.filter(init => !existingIds.has(String(init.id)));
+      return missing.length > 0 ? [...parsed, ...missing] : parsed;
     } catch {
-      return [];
+      return INITIAL_SUBCONTRACTOR_TEMPLATES;
     }
   });
 

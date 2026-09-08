@@ -257,8 +257,11 @@ export function SitesTable({ searchQuery = '', refreshKey = 0, onEdit, onView, f
                     <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => onView(site)}>
                       <Eye className="w-3 h-3 mr-1" /> View
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onEdit(site)}>
-                      <Edit className="w-3.5 h-3.5 text-text-secondary" />
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-text-secondary hover:text-primary" title="Edit Site Details" onClick={() => onEdit(site)}>
+                      <Edit className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-text-secondary hover:text-error hover:bg-error/10" title="Delete Site" onClick={() => setDeleteSite(site)}>
+                      <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>

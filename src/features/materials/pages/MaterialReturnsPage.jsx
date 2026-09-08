@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   RotateCcw, CheckCircle2, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
-  ShieldCheck, Check, AlertCircle, Sparkles, Printer, AlertTriangle, ArrowUpFromLine, XCircle
+  ShieldCheck, Check, AlertCircle, Sparkles, AlertTriangle, ArrowUpFromLine, XCircle
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -337,10 +337,6 @@ export function MaterialReturnsPage() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   // Filtered List
   const filtered = useMemo(() => {
     return returns.filter(r => {
@@ -444,16 +440,6 @@ export function MaterialReturnsPage() {
           </div>
 
           <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print Return Register"
-            >
-              Print Register
-            </Button>
             <Button
               variant="primary"
               size="sm"

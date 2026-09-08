@@ -84,6 +84,7 @@ export function MaterialRequestFormPage() {
   const [materials, setMaterials] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [uoms, setUoms] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [requests, setRequests] = useState([]);
 
   // Load Projects & API Data
@@ -95,8 +96,9 @@ export function MaterialRequestFormPage() {
       materialsApi.catalogue.list().catch(() => ({ data: [] })),
       materialsApi.suppliers.list().catch(() => ({ data: [] })),
       materialsApi.masters().catch(() => ({ data: {} })),
-      materialManagementApi.requests.list().catch(() => ({ data: [] }))
-    ]).then(([projRes, sitesRes, catRes, suppRes, mastersMatRes, reqRes]) => {
+      materialManagementApi.requests.list().catch(() => ({ data: [] })),
+      materialsApi.brands.list().catch(() => null)
+    ]).then(([projRes, sitesRes, catRes, suppRes, mastersMatRes, reqRes, brandsRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       const parsedProjects = Array.isArray(pList) ? pList : [];
       setProjects(parsedProjects);
@@ -116,6 +118,9 @@ export function MaterialRequestFormPage() {
 
       const prioList = mastersData?.request_priorities ?? [];
       setPriorities(Array.isArray(prioList) ? prioList : []);
+
+      const bList = brandsRes?.data?.material_brands ?? brandsRes?.material_brands ?? (Array.isArray(brandsRes?.data) ? brandsRes.data : (Array.isArray(brandsRes) ? brandsRes : []));
+      setBrands(Array.isArray(bList) ? bList : []);
 
       const rList = reqRes?.data?.material_requests ?? reqRes?.data?.data ?? reqRes?.data ?? [];
       setRequests(Array.isArray(rList) ? rList : []);
@@ -415,6 +420,7 @@ export function MaterialRequestFormPage() {
                                 nextItems[idx] = {
                                   ...nextItems[idx],
                                   material_id: v,
+                                  brand: mat?.brand_preference || nextItems[idx].brand || '',
                                   uom_id: mat ? String(mat.base_uom_id || mat.unit_id || '') : '',
                                   estimated_rate: mat?.standard_rate ? String(mat.standard_rate) : '0'
                                 };
@@ -425,17 +431,27 @@ export function MaterialRequestFormPage() {
                           </FormField>
                         </div>
 
-                        {/* 2. Brand */}
+                        {/* 2. Brand Dropdown */}
                         <div className="sm:col-span-1 md:col-span-2 xl:col-span-3">
                           <FormField label={idx === 0 ? "Brand" : ""}>
-                            <Input
+                            <Select
+                              options={[
+                                { value: '', label: 'Select Brand...' },
+                                ...brands.map(b => ({
+                                  value: b.brand_name,
+                                  label: b.brand_name
+                                })),
+                                ...(item.brand && !brands.some(b => b.brand_name?.toLowerCase() === item.brand?.toLowerCase())
+                                  ? [{ value: item.brand, label: `${item.brand} (Custom)` }]
+                                  : [])
+                              ]}
                               value={item.brand || ''}
-                              onChange={(e) => {
+                              onChange={(v) => {
                                 const nextItems = [...form.items];
-                                nextItems[idx] = { ...nextItems[idx], brand: e.target.value };
+                                nextItems[idx] = { ...nextItems[idx], brand: v };
                                 handleFormChange('items', nextItems);
                               }}
-                              placeholder="e.g. Tata"
+                              placeholder="Select Brand..."
                             />
                           </FormField>
                         </div>

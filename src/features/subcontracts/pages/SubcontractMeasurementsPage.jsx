@@ -282,16 +282,6 @@ export function SubcontractMeasurementsPage() {
 
           <div className="flex items-center gap-2 justify-end">
             <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print Measurement Book"
-            >
-              Print MB Book
-            </Button>
-            <Button
               variant="primary"
               size="sm"
               leftIcon={<Plus className="w-3.5 h-3.5" />}
@@ -432,7 +422,7 @@ export function SubcontractMeasurementsPage() {
 
               <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(m)}>
-                  <Eye className="w-3 h-3 mr-1" /> View MB Sheet
+                  <Eye className="w-3 h-3 mr-1" /> View
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(m)}>
                   <Edit className="w-3 h-3 mr-1" /> Edit
@@ -493,10 +483,7 @@ export function SubcontractMeasurementsPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print Certified MB Sheet
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

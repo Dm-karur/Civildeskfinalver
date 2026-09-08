@@ -630,13 +630,41 @@ export function SubcontractorWeeklyPaymentsPage() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Paid':
-        return <Badge variant="success" className="bg-emerald-50 text-emerald-700 border-emerald-200">Paid</Badge>;
+        return (
+          <Badge
+            variant="success"
+            className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
+          >
+            Disbursed
+          </Badge>
+        );
       case 'Approved':
-        return <Badge variant="info" className="bg-sky-50 text-sky-700 border-sky-200">Approved</Badge>;
+        return (
+          <Badge
+            variant="info"
+            className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
+          >
+            Approved
+          </Badge>
+        );
       case 'Pending Approval':
-        return <Badge variant="warning" className="bg-amber-50 text-amber-700 border-amber-200">Pending Approval</Badge>;
+        return (
+          <Badge
+            variant="warning"
+            className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
+          >
+            Pending
+          </Badge>
+        );
       default:
-        return <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-slate-200">{status || 'Draft'}</Badge>;
+        return (
+          <Badge
+            variant="secondary"
+            className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
+          >
+            {status || 'Draft'}
+          </Badge>
+        );
     }
   };
 
@@ -644,249 +672,339 @@ export function SubcontractorWeeklyPaymentsPage() {
     <PageContainer>
       <PageHeader
         title="Subcontractor Weekly Payments"
-        description="Manage weekly labor gang wages, piece-rate payments, advance recoveries, and disbursement vouchers."
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Subcontract Management', href: '/subcontracts/subcontractors' },
           { label: 'Weekly Payments' }
         ]}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                toast.success('Exporting weekly payroll summary...');
-              }}
-              className="gap-1.5"
-            >
-              <Printer className="w-4 h-4" />
-              Export Summary
-            </Button>
+      />
+
+      <div className="flex flex-col gap-3 sm:gap-4 w-full">
+        {/* KPI Summary Ribbon */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <KpiCard
+            label="Total Weekly Payout"
+            value={`₹${(kpis.totalPayout / 100000).toFixed(2)}L`}
+            status="primary"
+            icon={<IndianRupee className="w-4 h-4" />}
+          />
+          <KpiCard
+            label="Pending Approval"
+            value={`${kpis.pendingCount} Batches`}
+            status="warning"
+            icon={<Clock className="w-4 h-4 text-amber-500" />}
+          />
+          <KpiCard
+            label="Approved for Payment"
+            value={`₹${(kpis.approvedAmt / 100000).toFixed(2)}L`}
+            status="neutral"
+            icon={<ShieldCheck className="w-4 h-4 text-sky-500" />}
+          />
+          <KpiCard
+            label="Paid This Cycle"
+            value={`${kpis.paidCount} Disbursed`}
+            status="success"
+            icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+          />
+        </div>
+
+        {/* Filter and Search Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            <div className="w-full sm:w-48">
+              <Select
+                options={[
+                  { value: 'all', label: 'All Projects' },
+                  ...projects.map(p => ({ value: String(p.id), label: `${p.project_code ? p.project_code + ' - ' : ''}${p.project_name || p.name}` }))
+                ]}
+                value={selectedProjectId}
+                onChange={setSelectedProjectId}
+                className="text-xs h-8"
+              />
+            </div>
+
+            <div className="w-full sm:w-40">
+              <Select
+                options={[
+                  { value: 'all', label: 'All Statuses' },
+                  { value: 'Draft', label: 'Draft' },
+                  { value: 'Pending Approval', label: 'Pending Approval' },
+                  { value: 'Approved', label: 'Approved' },
+                  { value: 'Paid', label: 'Paid' },
+                ]}
+                value={statusFilter}
+                onChange={setStatusFilter}
+                className="text-xs h-8"
+              />
+            </div>
+
+            <div className="w-full sm:w-56">
+              <SearchField
+                placeholder="Search payment no, UTR, contractor..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onClear={() => setSearch('')}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 justify-end">
             <Button
               variant="primary"
               size="sm"
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
               onClick={() => navigate('/subcontracts/weekly-payments/new')}
-              className="gap-1.5"
+              className="text-xs h-8 shadow-xs"
             >
-              <Plus className="w-4 h-4" />
               New Weekly Payment
             </Button>
           </div>
-        }
-      />
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard
-          label="Total Weekly Payout"
-          value={`₹${kpis.totalPayout.toLocaleString('en-IN')}`}
-          description={`${payments.length} total payment batches`}
-          icon={<IndianRupee className="w-4 h-4" />}
-          status="primary"
-        />
-        <KpiCard
-          label="Pending Approval"
-          value={`₹${kpis.pendingApprovalAmt.toLocaleString('en-IN')}`}
-          description={`${kpis.pendingCount} batches awaiting review`}
-          icon={<Clock className="w-4 h-4" />}
-          status="warning"
-        />
-        <KpiCard
-          label="Approved for Payment"
-          value={`₹${kpis.approvedAmt.toLocaleString('en-IN')}`}
-          description={`${kpis.approvedCount} ready for bank transfer`}
-          icon={<ShieldCheck className="w-4 h-4" />}
-          status="info"
-        />
-        <KpiCard
-          label="Paid This Cycle"
-          value={`₹${kpis.paidAmt.toLocaleString('en-IN')}`}
-          description={`${kpis.paidCount} successfully disbursed`}
-          icon={<CheckCircle2 className="w-4 h-4" />}
-          status="success"
-        />
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="bg-surface rounded-xl border border-border p-4 mb-6 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="lg:col-span-2">
-            <SearchField
-              value={search}
-              onChange={setSearch}
-              placeholder="Search by Subcontractor, Voucher #, Trade, Site..."
-            />
-          </div>
-          <div>
-            <Select
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="w-full"
-            >
-              <option value="all">All Projects</option>
-              {projects.map(p => (
-                <option key={p.id} value={p.id}>{p.project_name || p.name}</option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full"
-            >
-              <option value="all">All Statuses</option>
-              <option value="Draft">Draft</option>
-              <option value="Pending Approval">Pending Approval</option>
-              <option value="Approved">Approved</option>
-              <option value="Paid">Paid</option>
-            </Select>
-          </div>
         </div>
-      </div>
 
-      {/* Main Data Table */}
-      <DataTableContainer>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface-muted text-[11px] uppercase font-bold text-text-muted border-b border-border">
-              <tr>
-                <th className="px-4 py-3.5">Voucher / Week</th>
-                <th className="px-4 py-3.5">Subcontractor & Trade</th>
-                <th className="px-4 py-3.5">Project / Site</th>
-                <th className="px-4 py-3.5 text-center">Mandays</th>
-                <th className="px-4 py-3.5 text-right">Gross (₹)</th>
-                <th className="px-4 py-3.5 text-right">Deductions (₹)</th>
-                <th className="px-4 py-3.5 text-right font-bold text-text-primary">Net Payable (₹)</th>
-                <th className="px-4 py-3.5 text-center">Status</th>
-                <th className="px-4 py-3.5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {loading ? (
+        {/* Desktop & Tablet Table (No horizontal scroll, 100% fluid) */}
+        <div className="hidden sm:block">
+          <DataTableContainer
+            pagination={
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                totalItems={filteredPayments.length}
+                itemsPerPage={perPage}
+                onPageChange={setPage}
+                onItemsPerPageChange={() => {}}
+              />
+            }
+          >
+            <table className="w-full text-left text-[12px] table-auto">
+              <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-text-muted">
-                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
-                    Loading weekly payments...
-                  </td>
+                  <th className="px-3 py-2 w-10 text-center">#</th>
+                  <th className="px-3 py-2 w-28">Voucher No</th>
+                  <th className="px-3 py-2">Contractor & Trade</th>
+                  <th className="px-3 py-2 text-right w-28 font-bold">Paid Amount</th>
+                  <th className="px-3 py-2 w-36 hidden md:table-cell">Site & Shifts</th>
+                  <th className="px-3 py-2 text-center w-28">Status</th>
+                  <th className="px-3 py-2 text-center w-20">Actions</th>
                 </tr>
-              ) : pagedList.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-text-muted">
-                    <CreditCard className="w-8 h-8 mx-auto mb-2 text-text-muted/40" />
-                    No subcontractor weekly payments found matching your criteria.
-                  </td>
-                </tr>
-              ) : (
-                pagedList.map((item) => {
-                  const totalDeductions = (Number(item.advance_deduction) || 0) + (Number(item.other_deductions) || 0);
-                  return (
-                    <tr key={item.id} className="hover:bg-surface-muted/50 transition-colors">
-                      <td className="px-4 py-3.5">
-                        <div className="font-mono font-bold text-primary text-[13px]">
+              </thead>
+              <tbody className="divide-y divide-border">
+                {loading ? (
+                  <tr>
+                    <td colSpan="7" className="text-center py-8 text-text-muted text-[12px]">
+                      Loading payment records...
+                    </td>
+                  </tr>
+                ) : pagedList.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="text-center py-8 text-text-muted text-[12px]">
+                      No weekly payments found.
+                    </td>
+                  </tr>
+                ) : (
+                  pagedList.map((item, idx) => (
+                    <tr key={item.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
+                      <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                        {(page - 1) * perPage + idx + 1}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
                           {item.voucher_no}
-                        </div>
-                        <div className="text-[11px] text-text-muted flex items-center gap-1 mt-0.5">
-                          <Calendar className="w-3 h-3" />
-                          {item.week_start} to {item.week_end}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-semibold text-text-primary">
-                          {item.contractor_name}
-                        </div>
-                        <div className="text-[12px] text-text-muted">
-                          {item.trade_category || 'General Civil Works'}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-medium text-text-primary text-[13px] truncate max-w-[180px]" title={item.project_name}>
-                          {item.project_name}
-                        </div>
-                        <div className="text-[11px] text-text-muted truncate max-w-[180px]">
-                          {item.site_name}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 text-center font-medium">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary">
-                          {item.total_mandays || 0} shifts
+                        </span>
+                        <span className="text-[10px] text-text-muted font-mono block pt-0.5">
+                          {item.week_start || item.payment_date}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-right font-mono text-[13px]">
-                        ₹{Number(item.gross_amount || 0).toLocaleString('en-IN')}
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-text-primary text-[12px] truncate" title={item.contractor_name}>
+                            {item.contractor_name}
+                          </span>
+                          <span className="text-[10px] text-text-muted truncate">
+                            {item.trade_category || 'General Civil Works'} • {item.project_name}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-4 py-3.5 text-right font-mono text-[13px] text-red-600">
-                        -₹{totalDeductions.toLocaleString('en-IN')}
-                      </td>
-                      <td className="px-4 py-3.5 text-right font-mono font-bold text-[14px] text-primary">
+                      <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
                         ₹{Number(item.net_payable || 0).toLocaleString('en-IN')}
                       </td>
-                      <td className="px-4 py-3.5 text-center">
+                      <td className="px-3 py-2 hidden md:table-cell font-mono text-[10px] text-text-secondary">
+                        <div className="truncate max-w-[150px]">{item.site_name || item.project_name}</div>
+                        <div className="text-primary truncate">{item.total_mandays || 0} shifts</div>
+                      </td>
+                      <td className="px-3 py-2 text-center">
                         {getStatusBadge(item.status)}
                       </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-center gap-1">
                           {item.status === 'Pending Approval' && (
-                            <button
-                              onClick={() => handleApprove(item)}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                               title="Approve Payment Batch"
-                              className="p-1.5 rounded text-emerald-600 hover:bg-emerald-50 transition-colors"
+                              onClick={() => handleApprove(item)}
                             >
-                              <CheckCircle2 className="w-4 h-4" />
-                            </button>
+                              <Check className="w-3.5 h-3.5" />
+                            </Button>
                           )}
                           {item.status === 'Approved' && (
                             <Button
-                              size="xs"
                               variant="outline"
+                              size="xs"
+                              className="h-5 px-1.5 text-[9px] font-medium text-sky-700 bg-sky-50 border-sky-200 hover:bg-sky-100"
+                              title="Pay Now"
                               onClick={() => handleOpenDisburse(item)}
-                              className="text-[11px] px-2 py-1 text-sky-700 bg-sky-50 border-sky-200 hover:bg-sky-100"
                             >
-                              Pay Now
+                              Pay
                             </Button>
                           )}
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            title="View"
                             onClick={() => navigate(`/subcontracts/weekly-payments/new?id=${item.id}`)}
-                            title="Open Maistry Slip"
-                            className="p-1.5 rounded text-text-secondary hover:text-text-primary hover:bg-surface-muted transition-colors"
                           >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
+                            <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            title="Edit"
                             onClick={() => navigate(`/subcontracts/weekly-payments/new?id=${item.id}`)}
-                            title="Edit Maistry Slip"
-                            className="p-1.5 rounded text-text-secondary hover:text-primary hover:bg-surface-muted transition-colors"
                           >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteItem(item)}
+                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                             title="Delete"
-                            className="p-1.5 rounded text-text-secondary hover:text-red-600 hover:bg-red-50 transition-colors"
+                            onClick={() => setDeleteItem(item)}
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </DataTableContainer>
         </div>
-        <div className="p-4 border-t border-border flex items-center justify-between">
-          <div className="text-xs text-text-muted">
-            Showing {Math.min(filteredPayments.length, (page - 1) * perPage + 1)} to {Math.min(filteredPayments.length, page * perPage)} of {filteredPayments.length} entries
+
+        {/* Mobile View - Cards List for Phones (< sm) */}
+        <div className="block sm:hidden space-y-3">
+          {loading ? (
+            <div className="p-8 text-center text-text-muted bg-surface rounded-lg border border-border shadow-xs">
+              <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
+              Loading weekly payments...
+            </div>
+          ) : pagedList.length === 0 ? (
+            <div className="p-8 text-center text-text-muted bg-surface rounded-lg border border-border shadow-xs">
+              <CreditCard className="w-8 h-8 mx-auto mb-2 text-text-muted/40" />
+              No subcontractor weekly payments found.
+            </div>
+          ) : (
+            pagedList.map((item, idx) => (
+              <div key={item.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <span className="font-mono text-[10px] font-bold text-primary block truncate">
+                      {item.voucher_no} • {item.week_start || item.payment_date}
+                    </span>
+                    <h4 className="font-semibold text-text-primary text-[13px] leading-snug truncate mt-0.5">
+                      {item.contractor_name}
+                    </h4>
+                    <span className="text-[11px] text-text-muted block truncate">
+                      {item.trade_category || 'General Civil Works'} • {item.project_name}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <Badge
+                      variant="success"
+                      className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
+                    >
+                      ₹{Number(item.net_payable || 0).toLocaleString('en-IN')}
+                    </Badge>
+                    <div className="pt-0.5">
+                      {getStatusBadge(item.status)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2 bg-surface-muted/40 rounded border border-border/60 font-mono text-[11px] flex items-center justify-between">
+                  <span className="text-text-muted">Shifts & Site</span>
+                  <span className="font-medium text-text-primary truncate max-w-[200px]">
+                    {item.total_mandays || 0} shifts • {item.site_name || item.project_name}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
+                  {item.status === 'Pending Approval' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[11px] px-2 text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
+                      onClick={() => handleApprove(item)}
+                    >
+                      <CheckCircle2 className="w-3 h-3 mr-1" /> Approve
+                    </Button>
+                  )}
+                  {item.status === 'Approved' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[11px] px-2 text-sky-700 bg-sky-50 border-sky-200 hover:bg-sky-100"
+                      onClick={() => handleOpenDisburse(item)}
+                    >
+                      Pay Now
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-[11px] px-2"
+                    onClick={() => navigate(`/subcontracts/weekly-payments/new?id=${item.id}`)}
+                  >
+                    <Eye className="w-3 h-3 mr-1" /> View
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-[11px] px-2"
+                    onClick={() => navigate(`/subcontracts/weekly-payments/new?id=${item.id}`)}
+                  >
+                    <Edit className="w-3 h-3 mr-1" /> Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-[11px] px-2 text-red-600 hover:bg-red-50"
+                    onClick={() => setDeleteItem(item)}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+
+          {/* Mobile Pagination */}
+          <div className="pt-2">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={filteredPayments.length}
+              itemsPerPage={perPage}
+              onPageChange={setPage}
+              onItemsPerPageChange={() => {}}
+            />
           </div>
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-          />
         </div>
-      </DataTableContainer>
+      </div>
 
       {/* Create / Edit Modal */}
       {(isAddOpen || editingItem) && (
@@ -1297,17 +1415,7 @@ export function SubcontractorWeeklyPaymentsPage() {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex justify-between items-center pt-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  window.print();
-                }}
-                className="gap-1.5"
-              >
-                <Printer className="w-4 h-4" />
-                Print Voucher
-              </Button>
+            <div className="flex justify-end items-center pt-2">
               <Button variant="primary" onClick={() => setViewingItem(null)}>
                 Close
               </Button>

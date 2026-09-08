@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   BookOpen, CheckCircle2, IndianRupee, Layers,
   Search, Filter, Eye, ArrowUpFromLine, ArrowDownToLine,
-  Truck, RotateCcw, SlidersHorizontal, Printer, Download
+  Truck, RotateCcw, SlidersHorizontal, Download
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -136,10 +136,6 @@ export function StockLedgerPage() {
       setEntries([]);
     }).finally(() => setLoading(false));
   }, [selectedProjectId, selectedMaterialId, sites, materials, uoms]);
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   const handleExport = () => {
     toast.success('Exporting Perpetual Stock Ledger to CSV / Excel...');
@@ -293,16 +289,6 @@ export function StockLedgerPage() {
           </div>
 
           <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print Ledger"
-            >
-              Print Ledger
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -511,10 +497,7 @@ export function StockLedgerPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print Bin Card Slip
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

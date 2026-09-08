@@ -24,7 +24,16 @@ const ICONS = Object.freeze({
   'hard-hat': HardHat,
 });
 
-function NavigationItem({ item, openByDepth, onToggle, onNavigate, dismissedBadges = [], onDismissBadge, depth = 0 }) {
+function NavigationItem({
+  item,
+  activeRoute,
+  openByDepth,
+  onToggle,
+  onNavigate,
+  dismissedBadges = [],
+  onDismissBadge,
+  depth = 0
+}) {
   const Icon = ICONS[item.icon_key] ?? Menu;
   const children = item.children ?? [];
   const expanded = openByDepth[depth] === item.item_code;
@@ -44,15 +53,19 @@ function NavigationItem({ item, openByDepth, onToggle, onNavigate, dismissedBadg
   }
 
   if (children.length === 0 && item.route_path) {
+    const normalize = (p) => (p ? p.trim().replace(/\/+$/, '') : '');
+    const isActive = activeRoute ? normalize(item.route_path) === activeRoute : false;
+
     return (
       <NavLink
         to={item.route_path}
+        end
         onClick={(e) => {
           if (isNewLeaf && onDismissBadge) onDismissBadge(item.route_path);
           if (onNavigate) onNavigate(e);
         }}
         style={{ paddingLeft: `${8 + (depth * 16)}px` }}
-        className={({ isActive }) => clsx(
+        className={clsx(
           'flex h-10 items-center gap-3 rounded-sm px-2 text-[13px] font-medium transition-colors',
           isActive ? 'bg-primary text-white' : 'text-[#C8D1DC] hover:bg-white/5 hover:text-white',
         )}
@@ -86,6 +99,7 @@ function NavigationItem({ item, openByDepth, onToggle, onNavigate, dismissedBadg
             <NavigationItem
               key={child.item_code}
               item={child}
+              activeRoute={activeRoute}
               openByDepth={openByDepth}
               onToggle={onToggle}
               onNavigate={onNavigate}
@@ -207,15 +221,71 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
     return () => { active = false; };
   }, []);
 
-  const activeGroup = useMemo(() => navigation.find((item) =>
-    item.children?.some((child) => location.pathname.startsWith(child.route_path))),
-  [location.pathname, navigation]);
+  const normalize = (p) => (p ? p.trim().replace(/\/+$/, '') : '');
 
-  useEffect(() => {
-    if (activeGroup) {
-      setOpenByDepth((current) => ({ ...current, 0: activeGroup.item_code }));
+  // Collect all leaf route paths from navigation
+  const allRoutes = useMemo(() => {
+    const routes = [];
+    const collect = (items) => {
+      for (const item of items) {
+        if (item.children && item.children.length > 0) {
+          collect(item.children);
+        } else if (item.route_path) {
+          routes.push(normalize(item.route_path));
+        }
+      }
+    };
+    collect(navigation);
+    return routes;
+  }, [navigation]);
+
+  // Determine the single active leaf route based on current location
+  const activeRoute = useMemo(() => {
+    const current = normalize(location.pathname);
+
+    // 1. Exact match first
+    const exactMatch = allRoutes.find((r) => r === current);
+    if (exactMatch) return exactMatch;
+
+    // 2. Longest matching prefix with path segment boundary
+    const matching = allRoutes.filter((r) => {
+      if (!r || r === '/') return current === '/';
+      return current.startsWith(r + '/');
+    });
+
+    if (matching.length > 0) {
+      matching.sort((a, b) => b.length - a.length);
+      return matching[0];
     }
-  }, [activeGroup]);
+
+    return null;
+  }, [location.pathname, allRoutes]);
+
+  // Automatically expand all ancestor groups of the active route
+  useEffect(() => {
+    if (!activeRoute || navigation.length === 0) return;
+
+    const findAncestors = (items, target, currentDepth = 0) => {
+      for (const item of items) {
+        if (item.children && item.children.length > 0) {
+          const directChild = item.children.some((c) => normalize(c.route_path) === target);
+          if (directChild) {
+            return { [currentDepth]: item.item_code };
+          }
+          const nested = findAncestors(item.children, target, currentDepth + 1);
+          if (nested) {
+            return { [currentDepth]: item.item_code, ...nested };
+          }
+        }
+      }
+      return null;
+    };
+
+    const ancestors = findAncestors(navigation, activeRoute);
+    if (ancestors) {
+      setOpenByDepth((current) => ({ ...current, ...ancestors }));
+    }
+  }, [activeRoute, navigation]);
 
   return (
     <>
@@ -231,6 +301,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }) {
             <NavigationItem
               key={item.item_code}
               item={item}
+              activeRoute={activeRoute}
               openByDepth={openByDepth}
               onToggle={(code, depth) => setOpenByDepth((current) => {
                 const next = { ...current };

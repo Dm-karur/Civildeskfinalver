@@ -15,6 +15,52 @@ import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 
+const INITIAL_SUBCONTRACTOR_TYPES = [
+  { id: 1, type_code: 'SUB-MAIS', type_name: 'Maistry', description: 'General labor contractor', is_active: 1 },
+  { id: 2, type_code: 'SUB-CARP', type_name: 'Carpenter', description: 'Woodwork and formwork', is_active: 1 },
+  { id: 3, type_code: 'SUB-CENT', type_name: 'Centering', description: 'Centering and scaffolding', is_active: 1 },
+  { id: 4, type_code: 'SUB-BAR', type_name: 'Bar Bender', description: 'Steel reinforcement', is_active: 1 },
+];
+
+const INITIAL_SUBCONTRACTORS = [
+  {
+    id: 1,
+    contractor_code: 'SUB-2026-001',
+    contractor_name: 'sanjay',
+    phone: '-',
+    subcontractor_type_id: '1',
+    subcontractor_type_label: 'SUB-MAIS - Maistry',
+    is_active: true,
+  },
+  {
+    id: 2,
+    contractor_code: 'SUB-2026-002',
+    contractor_name: 'Murugan Carpentry',
+    phone: '9876543210',
+    subcontractor_type_id: '2',
+    subcontractor_type_label: 'SUB-CARP - Carpenter',
+    is_active: true,
+  },
+  {
+    id: 3,
+    contractor_code: 'SUB-2026-003',
+    contractor_name: 'Velu Centering Works',
+    phone: '9842112233',
+    subcontractor_type_id: '3',
+    subcontractor_type_label: 'SUB-CENT - Centering',
+    is_active: true,
+  },
+  {
+    id: 4,
+    contractor_code: 'SUB-2026-004',
+    contractor_name: 'Raja Bar Bending',
+    phone: '9944556677',
+    subcontractor_type_id: '4',
+    subcontractor_type_label: 'SUB-BAR - Bar Bender',
+    is_active: true,
+  },
+];
+
 const EMPTY_FORM = {
   contractor_name: '',
   phone: '',
@@ -29,9 +75,15 @@ export function SubcontractorsMasterPage() {
   const [subcontractors, setSubcontractors] = useState(() => {
     try {
       const saved = localStorage.getItem('mock_subcontractors_master');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
+        return INITIAL_SUBCONTRACTORS;
+      }
+      const existingIds = new Set(parsed.map(p => String(p.id)));
+      const missing = INITIAL_SUBCONTRACTORS.filter(init => !existingIds.has(String(init.id)));
+      return missing.length > 0 ? [...parsed, ...missing] : parsed;
     } catch {
-      return [];
+      return INITIAL_SUBCONTRACTORS;
     }
   });
 
@@ -49,13 +101,11 @@ export function SubcontractorsMasterPage() {
   useEffect(() => {
     try {
       const savedTypes = localStorage.getItem('mock_subcontractor_types');
-      if (savedTypes) {
-        const parsed = JSON.parse(savedTypes);
-        setTypeOptions(parsed.map(t => ({
-          value: String(t.id),
-          label: `${t.type_code} - ${t.type_name}`
-        })));
-      }
+      const parsed = savedTypes && JSON.parse(savedTypes).length > 0 ? JSON.parse(savedTypes) : INITIAL_SUBCONTRACTOR_TYPES;
+      setTypeOptions(parsed.map(t => ({
+        value: String(t.id),
+        label: `${t.type_code} - ${t.type_name}`
+      })));
     } catch (e) {
       console.error('Failed to load types', e);
     }

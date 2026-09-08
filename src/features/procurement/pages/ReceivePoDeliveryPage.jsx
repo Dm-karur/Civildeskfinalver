@@ -665,17 +665,18 @@ export function ReceivePoDeliveryPage() {
         {/* SECTION 3: Material Items Reconciliation */}
         {form.purchase_order_id && (
           <div className="bg-surface border border-border rounded-lg shadow-xs overflow-hidden">
-            <div className="px-5 py-4 bg-surface-muted/50 border-b border-border flex items-center justify-between">
+            <div className="px-4 sm:px-5 py-3 sm:py-4 bg-surface-muted/50 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold text-text-primary">3. Material Delivery Items (Enter Inward Received Quantity)</h3>
+                <Layers className="w-4 h-4 text-primary shrink-0" />
+                <h3 className="text-xs sm:text-sm font-semibold text-text-primary">3. Material Delivery Items (Enter Inward Received Quantity)</h3>
               </div>
-              <Badge variant="primary" className="text-[10px] font-bold uppercase tracking-wider">
+              <Badge variant="primary" className="text-[10px] font-bold uppercase tracking-wider w-fit">
                 {form.items.length} Line Items
               </Badge>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-surface-muted/80 font-bold text-text-secondary border-b border-border">
                   <tr>
@@ -761,13 +762,110 @@ export function ReceivePoDeliveryPage() {
               </table>
             </div>
 
+            {/* Mobile Touch-Friendly Cards View */}
+            <div className="block sm:hidden p-3 space-y-3">
+              {form.items.map((it, idx) => {
+                const itemErr = errors.items?.[idx] || {};
+                return (
+                  <div key={idx} className="bg-surface border border-border rounded-lg p-3 space-y-3 shadow-2xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="w-5 h-5 rounded-full bg-primary/10 text-primary font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                          <span className="font-semibold text-text-primary text-xs truncate">
+                            {it.material_name}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-text-muted font-mono block">Code: {it.material_code}</span>
+                        {it.specification && (
+                          <span className="text-[10px] text-text-muted mt-0.5 block italic">Variant: {it.specification}</span>
+                        )}
+                      </div>
+                      <Badge variant="neutral" className="font-mono text-[10px] shrink-0 font-medium">
+                        {it.uom_name}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5 p-2 bg-surface-muted/40 rounded-md border border-border/60 text-center text-xs">
+                      <div>
+                        <span className="text-[9px] text-text-muted uppercase font-bold block">Ordered</span>
+                        <span className="font-mono font-bold text-text-primary text-[11px]">{it.ordered_qty}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-text-muted uppercase font-bold block">Prev Rec'd</span>
+                        <span className="font-mono text-text-muted text-[11px]">{it.previously_received_qty}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-text-muted uppercase font-bold block">Pending</span>
+                        <Badge
+                          variant={it.pending_po_balance > 0 ? "success" : "neutral"}
+                          className="font-mono text-[10px] font-bold px-1.5 py-0"
+                        >
+                          {it.pending_po_balance}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2.5 pt-1 border-t border-border/60">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-bold text-text-primary">
+                            Inward Rec'd Qty <span className="text-error">*</span>
+                          </label>
+                          <span className="text-[10px] font-mono text-text-muted">
+                            Max: {it.pending_po_balance} {it.uom_name}
+                          </span>
+                        </div>
+                        <Input
+                          type="number"
+                          step="any"
+                          min="0"
+                          max={it.pending_po_balance}
+                          value={it.received_qty}
+                          onChange={(e) => handleItemQtyChange(idx, e.target.value)}
+                          placeholder="0.00"
+                          className={`font-mono font-bold text-sm h-10 ${itemErr.received_qty ? 'border-error ring-1 ring-error' : 'border-primary/40 focus:border-primary'}`}
+                        />
+                        {itemErr.received_qty && (
+                          <span className="text-[10px] text-error font-medium block mt-1">
+                            {itemErr.received_qty}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs py-1.5 px-2 bg-primary/5 rounded border border-primary/10">
+                        <span className="text-text-secondary text-[11px]">
+                          Rate: <span className="font-mono font-semibold">₹{Number(it.unit_rate || 0).toLocaleString('en-IN')}</span>
+                        </span>
+                        <span className="text-text-primary font-bold text-[12px]">
+                          Total: <span className="font-mono text-primary font-bold">₹{Number(it.line_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-text-muted mb-1 block">Remarks / Notes</label>
+                        <Input
+                          value={it.remarks || ''}
+                          onChange={(e) => handleItemRemarksChange(idx, e.target.value)}
+                          placeholder="Damage / Batch check..."
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
             {/* Summary Footer */}
-            <div className="p-4 bg-surface-muted/40 border-t border-border flex flex-wrap items-center justify-between gap-4">
-              <div className="text-xs text-text-muted">
+            <div className="p-3 sm:p-4 bg-surface-muted/40 border-t border-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="text-[11px] text-text-muted leading-relaxed">
                 Note: Inward received quantity will establish the initial GRN. QC Inspection will record accepted and rejected quantities.
               </div>
-              <div className="flex items-center gap-6">
-                <div className="text-right">
+              <div className="grid grid-cols-2 gap-4 w-full sm:w-auto sm:flex sm:items-center sm:gap-6 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/60">
+                <div className="text-left sm:text-right">
                   <span className="text-[10px] text-text-muted uppercase font-bold block">Total Delivery Items</span>
                   <span className="font-mono font-bold text-text-primary text-sm">{totalInwardQty} Units</span>
                 </div>
@@ -783,12 +881,13 @@ export function ReceivePoDeliveryPage() {
         )}
 
         {/* BOTTOM ACTION BAR */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-4 border-t border-border">
           <Button
             type="button"
             variant="outline"
             onClick={() => navigate('/procurement/goods-receipt')}
             disabled={saving}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -797,7 +896,7 @@ export function ReceivePoDeliveryPage() {
             variant="primary"
             leftIcon={<Save className="w-4 h-4" />}
             disabled={saving || !form.purchase_order_id}
-            className="bg-primary hover:bg-primary-hover px-6"
+            className="bg-primary hover:bg-primary-hover px-6 w-full sm:w-auto"
           >
             {saving ? 'Saving...' : id ? 'Update Goods Receipt' : 'Create Goods Receipt (GRN)'}
           </Button>

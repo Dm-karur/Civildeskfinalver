@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   FileCheck2, CheckCircle2, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
-  ShieldCheck, Check, AlertCircle, Sparkles, Printer, Truck, FileText, ArrowUpFromLine, XCircle
+  ShieldCheck, Check, AlertCircle, Sparkles, Truck, FileText, ArrowUpFromLine, XCircle
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -352,10 +352,6 @@ export function DeliveryChallansPage() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   // Filtered List
   const filtered = useMemo(() => {
     return challans.filter(c => {
@@ -463,16 +459,6 @@ export function DeliveryChallansPage() {
           </div>
 
           <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print Challan Register"
-            >
-              Print Register
-            </Button>
             <Button
               variant="primary"
               size="sm"
@@ -747,10 +733,7 @@ export function DeliveryChallansPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print Delivery Challan
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

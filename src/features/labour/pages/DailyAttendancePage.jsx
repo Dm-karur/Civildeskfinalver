@@ -646,90 +646,196 @@ export function DailyAttendancePage() {
               </div>
             </div>
 
-            {/* Data Table */}
-            <DataTableContainer
-              pagination={
-                <Pagination
-                  currentPage={page}
-                  totalPages={totalPages}
-                  totalResults={filtered.length}
-                  pageSize={perPage}
-                  onPageChange={setPage}
-                />
-              }
-            >
-              <table className="w-full text-left text-[12px] table-auto whitespace-nowrap">
-                <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
-                  <tr>
-                    <th className="px-3 py-2 w-10 text-center">#</th>
-                    <th className="px-3 py-2 w-28">Worker Code</th>
-                    <th className="px-3 py-2 w-48">Worker Name</th>
-                    <th className="px-3 py-2 w-44">Contractor / Agency</th>
-                    <th className="px-3 py-2 text-center w-24">Regular Hrs</th>
-                    <th className="px-3 py-2 text-center w-24">OT Hrs</th>
-                    <th className="px-3 py-2 w-32">Site Remarks</th>
-                    <th className="px-3 py-2 w-28 text-center">Muster Alert</th>
-                    <th className="px-3 py-2 w-24 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {paged.length === 0 ? (
+            {/* Desktop & Tablet Data Table (sm and above) */}
+            <div className="hidden sm:block">
+              <DataTableContainer
+                pagination={
+                  <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    totalResults={filtered.length}
+                    pageSize={perPage}
+                    onPageChange={setPage}
+                  />
+                }
+              >
+                <table className="w-full text-left text-[12px] table-auto whitespace-nowrap">
+                  <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                     <tr>
-                      <td colSpan={9} className="text-center py-6 text-text-muted text-[12px]">
-                        No workers match the selected filters.
-                      </td>
+                      <th className="px-3 py-2 w-10 text-center">#</th>
+                      <th className="px-3 py-2 w-28">Worker Code</th>
+                      <th className="px-3 py-2 w-48">Worker Name</th>
+                      <th className="px-3 py-2 w-44">Contractor / Agency</th>
+                      <th className="px-3 py-2 text-center w-24">Regular Hrs</th>
+                      <th className="px-3 py-2 text-center w-24">OT Hrs</th>
+                      <th className="px-3 py-2 w-32">Site Remarks</th>
+                      <th className="px-3 py-2 w-28 text-center">Muster Alert</th>
+                      <th className="px-3 py-2 w-24 text-center">Actions</th>
                     </tr>
-                  ) : (
-                    paged.map((r, index) => (
-                      <tr key={r.id || index} className="hover:bg-surface-muted/30 transition-colors">
-                        <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
-                          {(page - 1) * perPage + index + 1}
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {paged.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="text-center py-6 text-text-muted text-[12px]">
+                          No workers match the selected filters.
                         </td>
-                        <td className="px-3 py-2 font-mono font-bold text-text-primary text-[11px]">
-                          {r.worker_code}
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="font-medium text-text-primary text-[12px]">{r.worker_name}</div>
-                          <div className="text-[10px] text-text-muted">{r.attendance_status_name}</div>
-                        </td>
-                        <td className="px-3 py-2 text-text-primary text-[11px] truncate">
-                          {r.contractor_name || 'Direct / Payroll'}
-                        </td>
-                        <td className="px-3 py-2 text-center font-mono font-semibold text-text-primary text-[11px]">
-                          {r.regular_hours} hrs
-                        </td>
-                        <td className="px-3 py-2 text-center font-mono font-semibold text-text-primary text-[11px]">
-                          {r.overtime_hours} hrs
-                        </td>
-                        <td className="px-3 py-2 text-text-secondary text-[11px] truncate max-w-[120px]">
-                          {r.remarks || '—'}
-                        </td>
-                        <td className="px-3 py-2 text-center">
+                      </tr>
+                    ) : (
+                      paged.map((r, index) => (
+                        <tr key={r.id || index} className="hover:bg-surface-muted/30 transition-colors">
+                          <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                            {(page - 1) * perPage + index + 1}
+                          </td>
+                          <td className="px-3 py-2 font-mono font-bold text-text-primary text-[11px]">
+                            {r.worker_code}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="font-medium text-text-primary text-[12px]">{r.worker_name}</div>
+                            <div className="text-[10px] text-text-muted">{r.attendance_status_name}</div>
+                          </td>
+                          <td className="px-3 py-2 text-text-primary text-[11px] truncate">
+                            {r.contractor_name || 'Direct / Payroll'}
+                          </td>
+                          <td className="px-3 py-2 text-center font-mono font-semibold text-text-primary text-[11px]">
+                            {r.regular_hours} hrs
+                          </td>
+                          <td className="px-3 py-2 text-center font-mono font-semibold text-text-primary text-[11px]">
+                            {r.overtime_hours} hrs
+                          </td>
+                          <td className="px-3 py-2 text-text-secondary text-[11px] truncate max-w-[120px]">
+                            {r.remarks || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            {isEditable ? (
+                              <div className="inline-flex items-center gap-1 bg-surface-muted/50 p-0.5 rounded-lg border border-border">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleStatus(r, 'PRESENT')}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                                    r.attendance_status_code === 'PRESENT'
+                                      ? 'bg-emerald-600 text-white shadow-xs'
+                                      : 'text-text-secondary hover:text-emerald-600'
+                                  }`}
+                                  title="Mark Present (Full Day)"
+                                >
+                                  P
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleStatus(r, 'HALF_DAY')}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                                    r.attendance_status_code === 'HALF_DAY'
+                                      ? 'bg-amber-500 text-white shadow-xs'
+                                      : 'text-text-secondary hover:text-amber-600'
+                                  }`}
+                                  title="Mark Half Day (4 Hrs)"
+                                >
+                                  HD
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleStatus(r, 'ABSENT')}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                                    r.attendance_status_code === 'ABSENT'
+                                      ? 'bg-red-600 text-white shadow-xs'
+                                      : 'text-text-secondary hover:text-red-600'
+                                  }`}
+                                  title="Mark Absent"
+                                >
+                                  A
+                                </button>
+                              </div>
+                            ) : (
+                              <Badge variant={getStatusVariant(r.attendance_status_code)}>
+                                {r.attendance_status_name}
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                title="View Details"
+                                onClick={() => setViewingRecord(r)}
+                              >
+                                <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                              </Button>
+                              {isEditable && hasPermission('attendance.create') && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  title="Delete"
+                                  onClick={() => setDeletingRecord(r)}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </DataTableContainer>
+            </div>
+
+            {/* Mobile View - Card-Type Format for Phones (< sm) */}
+            <div className="block sm:hidden space-y-3">
+              {paged.length === 0 ? (
+                <div className="text-center py-8 bg-surface border border-border rounded-lg text-text-muted text-xs">
+                  No workers match the selected filters.
+                </div>
+              ) : (
+                paged.map((r, index) => {
+                  const idx = (page - 1) * perPage + index + 1;
+                  return (
+                    <div key={r.id || index} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+                      {/* Worker Header & Quick Status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <span className="w-5 h-5 rounded-full bg-surface-muted text-text-secondary font-mono text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                            {idx}
+                          </span>
+                          <div className="min-w-0">
+                            <h4 className="font-semibold text-text-primary text-[13px] truncate leading-tight">{r.worker_name}</h4>
+                            <span className="text-[10px] font-mono text-text-muted block mt-0.5">{r.worker_code} • {r.contractor_name || 'Direct / Payroll'}</span>
+                          </div>
+                        </div>
+
+                        {/* Quick Toggle Buttons or Status Badge */}
+                        <div className="shrink-0">
                           {isEditable ? (
-                            <div className="inline-flex items-center gap-1 bg-surface-muted/50 p-0.5 rounded-lg border border-border">
+                            <div className="inline-flex items-center gap-1 bg-surface-muted/60 p-0.5 rounded-lg border border-border">
                               <button
+                                type="button"
                                 onClick={() => handleToggleStatus(r, 'PRESENT')}
                                 className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
                                   r.attendance_status_code === 'PRESENT'
                                     ? 'bg-emerald-600 text-white shadow-xs'
                                     : 'text-text-secondary hover:text-emerald-600'
                                 }`}
-                                title="Mark Present (Full Day)"
+                                title="Mark Present"
                               >
                                 P
                               </button>
                               <button
+                                type="button"
                                 onClick={() => handleToggleStatus(r, 'HALF_DAY')}
                                 className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
                                   r.attendance_status_code === 'HALF_DAY'
                                     ? 'bg-amber-500 text-white shadow-xs'
                                     : 'text-text-secondary hover:text-amber-600'
                                 }`}
-                                title="Mark Half Day (4 Hrs)"
+                                title="Mark Half Day"
                               >
                                 HD
                               </button>
                               <button
+                                type="button"
                                 onClick={() => handleToggleStatus(r, 'ABSENT')}
                                 className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
                                   r.attendance_status_code === 'ABSENT'
@@ -742,41 +848,83 @@ export function DailyAttendancePage() {
                               </button>
                             </div>
                           ) : (
-                            <Badge variant={getStatusVariant(r.attendance_status_code)}>
+                            <Badge variant={getStatusVariant(r.attendance_status_code)} className="text-[9px] uppercase font-bold px-1.5 py-0.5">
                               {r.attendance_status_name}
                             </Badge>
                           )}
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center justify-center gap-1">
+                        </div>
+                      </div>
+
+                      {/* Working Hours Grid */}
+                      <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-border/60 text-xs">
+                        <div className="bg-surface-muted/40 rounded p-1.5 border border-border/40">
+                          <span className="text-[10px] text-text-muted block uppercase font-bold">Regular Hours</span>
+                          <span className="font-mono font-bold text-text-primary text-[12px]">{r.regular_hours || 0} hrs</span>
+                        </div>
+                        <div className="bg-surface-muted/40 rounded p-1.5 border border-border/40">
+                          <span className="text-[10px] text-text-muted block uppercase font-bold">Overtime Hours</span>
+                          <span className="font-mono font-bold text-primary text-[12px]">{r.overtime_hours || 0} hrs</span>
+                        </div>
+                      </div>
+
+                      {/* Remarks */}
+                      {r.remarks && (
+                        <div className="text-[11px] text-text-secondary bg-surface-muted/20 px-2 py-1 rounded border border-border/40">
+                          <span className="font-medium text-text-primary">Note: </span>{r.remarks}
+                        </div>
+                      )}
+
+                      {/* Card Footer: Status Text & Actions */}
+                      <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-text-muted">Status:</span>
+                          <span className={`text-[11px] font-semibold ${
+                            r.attendance_status_code === 'PRESENT' ? 'text-emerald-600' :
+                            r.attendance_status_code === 'HALF_DAY' ? 'text-amber-600' :
+                            r.attendance_status_code === 'ABSENT' ? 'text-red-600' : 'text-text-secondary'
+                          }`}>
+                            {r.attendance_status_name || r.attendance_status_code || '—'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-[11px] px-2"
+                            onClick={() => setViewingRecord(r)}
+                          >
+                            <Eye className="w-3 h-3 mr-1" /> View
+                          </Button>
+                          {isEditable && hasPermission('attendance.create') && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0"
-                              title="View Details"
-                              onClick={() => setViewingRecord(r)}
+                              className="h-7 w-7 p-0"
+                              title="Delete"
+                              onClick={() => setDeletingRecord(r)}
                             >
-                              <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                              <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
                             </Button>
-                            {isEditable && hasPermission('attendance.create') && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                title="Delete"
-                                onClick={() => setDeletingRecord(r)}
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </DataTableContainer>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              {/* Mobile Pagination */}
+              <div className="pt-2">
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalResults={filtered.length}
+                  pageSize={perPage}
+                  onPageChange={setPage}
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>

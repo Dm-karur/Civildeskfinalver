@@ -12,8 +12,31 @@ import { Card } from '../../../components/ui/Card';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, clientsApi, branchesApi, mastersApi } from '../../../api/apiservice';
 
+export const generateProjectCode = (existingProjects = []) => {
+  const currentYear = new Date().getFullYear();
+  const prefix = `PRJ-${currentYear}-`;
+
+  let maxSeq = 0;
+  if (Array.isArray(existingProjects)) {
+    existingProjects.forEach((p) => {
+      const code = (p.project_code || p.code || '').trim();
+      const regex = new RegExp(`^PRJ-${currentYear}-(\\d+)$`, 'i');
+      const match = code.match(regex);
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
+        }
+      }
+    });
+  }
+
+  const nextSeq = String(maxSeq + 1).padStart(3, '0');
+  return `${prefix}${nextSeq}`;
+};
+
 const EMPTY_FORM = {
-  project_code: '',
+  project_code: generateProjectCode([]),
   project_name: '',
   client_id: '',
   project_type_id: '',
@@ -51,13 +74,21 @@ export function ProjectCreatePage() {
 
   useEffect(() => {
     Promise.all([
+      projectsApi.list().catch(() => ({ data: [] })),
       clientsApi.list().catch(() => ({ data: [] })),
       branchesApi.list().catch(() => ({ data: [] })),
       mastersApi.all().catch(() => ({ data: {} })),
-    ]).then(([cRes, bRes, mRes]) => {
+    ]).then(([pRes, cRes, bRes, mRes]) => {
+      const pList = pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : (Array.isArray(pRes) ? pRes : []));
       setClients(cRes?.data?.clients ?? cRes?.data ?? []);
       setBranches(bRes?.data?.branches ?? bRes?.data ?? []);
       setMasters(mRes?.data ?? {});
+
+      const autoCode = generateProjectCode(pList);
+      setForm((prev) => ({
+        ...prev,
+        project_code: prev.project_code && prev.project_code !== generateProjectCode([]) ? prev.project_code : autoCode,
+      }));
     }).finally(() => setLoading(false));
   }, []);
 
@@ -133,8 +164,9 @@ export function ProjectCreatePage() {
             <FormField label="Project Code" required error={errors.project_code}>
               <Input
                 value={form.project_code}
-                onChange={(e) => handleChange('project_code', e.target.value)}
-                placeholder="e.g. PRJ-2026-001"
+                readOnly
+                className="bg-surface-muted/60 cursor-not-allowed font-mono font-semibold text-primary select-all"
+                placeholder={`e.g. PRJ-${new Date().getFullYear()}-001`}
               />
             </FormField>
 

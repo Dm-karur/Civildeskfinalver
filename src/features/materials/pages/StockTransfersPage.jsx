@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Truck, CheckCircle2, ArrowRight, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
-  ShieldCheck, Check, AlertCircle, Sparkles, MapPin, Printer, ArrowUpFromLine, XCircle
+  ShieldCheck, Check, AlertCircle, Sparkles, MapPin, ArrowUpFromLine, XCircle
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -346,10 +346,6 @@ export function StockTransfersPage() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   // Filtered List
   const filtered = useMemo(() => {
     return transfers.filter(t => {
@@ -461,16 +457,6 @@ export function StockTransfersPage() {
           </div>
 
           <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print Transfer Register"
-            >
-              Print Register
-            </Button>
             <Button
               variant="primary"
               size="sm"
@@ -751,10 +737,7 @@ export function StockTransfersPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print Transfer Pass
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

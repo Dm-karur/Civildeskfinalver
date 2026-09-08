@@ -545,8 +545,11 @@ export function SiteZonesPage() {
                       <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingZone(z)}>
                         <Eye className="w-3 h-3 mr-1" /> View
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleOpenEdit(z)}>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Edit" onClick={() => handleOpenEdit(z)}>
                         <Edit className="w-3.5 h-3.5 text-text-secondary" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Delete" onClick={() => setDeleteZone(z)}>
+                        <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
                       </Button>
                     </div>
                   </div>

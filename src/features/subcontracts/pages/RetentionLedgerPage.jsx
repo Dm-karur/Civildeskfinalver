@@ -194,18 +194,7 @@ export function RetentionLedgerPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-              onClick={handlePrint}
-              className="text-xs h-8 shadow-xs"
-              title="Print Retention Ledger"
-            >
-              Print Ledger
-            </Button>
-          </div>
+
         </div>
 
         {/* Desktop & Tablet Table (No horizontal scroll, 100% fluid) */}
@@ -344,7 +333,7 @@ export function RetentionLedgerPage() {
 
               <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/60 text-xs">
                 <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(r)}>
-                  <Eye className="w-3 h-3 mr-1" /> View Details
+                  <Eye className="w-3 h-3 mr-1" /> View
                 </Button>
                 {r.balance_retention_held > 0 && (
                   <Button variant="primary" size="sm" className="h-7 text-[11px] px-2 bg-amber-600 hover:bg-amber-700" onClick={() => handleOpenRelease(r)}>
@@ -403,10 +392,7 @@ export function RetentionLedgerPage() {
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print Retention Certificate
-              </Button>
+            <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-end items-center">
               <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
             </div>
           </div>

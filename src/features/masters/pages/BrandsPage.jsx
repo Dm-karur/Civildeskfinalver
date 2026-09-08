@@ -183,7 +183,7 @@ export function BrandsPage() {
             {hasPermission('materials.manage_master') && (
               <Button
                 variant="primary"
-                className="h-9 px-3 text-[13px]"
+                className="h-9 px-3 text-[13px] w-full sm:w-auto"
                 leftIcon={<Plus className="w-3.5 h-3.5" />}
                 onClick={handleOpenAdd}
               >
@@ -193,87 +193,176 @@ export function BrandsPage() {
           </div>
         </div>
 
-        {/* Data Table */}
-        <DataTableContainer
-          pagination={
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              totalResults={filtered.length}
-              pageSize={perPage}
-              onPageChange={setPage}
-            />
-          }
-        >
-          <table className="w-full text-left text-[12px] whitespace-nowrap table-fixed">
-            <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
-              <tr>
-                <th className="px-3 py-2.5 w-16 text-center">#</th>
-                <th className="px-3 py-2.5 w-64">Brand Name</th>
-                <th className="px-3 py-2.5">Brand Description</th>
-                <th className="px-3 py-2.5 w-24 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {loading ? (
+        {/* Desktop & Tablet Table */}
+        <div className="hidden sm:block">
+          <DataTableContainer
+            pagination={
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                totalResults={filtered.length}
+                pageSize={perPage}
+                onPageChange={setPage}
+              />
+            }
+          >
+            <table className="w-full text-left text-[12px] min-w-[550px] table-auto">
+              <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
-                  <td colSpan={4} className="text-center py-8 text-text-muted text-[12px]">
-                    Loading registered brands...
-                  </td>
+                  <th className="px-3 py-2.5 w-12 text-center">#</th>
+                  <th className="px-3 py-2.5 w-56">Brand Name</th>
+                  <th className="px-3 py-2.5">Brand Description</th>
+                  <th className="px-3 py-2.5 w-24 text-center">Actions</th>
                 </tr>
-              ) : paged.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="text-center py-8 text-text-muted text-[12px]">
-                    No brands registered yet. Click &quot;Add Brand&quot; to add one.
-                  </td>
-                </tr>
-              ) : (
-                paged.map((item, index) => (
-                  <tr key={item.id || index} className="hover:bg-surface-muted/30 transition-colors">
-                    <td className="px-3 py-2.5 text-center font-medium text-text-primary text-[11px]">
-                      {(page - 1) * perPage + index + 1}
-                    </td>
-                    <td className="px-3 py-2.5 font-semibold text-text-primary text-[12px]">
-                      <div className="flex items-center gap-2">
-                        <Tag className="w-3.5 h-3.5 text-primary shrink-0" />
-                        <span className="truncate">{item.brand_name}</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-text-secondary text-[12px] truncate">
-                      {item.brand_description || item.description || <span className="text-text-muted italic">No description provided</span>}
-                    </td>
-                    <td className="px-3 py-2.5 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {hasPermission('materials.manage_master') && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0"
-                              title="Edit Brand"
-                              onClick={() => handleOpenEdit(item)}
-                            >
-                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0"
-                              title="Delete Brand"
-                              onClick={() => setDeletingItem(item)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-8 text-text-muted text-[12px]">
+                      Loading registered brands...
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </DataTableContainer>
+                ) : paged.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-8 text-text-muted text-[12px]">
+                      No brands registered yet. Click &quot;Add Brand&quot; to add one.
+                    </td>
+                  </tr>
+                ) : (
+                  paged.map((item, index) => (
+                    <tr key={item.id || index} className="hover:bg-surface-muted/30 transition-colors">
+                      <td className="px-3 py-2.5 text-center font-medium text-text-primary text-[11px]">
+                        {(page - 1) * perPage + index + 1}
+                      </td>
+                      <td className="px-3 py-2.5 font-semibold text-text-primary text-[12px]">
+                        <div className="flex items-center gap-2">
+                          <Tag className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <span className="truncate">{item.brand_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-text-secondary text-[12px]">
+                        <span className="line-clamp-2" title={item.brand_description || item.description || ''}>
+                          {item.brand_description || item.description || <span className="text-text-muted italic">No description provided</span>}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {hasPermission('materials.manage_master') && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                title="Edit Brand"
+                                onClick={() => handleOpenEdit(item)}
+                              >
+                                <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                title="Delete Brand"
+                                onClick={() => setDeletingItem(item)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </DataTableContainer>
+        </div>
+
+        {/* Mobile View - Cards List for Phones (< sm) */}
+        <div className="block sm:hidden space-y-3">
+          {loading ? (
+            <div className="text-center py-8 text-text-muted text-[12px] bg-surface border border-border rounded-lg shadow-xs">
+              Loading registered brands...
+            </div>
+          ) : paged.length === 0 ? (
+            <div className="text-center py-8 text-text-muted text-[12px] bg-surface border border-border rounded-lg shadow-xs">
+              No brands registered yet. Click &quot;Add Brand&quot; to add one.
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2.5">
+                {paged.map((item, index) => (
+                  <div
+                    key={item.id || index}
+                    className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                          <Tag className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-text-primary text-[14px] leading-tight truncate">
+                            {item.brand_name}
+                          </h4>
+                          <span className="text-[11px] font-mono text-text-muted">
+                            #{(page - 1) * perPage + index + 1}
+                          </span>
+                        </div>
+                      </div>
+
+                      {hasPermission('materials.manage_master') && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            title="Edit Brand"
+                            onClick={() => handleOpenEdit(item)}
+                          >
+                            <Edit className="w-4 h-4 text-text-secondary hover:text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            title="Delete Brand"
+                            onClick={() => setDeletingItem(item)}
+                          >
+                            <Trash2 className="w-4 h-4 text-text-secondary hover:text-error" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-border/60">
+                      <span className="text-[10px] uppercase font-bold text-text-muted block mb-1">
+                        Brand Description
+                      </span>
+                      <p className="text-[12px] text-text-secondary leading-relaxed break-words">
+                        {item.brand_description || item.description || (
+                          <span className="text-text-muted italic">No description provided</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mobile Pagination */}
+              <div className="bg-surface border border-border rounded-lg p-3 shadow-xs">
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalResults={filtered.length}
+                  pageSize={perPage}
+                  onPageChange={setPage}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Add / Edit Brand Modal */}
