@@ -274,6 +274,35 @@ export const wagesApi = {
     cancel: (id, payload) => action('/labour-wages', id, 'cancel', payload),
 };
 
+
+// Karur-style Daily Wages / Daily Resource Cost Register
+// Kept separate from attendance-based labour-wages payroll.
+export const dailyWagesApi = {
+    // Setup data for dropdowns / page initialization.
+    // Optional params: project_id, site_id, subcontractor_id, date
+    setup: (params) => request.get('/daily-wages/setup', params),
+
+    // Reusable subcontractor daily-wage item templates.
+    templates: {
+        list: (params) => request.get('/daily-wages/templates', params),
+        get: (id, params) => request.get(`/daily-wages/templates/${enc(id)}`, params),
+        create: (payload) => request.post('/daily-wages/templates', payload),
+        update: (id, payload) => request.patch(`/daily-wages/templates/${enc(id)}`, payload),
+        replace: (id, payload) => request.put(`/daily-wages/templates/${enc(id)}`, payload),
+        remove: (id) => request.delete(`/daily-wages/templates/${enc(id)}`),
+    },
+
+    // Daily wage register.
+    list: (params) => request.get('/daily-wages', params),
+    get: (id, params) => request.get(`/daily-wages/${enc(id)}`, params),
+    create: (payload) => request.post('/daily-wages', payload),
+    update: (id, payload) => request.patch(`/daily-wages/${enc(id)}`, payload),
+    replace: (id, payload) => request.put(`/daily-wages/${enc(id)}`, payload),
+
+    // Register workflow.
+    cancel: (id, payload = {}) => request.post(`/daily-wages/${enc(id)}/cancel`, payload),
+};
+
 export const labourPaymentsApi = {
     list: (params) => request.get('/labour-payments', params),
     get: (id) => request.get(`/labour-payments/${enc(id)}`),
