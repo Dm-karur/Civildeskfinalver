@@ -16,35 +16,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-
-const INITIAL_SUBCONTRACTOR_TYPES = [
-  { id: 1, type_code: 'SUB-MAIS', type_name: 'Maistry', description: 'General labor contractor', is_active: 1 },
-  { id: 2, type_code: 'SUB-CARP', type_name: 'Carpenter', description: 'Woodwork and formwork', is_active: 1 },
-  { id: 3, type_code: 'SUB-CENT', type_name: 'Centering', description: 'Centering and scaffolding', is_active: 1 },
-  { id: 4, type_code: 'SUB-BAR', type_name: 'Bar Bender', description: 'Steel reinforcement', is_active: 1 },
-];
-
-const INITIAL_SUBCONTRACTOR_TEMPLATES = [
-  // Templates for Maistry (type_id: 1) - matches user requirements
-  { id: 1, type_id: 1, classification: 'Labour', description: 'MM', trade_category: 'Maistry', uom: 'Shift', default_rate: '500', is_active: true, calculate_maistry: false },
-  { id: 2, type_id: 1, classification: 'Labour', description: 'FM', trade_category: 'Maistry', uom: 'Shift', default_rate: '500', is_active: true, calculate_maistry: false },
-  { id: 3, type_id: 1, classification: 'Equipment', description: 'Concrete Mixer', trade_category: 'Maistry', uom: 'Shift', default_rate: '1000', is_active: true, calculate_maistry: false },
-
-  // Templates for Carpenter (type_id: 2)
-  { id: 4, type_id: 2, classification: 'Labour', description: 'Lead Carpenter', trade_category: 'Carpenter', uom: 'Shift', default_rate: '900', is_active: true, calculate_maistry: false },
-  { id: 5, type_id: 2, classification: 'Labour', description: 'Assistant Carpenter', trade_category: 'Carpenter', uom: 'Shift', default_rate: '650', is_active: true, calculate_maistry: false },
-  { id: 6, type_id: 2, classification: 'Equipment', description: 'Wood Cutting Machine', trade_category: 'Carpenter', uom: 'Shift', default_rate: '450', is_active: true, calculate_maistry: false },
-
-  // Templates for Centering (type_id: 3)
-  { id: 7, type_id: 3, classification: 'Labour', description: 'Centering Mestri', trade_category: 'Centering', uom: 'Shift', default_rate: '850', is_active: true, calculate_maistry: false },
-  { id: 8, type_id: 3, classification: 'Labour', description: 'Centering Helper', trade_category: 'Centering', uom: 'Shift', default_rate: '550', is_active: true, calculate_maistry: false },
-  { id: 9, type_id: 3, classification: 'Equipment', description: 'Scaffolding & Props Set', trade_category: 'Centering', uom: 'Shift', default_rate: '1200', is_active: true, calculate_maistry: false },
-
-  // Templates for Bar Bender (type_id: 4)
-  { id: 10, type_id: 4, classification: 'Labour', description: 'Bar Bender Skilled', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '850', is_active: true, calculate_maistry: false },
-  { id: 11, type_id: 4, classification: 'Labour', description: 'Bar Bender Helper', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '550', is_active: true, calculate_maistry: false },
-  { id: 12, type_id: 4, classification: 'Equipment', description: 'Rebar Bending & Cutting Unit', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '800', is_active: true, calculate_maistry: false },
-];
+import { subcontractsApi } from '../../../api/apiservice';
 
 const EMPTY_FORM = {
   type_code: '',
@@ -53,38 +25,79 @@ const EMPTY_FORM = {
   is_active: '1',
 };
 
-export function SubcontractorTypesPage() {
-  const [types, setTypes] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_subcontractor_types');
-      const parsed = saved ? JSON.parse(saved) : null;
-      if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
-        return INITIAL_SUBCONTRACTOR_TYPES;
-      }
-      const existingIds = new Set(parsed.map(p => String(p.id)));
-      const missing = INITIAL_SUBCONTRACTOR_TYPES.filter(init => !existingIds.has(String(init.id)));
-      return missing.length > 0 ? [...parsed, ...missing] : parsed;
-    } catch {
-      return INITIAL_SUBCONTRACTOR_TYPES;
-    }
-  });
+const LEGACY_MOCK_TYPE_CODES = new Set(['SUB-MAIS', 'SUB-CARP', 'SUB-CENT', 'SUB-BAR']);
+const LEGACY_MOCK_TEMPLATES = new Set([
+  'MM', 'FM', 'Concrete Mixer', 'Lead Carpenter', 'Assistant Carpenter',
+  'Wood Cutting Machine', 'Centering Mestri', 'Centering Helper',
+  'Scaffolding & Props Set', 'Bar Bender Skilled', 'Bar Bender Helper',
+  'Rebar Bending & Cutting Unit'
+]);
 
+export function SubcontractorTypesPage() {
+  const [types, setTypes] = useState([]);
   const [templates, setTemplates] = useState(() => {
     try {
       const saved = localStorage.getItem('mock_subcontractor_templates');
-      const parsed = saved ? JSON.parse(saved) : null;
-      if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
-        return INITIAL_SUBCONTRACTOR_TEMPLATES;
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+      const filtered = parsed.filter(t => !LEGACY_MOCK_TEMPLATES.has(t.description));
+      if (filtered.length !== parsed.length) {
+        localStorage.setItem('mock_subcontractor_templates', JSON.stringify(filtered));
       }
-      const existingIds = new Set(parsed.map(p => String(p.id)));
-      const missing = INITIAL_SUBCONTRACTOR_TEMPLATES.filter(init => !existingIds.has(String(init.id)));
-      return missing.length > 0 ? [...parsed, ...missing] : parsed;
+      return filtered;
     } catch {
-      return INITIAL_SUBCONTRACTOR_TEMPLATES;
+      return [];
     }
   });
 
   const [equipmentMasters, setEquipmentMasters] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchTypes = async () => {
+    setLoading(true);
+    try {
+      const res = await subcontractsApi.masters().catch(() => null);
+      const backendTypes = res?.data?.masters?.contractor_types ?? res?.data?.contractor_types ?? [];
+
+      const liveTypes = (Array.isArray(backendTypes) ? backendTypes : []).map(t => ({
+        id: t.id,
+        type_code: t.contractor_type_code || t.type_code,
+        type_name: t.contractor_type_name || t.type_name,
+        description: t.description || `${t.contractor_type_name || ''} Contractor`,
+        is_active: t.is_active === 1 || t.is_active === true || t.is_active === '1' ? 1 : 0,
+        is_system: true,
+      }));
+
+      // Check any local custom types
+      try {
+        const saved = localStorage.getItem('mock_subcontractor_types');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const liveCodes = new Set(liveTypes.map(lt => lt.type_code));
+            const liveIds = new Set(liveTypes.map(lt => String(lt.id)));
+            const customTypes = parsed.filter(pt => !liveCodes.has(pt.type_code) && !liveIds.has(String(pt.id)) && !LEGACY_MOCK_TYPE_CODES.has(pt.type_code));
+            const merged = [...liveTypes, ...customTypes];
+            setTypes(merged);
+            localStorage.setItem('mock_subcontractor_types', JSON.stringify(merged));
+            return;
+          }
+        }
+      } catch {}
+
+      setTypes(liveTypes);
+      localStorage.setItem('mock_subcontractor_types', JSON.stringify(liveTypes));
+    } catch (err) {
+      console.error('Failed to load subcontractor types from database', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTypes();
+  }, []);
 
   useEffect(() => {
     try {
@@ -95,7 +108,6 @@ export function SubcontractorTypesPage() {
     } catch {}
   }, []);
 
-  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const perPage = 10;
@@ -369,7 +381,7 @@ export function SubcontractorTypesPage() {
                 {loading ? (
                   <tr>
                     <td colSpan="6" className="py-8 text-center text-[12px] text-text-muted">
-                      Loading...
+                      Loading subcontractor types from database...
                     </td>
                   </tr>
                 ) : pagedTypes.length === 0 ? (
@@ -448,7 +460,12 @@ export function SubcontractorTypesPage() {
 
         {/* Mobile View - Cards List for Phones (< sm) */}
         <div className="block sm:hidden space-y-3">
-          {pagedTypes.map((item, idx) => (
+          {loading ? (
+            <div className="py-8 text-center text-xs text-text-muted">Loading subcontractor types from database...</div>
+          ) : pagedTypes.length === 0 ? (
+            <div className="py-8 text-center text-xs text-text-muted">No subcontractor types found.</div>
+          ) : (
+            pagedTypes.map((item, idx) => (
             <div key={item.id} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -484,7 +501,7 @@ export function SubcontractorTypesPage() {
                 </div>
               </div>
             </div>
-          ))}
+          )))}
           {/* Mobile Pagination */}
           <div className="pt-2">
             <Pagination

@@ -54,6 +54,7 @@ export function BoqTable({ searchQuery = '', refreshKey = 0, onEdit, onView, fil
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [actionDialog, setActionDialog] = useState(null); // { boq, type: 'submit' | 'approve' | 'reject' }
   const [actionReason, setActionReason] = useState('');
+  const [actionReasonError, setActionReasonError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   const menuRef = useRef(null);
@@ -146,20 +147,31 @@ export function BoqTable({ searchQuery = '', refreshKey = 0, onEdit, onView, fil
   const handleConfirmAction = async () => {
     if (!actionDialog?.boq) return;
     const { boq, type } = actionDialog;
+
+    // Strict validation for Rejection: Reason is mandatory
+    if (type === 'reject') {
+      const trimmedReason = actionReason.trim();
+      if (trimmedReason === '') {
+        setActionReasonError('Rejection reason is required.');
+        return;
+      }
+    }
+
     setActionLoading(true);
     try {
       if (type === 'submit') {
         await boqApi.submit(boq.id, {});
-        toast.success(`BOQ ${boq.boq_code} submitted for approval.`);
+        toast.success('BOQ submitted for approval successfully.');
       } else if (type === 'approve') {
         await boqApi.approve(boq.id, {});
-        toast.success(`BOQ ${boq.boq_code} approved successfully.`);
+        toast.success('BOQ approved successfully.');
       } else if (type === 'reject') {
-        await boqApi.reject(boq.id, { remarks: actionReason || undefined });
-        toast.success(`BOQ ${boq.boq_code} rejected.`);
+        await boqApi.reject(boq.id, { remarks: actionReason.trim() });
+        toast.success('BOQ rejected successfully.');
       }
       setActionDialog(null);
       setActionReason('');
+      setActionReasonError('');
       onAction?.();
       loadBoqs();
     } catch (err) {
@@ -352,6 +364,21 @@ export function BoqTable({ searchQuery = '', refreshKey = 0, onEdit, onView, fil
                                   </button>
                                 )}
 
+                                {/* Edit & Re-submit: REJECTED only & permitted */}
+                                {isRejected && canUpdate && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenMenuId(null);
+                                      onEdit?.(boq);
+                                    }}
+                                    className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-surface-muted flex items-center gap-2 text-text-primary font-medium transition-colors"
+                                  >
+                                    <Edit className="w-3.5 h-3.5 text-text-secondary" />
+                                    <span>Edit & Re-submit</span>
+                                  </button>
+                                )}
+
                                 {/* Submit: DRAFT only & permitted */}
                                 {isDraft && canSubmit && (
                                   <button
@@ -388,6 +415,8 @@ export function BoqTable({ searchQuery = '', refreshKey = 0, onEdit, onView, fil
                                     type="button"
                                     onClick={() => {
                                       setOpenMenuId(null);
+                                      setActionReason('');
+                                      setActionReasonError('');
                                       setActionDialog({ boq, type: 'reject' });
                                     }}
                                     className="w-full text-left px-2.5 py-1.5 rounded-xs hover:bg-rose-50 text-rose-700 flex items-center gap-2 font-medium transition-colors"
@@ -413,7 +442,7 @@ export function BoqTable({ searchQuery = '', refreshKey = 0, onEdit, onView, fil
                                 )}
 
                                 {/* Fallback if no actions allowed for this status */}
-                                {!isDraft && !isSubmitted && (
+                                {!isDraft && !isSubmitted && !isRejected && (
                                   <div className="px-2.5 py-1.5 text-text-muted text-[10px] italic">
                                     No actions available for this status.
                                   </div>
@@ -454,6 +483,8 @@ export function BoqTable({ searchQuery = '', refreshKey = 0, onEdit, onView, fil
             const statusCode = String(boq.status_code || boq.status || status).toUpperCase();
             const isDraft = statusCode.includes('DRAFT');
             const isSubmitted = statusCode.includes('REVIEW') || statusCode.includes('SUBMITTED');
+            const isApproved = statusCode.includes('APPROVED');
+            const isRejected = statusCode.includes('REJECTED');
             const total = boq.total_amount || boq.grand_total || 0;
 
             return (
@@ -524,13 +555,28 @@ export function BoqTable({ searchQuery = '', refreshKey = 0, onEdit, onView, fil
                         <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                       </Button>
                     )}
+                    {isRejected && canUpdate && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[11px] px-2 font-medium"
+                        title="Edit & Re-submit"
+                        onClick={() => onEdit?.(boq)}
+                      >
+                        <Edit className="w-3 h-3 mr-1 text-primary" /> Re-submit
+                      </Button>
+                    )}
                     {isDraft && canSubmit && (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0 text-info"
                         title="Submit"
-                        onClick={() => setActionDialog({ boq, type: 'submit' })}
+                        onClick={() => {
+                          setActionReason('');
+                          setActionReasonError('');
+                          setActionDialog({ boq, type: 'submit' });
+                        }}
                       >
                         <Send className="w-3.5 h-3.5" />
                       </Button>
@@ -540,18 +586,26 @@ export function BoqTable({ searchQuery = '', refreshKey = 0, onEdit, onView, fil
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0 text-emerald-600"
+                          className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-50"
                           title="Approve"
-                          onClick={() => setActionDialog({ boq, type: 'approve' })}
+                          onClick={() => {
+                            setActionReason('');
+                            setActionReasonError('');
+                            setActionDialog({ boq, type: 'approve' });
+                          }}
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0 text-rose-600"
+                          className="h-7 w-7 p-0 text-rose-600 hover:bg-rose-50"
                           title="Reject"
-                          onClick={() => setActionDialog({ boq, type: 'reject' })}
+                          onClick={() => {
+                            setActionReason('');
+                            setActionReasonError('');
+                            setActionDialog({ boq, type: 'reject' });
+                          }}
                         >
                           <XCircle className="w-3.5 h-3.5" />
                         </Button>
@@ -602,63 +656,155 @@ export function BoqTable({ searchQuery = '', refreshKey = 0, onEdit, onView, fil
       {/* Workflow Action Confirmation Dialog (Submit / Approve / Reject) */}
       {actionDialog && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-100">
-            <h3 className="text-base font-bold text-text-primary mb-2">
-              {actionDialog.type === 'submit' && 'Submit BOQ for Approval'}
-              {actionDialog.type === 'approve' && 'Approve Project BOQ'}
-              {actionDialog.type === 'reject' && 'Reject Project BOQ'}
-            </h3>
-            <p className="text-xs text-text-secondary mb-4">
-              {actionDialog.type === 'submit' && (
-                <>Are you sure you want to submit BOQ <strong>{actionDialog.boq.boq_code}</strong> for approval? Once submitted, it cannot be edited until reviewed.</>
-              )}
-              {actionDialog.type === 'approve' && (
-                <>Are you sure you want to approve BOQ <strong>{actionDialog.boq.boq_code}</strong>? This will lock the BOQ as the approved baseline for this project.</>
-              )}
-              {actionDialog.type === 'reject' && (
-                <>Are you sure you want to reject BOQ <strong>{actionDialog.boq.boq_code}</strong>? Please provide a reason for the site team.</>
-              )}
-            </p>
-
-            {actionDialog.type === 'reject' && (
-              <div className="mb-4">
-                <label className="block text-[11px] font-semibold text-text-secondary uppercase mb-1">
-                  Rejection Reason (Optional)
-                </label>
-                <textarea
-                  rows={3}
-                  value={actionReason}
-                  onChange={(e) => setActionReason(e.target.value)}
-                  placeholder="Explain why this BOQ was rejected..."
-                  className="w-full text-xs p-2 rounded border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                />
+          {actionDialog.type === 'reject' ? (
+            /* Dedicated Rejection Modal (Requirements 3, 4, 5, 18, 19) */
+            <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-100">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+                <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                  <XCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-text-primary">Reject BOQ</h3>
+                  <p className="text-xs text-text-muted">Enter the reason for rejecting this project BOQ.</p>
+                </div>
               </div>
-            )}
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setActionDialog(null);
-                  setActionReason('');
-                }}
-                disabled={actionLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant={actionDialog.type === 'reject' ? 'error' : 'primary'}
-                size="sm"
-                onClick={handleConfirmAction}
-                disabled={actionLoading}
-              >
-                {actionLoading ? 'Processing...' : (
-                  actionDialog.type === 'submit' ? 'Submit' : (actionDialog.type === 'approve' ? 'Approve' : 'Reject')
-                )}
-              </Button>
+              <div className="space-y-3 mb-4">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase text-text-muted">BOQ Code:</div>
+                  <div className="text-sm font-mono font-bold text-text-primary">
+                    {actionDialog.boq.boq_code || actionDialog.boq.code || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[11px] font-semibold uppercase text-text-muted">BOQ Name:</div>
+                  <div className="text-xs font-medium text-text-primary">
+                    {actionDialog.boq.boq_name || actionDialog.boq.name || '—'}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-text-secondary mb-1">
+                    Reason for Rejection <span className="text-error">*</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={actionReason}
+                    onChange={(e) => {
+                      setActionReason(e.target.value);
+                      if (actionReasonError && e.target.value.trim()) {
+                        setActionReasonError('');
+                      }
+                    }}
+                    placeholder="Enter the reason for rejecting this BOQ..."
+                    className={`w-full text-xs p-2.5 rounded-md border ${
+                      actionReasonError ? 'border-error ring-1 ring-error' : 'border-border'
+                    } bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-primary`}
+                  />
+                  {actionReasonError && (
+                    <p className="text-[11px] text-error mt-1 flex items-center gap-1 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      {actionReasonError}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setActionDialog(null);
+                    setActionReason('');
+                    setActionReasonError('');
+                  }}
+                  disabled={actionLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="error"
+                  size="sm"
+                  onClick={handleConfirmAction}
+                  disabled={actionLoading || !actionReason.trim()}
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-medium"
+                >
+                  {actionLoading ? 'Rejecting...' : 'Reject BOQ'}
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Approve & Submit Confirmation Dialog */
+            <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-100">
+              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  actionDialog.type === 'approve' ? 'bg-emerald-100 text-emerald-600' : 'bg-info/10 text-info'
+                }`}>
+                  {actionDialog.type === 'approve' ? <CheckCircle2 className="w-5 h-5" /> : <Send className="w-4 h-4" />}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-text-primary">
+                    {actionDialog.type === 'approve' ? 'Approve BOQ' : 'Submit BOQ for Approval'}
+                  </h3>
+                  <p className="text-xs text-text-muted">
+                    {actionDialog.type === 'approve'
+                      ? 'Confirm approval for this project BOQ.'
+                      : 'Submit this draft BOQ for review.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2 mb-4">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase text-text-muted">BOQ Code:</div>
+                  <div className="text-sm font-mono font-bold text-text-primary">
+                    {actionDialog.boq.boq_code || actionDialog.boq.code || '—'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold uppercase text-text-muted">BOQ Name:</div>
+                  <div className="text-xs font-medium text-text-primary">
+                    {actionDialog.boq.boq_name || actionDialog.boq.name || '—'}
+                  </div>
+                </div>
+                <p className="text-xs text-text-secondary pt-2">
+                  {actionDialog.type === 'approve' ? (
+                    <>Are you sure you want to approve this BOQ? This will move the status to <strong>APPROVED</strong>.</>
+                  ) : (
+                    <>Are you sure you want to submit this BOQ? It will move to <strong>UNDER REVIEW</strong> for approver sign-off.</>
+                  )}
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setActionDialog(null);
+                    setActionReason('');
+                    setActionReasonError('');
+                  }}
+                  disabled={actionLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleConfirmAction}
+                  disabled={actionLoading}
+                  className={actionDialog.type === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700 text-white font-medium' : 'font-medium'}
+                >
+                  {actionLoading
+                    ? 'Processing...'
+                    : (actionDialog.type === 'approve' ? 'Approve BOQ' : 'Submit BOQ')}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>

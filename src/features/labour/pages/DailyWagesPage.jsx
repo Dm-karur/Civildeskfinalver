@@ -16,66 +16,13 @@ import { Input } from '../../../components/ui/Input';
 import { FormField } from '../../../components/composite/FormField';
 import { toast } from '../../../components/composite/Toast';
 
-const INITIAL_SUBCONTRACTORS = [
-  {
-    id: 1,
-    contractor_code: 'SUB-2026-001',
-    contractor_name: 'sanjay',
-    phone: '-',
-    subcontractor_type_id: '1',
-    subcontractor_type_label: 'SUB-MAIS - Maistry',
-    is_active: true,
-  },
-  {
-    id: 2,
-    contractor_code: 'SUB-2026-002',
-    contractor_name: 'Murugan Carpentry',
-    phone: '9876543210',
-    subcontractor_type_id: '2',
-    subcontractor_type_label: 'SUB-CARP - Carpenter',
-    is_active: true,
-  },
-  {
-    id: 3,
-    contractor_code: 'SUB-2026-003',
-    contractor_name: 'Velu Centering Works',
-    phone: '9842112233',
-    subcontractor_type_id: '3',
-    subcontractor_type_label: 'SUB-CENT - Centering',
-    is_active: true,
-  },
-  {
-    id: 4,
-    contractor_code: 'SUB-2026-004',
-    contractor_name: 'Raja Bar Bending',
-    phone: '9944556677',
-    subcontractor_type_id: '4',
-    subcontractor_type_label: 'SUB-BAR - Bar Bender',
-    is_active: true,
-  },
-];
-
-const INITIAL_SUBCONTRACTOR_TEMPLATES = [
-  // Templates for Maistry (type_id: 1) - matches user requirements
-  { id: 1, type_id: 1, classification: 'Labour', description: 'MM', trade_category: 'Maistry', uom: 'Shift', default_rate: '500', is_active: true, calculate_maistry: false },
-  { id: 2, type_id: 1, classification: 'Labour', description: 'FM', trade_category: 'Maistry', uom: 'Shift', default_rate: '500', is_active: true, calculate_maistry: false },
-  { id: 3, type_id: 1, classification: 'Equipment', description: 'Concrete Mixer', trade_category: 'Maistry', uom: 'Shift', default_rate: '1000', is_active: true, calculate_maistry: false },
-
-  // Templates for Carpenter (type_id: 2)
-  { id: 4, type_id: 2, classification: 'Labour', description: 'Lead Carpenter', trade_category: 'Carpenter', uom: 'Shift', default_rate: '900', is_active: true, calculate_maistry: false },
-  { id: 5, type_id: 2, classification: 'Labour', description: 'Assistant Carpenter', trade_category: 'Carpenter', uom: 'Shift', default_rate: '650', is_active: true, calculate_maistry: false },
-  { id: 6, type_id: 2, classification: 'Equipment', description: 'Wood Cutting Machine', trade_category: 'Carpenter', uom: 'Shift', default_rate: '450', is_active: true, calculate_maistry: false },
-
-  // Templates for Centering (type_id: 3)
-  { id: 7, type_id: 3, classification: 'Labour', description: 'Centering Mestri', trade_category: 'Centering', uom: 'Shift', default_rate: '850', is_active: true, calculate_maistry: false },
-  { id: 8, type_id: 3, classification: 'Labour', description: 'Centering Helper', trade_category: 'Centering', uom: 'Shift', default_rate: '550', is_active: true, calculate_maistry: false },
-  { id: 9, type_id: 3, classification: 'Equipment', description: 'Scaffolding & Props Set', trade_category: 'Centering', uom: 'Shift', default_rate: '1200', is_active: true, calculate_maistry: false },
-
-  // Templates for Bar Bender (type_id: 4)
-  { id: 10, type_id: 4, classification: 'Labour', description: 'Bar Bender Skilled', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '850', is_active: true, calculate_maistry: false },
-  { id: 11, type_id: 4, classification: 'Labour', description: 'Bar Bender Helper', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '550', is_active: true, calculate_maistry: false },
-  { id: 12, type_id: 4, classification: 'Equipment', description: 'Rebar Bending & Cutting Unit', trade_category: 'Bar Bender', uom: 'Shift', default_rate: '800', is_active: true, calculate_maistry: false },
-];
+const LEGACY_MOCK_CONTRACTOR_CODES = new Set(['SUB-2026-001', 'SUB-2026-002', 'SUB-2026-003', 'SUB-2026-004']);
+const LEGACY_MOCK_TEMPLATES = new Set([
+  'MM', 'FM', 'Concrete Mixer', 'Lead Carpenter', 'Assistant Carpenter',
+  'Wood Cutting Machine', 'Centering Mestri', 'Centering Helper',
+  'Scaffolding & Props Set', 'Bar Bender Skilled', 'Bar Bender Helper',
+  'Rebar Bending & Cutting Unit'
+]);
 
 const MOCK_SITES = [
   { id: 1, site_code: 'GOW783', site_name: 'gowtham site 1', project_code: 'GOW-001', project_name: 'gowtham sweets', site_type: 'Main Site', location: 'Site Area', incharge: 'ram', status: 'PLANNED' },
@@ -90,16 +37,16 @@ export function DailyWagesPage() {
   const [page, setPage] = useState(1);
   const perPage = 10;
 
-  // Add Wages Form State - Defaults to first site and sanjay for immediate development preview
+  // Add Wages Form State - Defaults to first site
   const [selectedSite, setSelectedSite] = useState(() => MOCK_SITES[0]);
   const [viewingSite, setViewingSite] = useState(null);
-  const [subcontractors, setSubcontractors] = useState(INITIAL_SUBCONTRACTORS);
-  const [templates, setTemplates] = useState(INITIAL_SUBCONTRACTOR_TEMPLATES);
-  const [selectedSubcontractorId, setSelectedSubcontractorId] = useState('1');
+  const [subcontractors, setSubcontractors] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [selectedSubcontractorId, setSelectedSubcontractorId] = useState('');
   const [wageDate, setWageDate] = useState(() => new Date().toISOString().split('T')[0]);
   
   const [wageEntries, setWageEntries] = useState({});
-  const [wageRates, setWageRates] = useState({ 1: '500', 2: '500', 3: '1000' });
+  const [wageRates, setWageRates] = useState({});
   const [wageRemarks, setWageRemarks] = useState({});
   const [globalRemarks, setGlobalRemarks] = useState('');
   const [customItems, setCustomItems] = useState([]);
@@ -112,41 +59,42 @@ export function DailyWagesPage() {
   useEffect(() => {
     try {
       const savedSubs = localStorage.getItem('mock_subcontractors_master');
-      const parsedSubs = savedSubs ? JSON.parse(savedSubs) : null;
-      let finalSubs = INITIAL_SUBCONTRACTORS;
-      if (parsedSubs && Array.isArray(parsedSubs) && parsedSubs.length > 0) {
-        const existingIds = new Set(parsedSubs.map(p => String(p.id)));
-        const missing = INITIAL_SUBCONTRACTORS.filter(init => !existingIds.has(String(init.id)));
-        finalSubs = missing.length > 0 ? [...parsedSubs, ...missing] : parsedSubs;
+      let finalSubs = [];
+      if (savedSubs) {
+        const parsedSubs = JSON.parse(savedSubs);
+        if (Array.isArray(parsedSubs)) {
+          finalSubs = parsedSubs.filter(s => !LEGACY_MOCK_CONTRACTOR_CODES.has(s.contractor_code));
+        }
       }
       setSubcontractors(finalSubs);
-      localStorage.setItem('mock_subcontractors_master', JSON.stringify(finalSubs));
+      if (finalSubs.length > 0) {
+        setSelectedSubcontractorId(String(finalSubs[0].id));
+      }
 
       const savedTmpl = localStorage.getItem('mock_subcontractor_templates');
-      const parsedTmpl = savedTmpl ? JSON.parse(savedTmpl) : null;
-      let finalTmpl = INITIAL_SUBCONTRACTOR_TEMPLATES;
-      if (parsedTmpl && Array.isArray(parsedTmpl) && parsedTmpl.length > 0) {
-        const existingIds = new Set(parsedTmpl.map(p => String(p.id)));
-        const missing = INITIAL_SUBCONTRACTOR_TEMPLATES.filter(init => !existingIds.has(String(init.id)));
-        finalTmpl = missing.length > 0 ? [...parsedTmpl, ...missing] : parsedTmpl;
+      let finalTmpl = [];
+      if (savedTmpl) {
+        const parsedTmpl = JSON.parse(savedTmpl);
+        if (Array.isArray(parsedTmpl)) {
+          finalTmpl = parsedTmpl.filter(t => !LEGACY_MOCK_TEMPLATES.has(t.description));
+        }
       }
       setTemplates(finalTmpl);
-      localStorage.setItem('mock_subcontractor_templates', JSON.stringify(finalTmpl));
 
       const wages = JSON.parse(localStorage.getItem('mock_daily_wages') || '[]');
       setDailyWagesList(wages);
     } catch {
-      setSubcontractors(INITIAL_SUBCONTRACTORS);
-      setTemplates(INITIAL_SUBCONTRACTOR_TEMPLATES);
+      setSubcontractors([]);
+      setTemplates([]);
       setDailyWagesList([]);
     }
   }, []);
 
   const handleOpenWages = (site) => {
     setSelectedSite(site);
-    setSelectedSubcontractorId('1');
+    setSelectedSubcontractorId(subcontractors.length > 0 ? String(subcontractors[0].id) : '');
     setWageEntries({});
-    setWageRates({ 1: '500', 2: '500', 3: '1000' });
+    setWageRates({});
     setWageRemarks({});
     setGlobalRemarks('');
     setCustomItems([]);

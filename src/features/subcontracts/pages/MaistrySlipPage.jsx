@@ -120,8 +120,10 @@ export function MaistrySlipPage() {
 
     try {
       const subs = JSON.parse(localStorage.getItem('mock_subcontractors_master') || '[]');
-      if (subs.length > 0) {
-        const mapped = subs.map((s, i) => ({
+      const MOCK_CODES = new Set(['SUB-2026-001', 'SUB-2026-002', 'SUB-2026-003', 'SUB-2026-004']);
+      const validSubs = subs.filter(s => !MOCK_CODES.has(s.contractor_code));
+      if (validSubs.length > 0) {
+        const mapped = validSubs.map((s, i) => ({
           id: String(s.id),
           name: `${s.contractor_name} (${s.trade || 'General'})`,
           trade: s.trade || 'General Civil',

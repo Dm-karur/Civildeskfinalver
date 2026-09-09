@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   X, FileSpreadsheet, Plus, Edit, Trash2, ChevronDown, ChevronRight,
-  Calculator, CheckCircle2, XCircle, Send, Layers, Boxes, Sparkles
+  Calculator, CheckCircle2, XCircle, Send, Layers, Boxes, Sparkles, AlertCircle
 } from 'lucide-react';
 import { boqApi } from '../../../api/apiservice';
 import { Button } from '../../../components/ui/Button';
@@ -296,11 +297,13 @@ function SectionCard({ section, items: propItems, boqId, isBoqDraft, onOpenRateM
   );
 }
 
-export function BoqDetailModal({ isOpen, boq, onClose, onRefresh }) {
+export function BoqDetailModal({ isOpen, boq, onClose, onRefresh, onEdit }) {
+  const navigate = useNavigate();
   const { user, hasPermission } = useAuth();
   const isAdmin = Boolean(user?.is_super_admin) || String(user?.role_name || user?.role || '').toLowerCase().includes('admin');
   const canApprove = isAdmin || hasPermission('boq.approve');
   const canSubmit = isAdmin || hasPermission('boq.submit');
+  const canUpdate = isAdmin || hasPermission('boq.update');
 
   const [detail, setDetail] = useState(null);
   const [sections, setSections] = useState([]);
@@ -308,6 +311,12 @@ export function BoqDetailModal({ isOpen, boq, onClose, onRefresh }) {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Dialog states for approval & rejection
+  const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectionReasonError, setRejectionReasonError] = useState('');
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
 
   // Rate analysis modal target
   const [rateModalItem, setRateModalItem] = useState(null);
@@ -342,24 +351,55 @@ export function BoqDetailModal({ isOpen, boq, onClose, onRefresh }) {
   const statusCode = String(d.status_code || d.status || status).toUpperCase();
   const isDraft = statusCode.includes('DRAFT');
   const isSubmitted = statusCode.includes('REVIEW') || statusCode.includes('SUBMITTED');
+  const isApproved = statusCode.includes('APPROVED');
+  const isRejected = statusCode.includes('REJECTED');
 
-  const handleAction = async (actionName) => {
+  const handleConfirmSubmit = async () => {
     setActionLoading(true);
     try {
-      if (actionName === 'submit') {
-        await boqApi.submit(boq.id, {});
-        toast.success(`BOQ submitted for approval.`);
-      } else if (actionName === 'approve') {
-        await boqApi.approve(boq.id, {});
-        toast.success(`BOQ approved.`);
-      } else if (actionName === 'reject') {
-        await boqApi.reject(boq.id, {});
-        toast.success(`BOQ rejected.`);
-      }
+      await boqApi.submit(boq.id, {});
+      toast.success('BOQ submitted for approval successfully.');
       setRefreshKey((v) => v + 1);
       onRefresh?.();
     } catch (err) {
-      toast.error(err?.message || `Failed to ${actionName} BOQ.`);
+      toast.error(err?.message || 'Failed to submit BOQ.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirmApprove = async () => {
+    setActionLoading(true);
+    try {
+      await boqApi.approve(boq.id, {});
+      toast.success('BOQ approved successfully.');
+      setApproveDialogOpen(false);
+      setRefreshKey((v) => v + 1);
+      onRefresh?.();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to approve BOQ.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    const trimmed = rejectionReason.trim();
+    if (!trimmed) {
+      setRejectionReasonError('Rejection reason is required.');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await boqApi.reject(boq.id, { remarks: trimmed });
+      toast.success('BOQ rejected successfully.');
+      setRejectionDialogOpen(false);
+      setRejectionReason('');
+      setRejectionReasonError('');
+      setRefreshKey((v) => v + 1);
+      onRefresh?.();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to reject BOQ.');
     } finally {
       setActionLoading(false);
     }
@@ -395,7 +435,7 @@ export function BoqDetailModal({ isOpen, boq, onClose, onRefresh }) {
                   variant="primary"
                   size="sm"
                   className="h-8 text-xs font-medium shadow-xs"
-                  onClick={() => handleAction('submit')}
+                  onClick={handleConfirmSubmit}
                   disabled={actionLoading}
                   leftIcon={<Send className="w-3.5 h-3.5" />}
                 >
@@ -409,7 +449,7 @@ export function BoqDetailModal({ isOpen, boq, onClose, onRefresh }) {
                     variant="primary"
                     size="sm"
                     className="h-8 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                    onClick={() => handleAction('approve')}
+                    onClick={() => setApproveDialogOpen(true)}
                     disabled={actionLoading}
                     leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
                   >
@@ -419,13 +459,36 @@ export function BoqDetailModal({ isOpen, boq, onClose, onRefresh }) {
                     variant="outline"
                     size="sm"
                     className="h-8 text-xs font-medium text-rose-600 border-rose-200 hover:bg-rose-50"
-                    onClick={() => handleAction('reject')}
+                    onClick={() => {
+                      setRejectionReason('');
+                      setRejectionReasonError('');
+                      setRejectionDialogOpen(true);
+                    }}
                     disabled={actionLoading}
                     leftIcon={<XCircle className="w-3.5 h-3.5" />}
                   >
                     Reject
                   </Button>
                 </>
+              )}
+
+              {isRejected && canUpdate && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="h-8 text-xs font-medium shadow-xs"
+                  onClick={() => {
+                    onClose?.();
+                    if (onEdit) {
+                      onEdit(d);
+                    } else {
+                      navigate(`/boq/${d.id}/edit`);
+                    }
+                  }}
+                  leftIcon={<Edit className="w-3.5 h-3.5" />}
+                >
+                  Edit & Re-submit BOQ
+                </Button>
               )}
 
               <button
@@ -470,6 +533,83 @@ export function BoqDetailModal({ isOpen, boq, onClose, onRefresh }) {
 
           {/* Hierarchy Display (Section -> Items -> Rate Components) */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-surface-muted/20">
+            {/* Approval / Review Information for REJECTED BOQ (Requirements 6, 7, 8) */}
+            {isRejected && (
+              <div className="bg-rose-50/90 border border-rose-200 rounded-lg p-4 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <XCircle className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-rose-900">Approval / Review Information</h4>
+                        <Badge variant="error" className="text-[9px] font-bold uppercase tracking-wider">
+                          REJECTED
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-rose-800 mt-1">
+                        <span className="font-semibold text-rose-950">Rejection Reason: </span>
+                        <span>
+                          {d.rejection_reason || d.rejection_remarks || d.remarks || (
+                            <span className="italic text-rose-600">Rejection reason was submitted by approver (current API does not store/return reason field).</span>
+                          )}
+                        </span>
+                      </div>
+                      {d.updated_at && (
+                        <div className="text-[10px] text-rose-600 mt-1">
+                          Reviewed: {new Date(d.updated_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {canUpdate && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs font-semibold bg-white border-rose-300 text-rose-700 hover:bg-rose-100 hover:border-rose-400 shrink-0 shadow-2xs self-start sm:self-auto"
+                      onClick={() => {
+                        onClose?.();
+                        if (onEdit) {
+                          onEdit(d);
+                        } else {
+                          navigate(`/boq/${d.id}/edit`);
+                        }
+                      }}
+                    >
+                      <Edit className="w-3.5 h-3.5 mr-1 text-rose-600" />
+                      Edit & Re-submit BOQ
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Approval Information for APPROVED BOQ */}
+            {isApproved && (
+              <div className="bg-emerald-50/90 border border-emerald-200 rounded-lg p-4 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-900">Approval / Review Information</h4>
+                      <Badge variant="success" className="text-[9px] font-bold uppercase tracking-wider">
+                        APPROVED
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-emerald-800 mt-1">
+                      {d.approved_by_first_name
+                        ? `Approved by ${d.approved_by_first_name} ${d.approved_by_last_name || ''} ${d.approved_by_employee_code ? `(${d.approved_by_employee_code})` : ''}`
+                        : 'This BOQ has been reviewed and approved as the active baseline for this project.'}
+                      {d.approved_at ? ` on ${new Date(d.approved_at).toLocaleDateString()}` : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             {loading ? (
               <div className="py-16 text-center text-text-muted text-[13px]">
                 <div className="flex flex-col items-center justify-center gap-2">
@@ -532,6 +672,144 @@ export function BoqDetailModal({ isOpen, boq, onClose, onRefresh }) {
           </div>
         </div>
       </div>
+
+      {/* Rejection Modal in BOQ Details (Requirements 3, 4, 5, 18, 19) */}
+      {rejectionDialogOpen && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-100">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+              <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <XCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-text-primary">Reject BOQ</h3>
+                <p className="text-xs text-text-muted">Enter the reason for rejecting this project BOQ.</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-4">
+              <div>
+                <div className="text-[11px] font-semibold uppercase text-text-muted">BOQ Code:</div>
+                <div className="text-sm font-mono font-bold text-text-primary">
+                  {d.boq_code || d.code || '—'}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[11px] font-semibold uppercase text-text-muted">BOQ Name:</div>
+                <div className="text-xs font-medium text-text-primary">
+                  {d.boq_name || d.name || '—'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1">
+                  Reason for Rejection <span className="text-error">*</span>
+                </label>
+                <textarea
+                  rows={4}
+                  value={rejectionReason}
+                  onChange={(e) => {
+                    setRejectionReason(e.target.value);
+                    if (rejectionReasonError && e.target.value.trim()) {
+                      setRejectionReasonError('');
+                    }
+                  }}
+                  placeholder="Enter the reason for rejecting this BOQ..."
+                  className={`w-full text-xs p-2.5 rounded-md border ${
+                    rejectionReasonError ? 'border-error ring-1 ring-error' : 'border-border'
+                  } bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-primary`}
+                />
+                {rejectionReasonError && (
+                  <p className="text-[11px] text-error mt-1 flex items-center gap-1 font-medium">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    {rejectionReasonError}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setRejectionDialogOpen(false);
+                  setRejectionReason('');
+                  setRejectionReasonError('');
+                }}
+                disabled={actionLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="error"
+                size="sm"
+                onClick={handleConfirmReject}
+                disabled={actionLoading || !rejectionReason.trim()}
+                className="bg-rose-600 hover:bg-rose-700 text-white font-medium"
+              >
+                {actionLoading ? 'Rejecting...' : 'Reject BOQ'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approval Confirmation Dialog in BOQ Details */}
+      {approveDialogOpen && (
+        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-100">
+            <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-text-primary">Approve BOQ</h3>
+                <p className="text-xs text-text-muted">Confirm approval for this project BOQ.</p>
+              </div>
+            </div>
+
+            <div className="space-y-2 mb-4">
+              <div>
+                <div className="text-[11px] font-semibold uppercase text-text-muted">BOQ Code:</div>
+                <div className="text-sm font-mono font-bold text-text-primary">
+                  {d.boq_code || d.code || '—'}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold uppercase text-text-muted">BOQ Name:</div>
+                <div className="text-xs font-medium text-text-primary">
+                  {d.boq_name || d.name || '—'}
+                </div>
+              </div>
+              <p className="text-xs text-text-secondary pt-2">
+                Are you sure you want to approve this BOQ? This will move the status to <strong>APPROVED</strong>.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setApproveDialogOpen(false)}
+                disabled={actionLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleConfirmApprove}
+                disabled={actionLoading}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+              >
+                {actionLoading ? 'Approving...' : 'Approve BOQ'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rate Analysis Modal trigger */}
       {rateModalItem && (

@@ -1,23 +1,22 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FileSpreadsheet, CheckCircle2, Clock, IndianRupee } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { KpiCard } from '../../../components/composite/KpiCard';
 import { BoqFilterBar } from '../components/BoqFilterBar';
 import { BoqTable } from '../components/BoqTable';
-import { BoqFormModal } from '../components/BoqFormModal';
 import { BoqDetailModal } from '../components/BoqDetailModal';
 import { boqApi, projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 export function BoqListPage() {
+  const navigate = useNavigate();
   const { hasPermission, user } = useAuth();
   const isAdmin = Boolean(user?.is_super_admin) || String(user?.role_name || user?.role || '').toLowerCase().includes('admin');
   const canCreate = isAdmin || hasPermission('boq.create');
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingBoq, setEditingBoq] = useState(null);
   const [viewingBoq, setViewingBoq] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [filters, setFilters] = useState({ project_id: 'all', status: 'all' });
@@ -117,7 +116,7 @@ export function BoqListPage() {
         <BoqFilterBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          onAdd={() => setIsAddOpen(true)}
+          onAdd={() => navigate('/boq/create')}
           canCreate={canCreate}
           filters={filters}
           onFilterChange={(name, value) => setFilters((c) => ({ ...c, [name]: value }))}
@@ -129,16 +128,20 @@ export function BoqListPage() {
         <BoqTable
           searchQuery={searchQuery}
           refreshKey={refreshKey}
-          onEdit={setEditingBoq}
+          onEdit={(boq) => navigate(`/boq/${boq.id}/edit`)}
           onView={setViewingBoq}
           filters={filters}
           onAction={refresh}
         />
       </div>
 
-      <BoqFormModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} onSaveSuccess={refresh} />
-      <BoqFormModal isOpen={Boolean(editingBoq)} boq={editingBoq} onClose={() => setEditingBoq(null)} onSaveSuccess={refresh} />
-      <BoqDetailModal isOpen={Boolean(viewingBoq)} boq={viewingBoq} onClose={() => setViewingBoq(null)} onRefresh={refresh} />
+      <BoqDetailModal
+        isOpen={Boolean(viewingBoq)}
+        boq={viewingBoq}
+        onClose={() => setViewingBoq(null)}
+        onRefresh={refresh}
+        onEdit={(boq) => navigate(`/boq/${boq.id}/edit`)}
+      />
     </PageContainer>
   );
 }

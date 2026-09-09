@@ -15,51 +15,7 @@ import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
 
-const INITIAL_SUBCONTRACTOR_TYPES = [
-  { id: 1, type_code: 'SUB-MAIS', type_name: 'Maistry', description: 'General labor contractor', is_active: 1 },
-  { id: 2, type_code: 'SUB-CARP', type_name: 'Carpenter', description: 'Woodwork and formwork', is_active: 1 },
-  { id: 3, type_code: 'SUB-CENT', type_name: 'Centering', description: 'Centering and scaffolding', is_active: 1 },
-  { id: 4, type_code: 'SUB-BAR', type_name: 'Bar Bender', description: 'Steel reinforcement', is_active: 1 },
-];
-
-const INITIAL_SUBCONTRACTORS = [
-  {
-    id: 1,
-    contractor_code: 'SUB-2026-001',
-    contractor_name: 'sanjay',
-    phone: '-',
-    subcontractor_type_id: '1',
-    subcontractor_type_label: 'SUB-MAIS - Maistry',
-    is_active: true,
-  },
-  {
-    id: 2,
-    contractor_code: 'SUB-2026-002',
-    contractor_name: 'Murugan Carpentry',
-    phone: '9876543210',
-    subcontractor_type_id: '2',
-    subcontractor_type_label: 'SUB-CARP - Carpenter',
-    is_active: true,
-  },
-  {
-    id: 3,
-    contractor_code: 'SUB-2026-003',
-    contractor_name: 'Velu Centering Works',
-    phone: '9842112233',
-    subcontractor_type_id: '3',
-    subcontractor_type_label: 'SUB-CENT - Centering',
-    is_active: true,
-  },
-  {
-    id: 4,
-    contractor_code: 'SUB-2026-004',
-    contractor_name: 'Raja Bar Bending',
-    phone: '9944556677',
-    subcontractor_type_id: '4',
-    subcontractor_type_label: 'SUB-BAR - Bar Bender',
-    is_active: true,
-  },
-];
+import { subcontractsApi } from '../../../api/apiservice';
 
 const EMPTY_FORM = {
   contractor_name: '',
@@ -68,24 +24,11 @@ const EMPTY_FORM = {
 };
 
 export function SubcontractorsMasterPage() {
-  // Subcontractor Type options from local storage
+  // Subcontractor Type options from database
   const [typeOptions, setTypeOptions] = useState([]);
-
-  // Subcontractors list
-  const [subcontractors, setSubcontractors] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_subcontractors_master');
-      const parsed = saved ? JSON.parse(saved) : null;
-      if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
-        return INITIAL_SUBCONTRACTORS;
-      }
-      const existingIds = new Set(parsed.map(p => String(p.id)));
-      const missing = INITIAL_SUBCONTRACTORS.filter(init => !existingIds.has(String(init.id)));
-      return missing.length > 0 ? [...parsed, ...missing] : parsed;
-    } catch {
-      return INITIAL_SUBCONTRACTORS;
-    }
-  });
+  const [subcontractors, setSubcontractors] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -98,22 +41,54 @@ export function SubcontractorsMasterPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
 
-  useEffect(() => {
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      const savedTypes = localStorage.getItem('mock_subcontractor_types');
-      const parsed = savedTypes && JSON.parse(savedTypes).length > 0 ? JSON.parse(savedTypes) : INITIAL_SUBCONTRACTOR_TYPES;
-      setTypeOptions(parsed.map(t => ({
+      const [mastersRes, contrRes] = await Promise.all([
+        subcontractsApi.masters().catch(() => null),
+        subcontractsApi.contractors.list().catch(() => null),
+      ]);
+
+      const typesList = mastersRes?.data?.masters?.contractor_types ?? mastersRes?.data?.contractor_types ?? [];
+      const opts = (Array.isArray(typesList) ? typesList : []).map(t => ({
         value: String(t.id),
-        label: `${t.type_code} - ${t.type_name}`
-      })));
-    } catch (e) {
-      console.error('Failed to load types', e);
+        label: `${t.contractor_type_code || ''} - ${t.contractor_type_name || ''}`.replace(/^[ -]+/, ''),
+      }));
+      setTypeOptions(opts);
+
+      const rawContractors = contrRes?.data?.subcontractors ?? contrRes?.data?.data ?? [];
+      const normalized = (Array.isArray(rawContractors) ? rawContractors : []).map(c => {
+        const matchedType = opts.find(o => o.value === String(c.contractor_type_id));
+        const typeLabel = c.contractor_type_name
+          ? `${c.contractor_type_code ? c.contractor_type_code + ' - ' : ''}${c.contractor_type_name}`.trim()
+          : (matchedType ? matchedType.label : '');
+
+        return {
+          id: c.id,
+          contractor_code: c.contractor_code || `SUB-${c.id}`,
+          contractor_name: c.contractor_name || '',
+          phone: c.phone || '',
+          subcontractor_type_id: String(c.contractor_type_id || ''),
+          subcontractor_type_label: typeLabel,
+          status_id: c.status_id,
+          is_active: c.status_code === 'ACTIVE' || c.is_active === 1 || c.status_id === 1,
+        };
+      });
+
+      setSubcontractors(normalized);
+      try {
+        localStorage.setItem('mock_subcontractors_master', JSON.stringify(normalized));
+      } catch { }
+    } catch (err) {
+      console.error('Failed to load subcontractors data from database', err);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    localStorage.setItem('mock_subcontractors_master', JSON.stringify(subcontractors));
-  }, [subcontractors]);
+    fetchData();
+  }, []);
 
   const handleOpenAdd = () => {
     setForm({ ...EMPTY_FORM });
@@ -136,7 +111,7 @@ export function SubcontractorsMasterPage() {
     setErrors((prev) => ({ ...prev, [field]: null }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
     if (!form.contractor_name.trim()) errs.contractor_name = 'Name is required';
@@ -147,34 +122,49 @@ export function SubcontractorsMasterPage() {
       return;
     }
 
-    const selectedType = typeOptions.find(t => t.value === form.subcontractor_type_id);
+    setSubmitting(true);
+    try {
+      const payload = {
+        contractor_code: editingItem?.contractor_code || `SUB-2026-${String(subcontractors.length + 1).padStart(3, '0')}`,
+        contractor_name: form.contractor_name.trim(),
+        contractor_type_id: Number(form.subcontractor_type_id),
+        phone: form.phone.trim() || undefined,
+        status_id: 1,
+      };
 
-    const payload = {
-      contractor_name: form.contractor_name.trim(),
-      phone: form.phone.trim(),
-      subcontractor_type_id: form.subcontractor_type_id,
-      subcontractor_type_label: selectedType ? selectedType.label : '',
-      is_active: true,
-    };
+      if (editingItem?.id) {
+        await subcontractsApi.contractors.update(editingItem.id, payload);
+        toast.success('Subcontractor updated successfully.');
+      } else {
+        await subcontractsApi.contractors.create(payload);
+        toast.success('Subcontractor onboarded successfully.');
+      }
 
-    if (editingItem?.id) {
-      setSubcontractors(prev => prev.map(t => t.id === editingItem.id ? { ...t, ...payload } : t));
-      toast.success('Subcontractor updated successfully.');
-    } else {
-      const newId = subcontractors.length > 0 ? Math.max(...subcontractors.map(t => t.id)) + 1 : 1;
-      setSubcontractors(prev => [{ id: newId, contractor_code: `SUB-2026-${String(newId).padStart(3, '0')}`, ...payload }, ...prev]);
-      toast.success('Subcontractor onboarded successfully.');
+      await fetchData();
+      setIsAddOpen(false);
+      setEditingItem(null);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save subcontractor.');
+    } finally {
+      setSubmitting(false);
     }
-
-    setIsAddOpen(false);
-    setEditingItem(null);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deletingItem?.id) return;
-    setSubcontractors(prev => prev.filter(t => t.id !== deletingItem.id));
-    toast.success('Subcontractor deleted successfully.');
-    setDeletingItem(null);
+    try {
+      try {
+        await subcontractsApi.contractors.remove(deletingItem.id);
+      } catch {
+        await subcontractsApi.contractors.update(deletingItem.id, { status_id: 2 });
+      }
+      toast.success('Subcontractor deleted successfully.');
+      await fetchData();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to delete subcontractor.');
+    } finally {
+      setDeletingItem(null);
+    }
   };
 
   // Safe Filtered List
@@ -255,7 +245,13 @@ export function SubcontractorsMasterPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {pagedData.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="py-8 text-center text-[12px] text-text-muted">
+                      Loading subcontractors from database...
+                    </td>
+                  </tr>
+                ) : pagedData.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="py-8 text-center text-[12px] text-text-muted">
                       No subcontractors found.
@@ -288,7 +284,7 @@ export function SubcontractorsMasterPage() {
                         </span>
                       </td>
                       <td className="px-3 py-2 text-center">
-                        <Badge 
+                        <Badge
                           variant="success"
                           className="text-[9px] font-bold uppercase tracking-wider h-5 px-2 inline-flex items-center"
                         >
@@ -327,37 +323,42 @@ export function SubcontractorsMasterPage() {
 
         {/* Mobile View - Cards List for Phones (< sm) */}
         <div className="block sm:hidden space-y-3">
-          {pagedData.map((item) => (
-            <div key={item.id} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="font-mono text-[10px] font-bold text-primary block mb-0.5">{item.contractor_code}</span>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{item.contractor_name}</h4>
-                  <span className="text-[11px] text-primary font-medium">{item.subcontractor_type_label}</span>
+          {loading ? (
+            <div className="py-8 text-center text-xs text-text-muted">Loading subcontractors from database...</div>
+          ) : pagedData.length === 0 ? (
+            <div className="py-8 text-center text-xs text-text-muted">No subcontractors found.</div>
+          ) : (
+            pagedData.map((item) => (
+              <div key={item.id} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="font-mono text-[10px] font-bold text-primary block mb-0.5">{item.contractor_code}</span>
+                    <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{item.contractor_name}</h4>
+                    <span className="text-[11px] text-primary font-medium">{item.subcontractor_type_label}</span>
+                  </div>
+                  <Badge
+                    variant="success"
+                    className="text-[9px] font-bold uppercase tracking-wider h-5 px-2 inline-flex items-center shrink-0"
+                  >
+                    Active
+                  </Badge>
                 </div>
-                <Badge 
-                  variant="success"
-                  className="text-[9px] font-bold uppercase tracking-wider h-5 px-2 inline-flex items-center shrink-0"
-                >
-                  Active
-                </Badge>
-              </div>
-              
-              <div className="text-xs pt-1 border-t border-border/60 text-text-secondary font-mono">
-                <span className="block text-[10px] uppercase font-bold text-text-muted mb-1 font-sans">Contact</span>
-                {item.phone || 'No number provided'}
-              </div>
 
-              <div className="flex items-center justify-end pt-2 border-t border-border/60 gap-1.5">
-                <Button variant="outline" size="sm" className="h-7 text-[11px] px-3" onClick={() => handleOpenEdit(item)}>
-                  <Edit className="w-3 h-3 mr-1" /> Edit
-                </Button>
-                <Button variant="outline" size="sm" className="h-7 text-[11px] px-3 text-red-500 hover:text-red-600 border-border" onClick={() => setDeletingItem(item)}>
-                  <Trash2 className="w-3 h-3 mr-1" /> Delete
-                </Button>
+                <div className="text-xs pt-1 border-t border-border/60 text-text-secondary font-mono">
+                  <span className="block text-[10px] uppercase font-bold text-text-muted mb-1 font-sans">Contact</span>
+                  {item.phone || 'No number provided'}
+                </div>
+
+                <div className="flex items-center justify-end pt-2 border-t border-border/60 gap-1.5">
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-3" onClick={() => handleOpenEdit(item)}>
+                    <Edit className="w-3 h-3 mr-1" /> Edit
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-3 text-red-500 hover:text-red-600 border-border" onClick={() => setDeletingItem(item)}>
+                    <Trash2 className="w-3 h-3 mr-1" /> Delete
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            )))}
           {/* Mobile Pagination */}
           <div className="pt-2">
             <Pagination
@@ -399,7 +400,7 @@ export function SubcontractorsMasterPage() {
                     onChange={(e) => handleFormChange('contractor_name', e.target.value)}
                   />
                 </FormField>
-                
+
                 <FormField label="Phone Number (Optional)" error={errors.phone}>
                   <Input
                     placeholder="e.g. +91 9876543210"
@@ -432,8 +433,8 @@ export function SubcontractorsMasterPage() {
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
-              {editingItem ? 'Save Changes' : 'Add Subcontractor'}
+            <Button type="submit" variant="primary" disabled={submitting}>
+              {submitting ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Subcontractor'}
             </Button>
           </EntityEditModal.Footer>
         </form>

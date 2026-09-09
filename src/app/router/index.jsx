@@ -37,6 +37,7 @@ import { WorkCategoriesPage } from '../../features/masters/pages/WorkCategoriesP
 import { WorkStagesPage } from '../../features/masters/pages/WorkStagesPage';
 import { ProgressMethodsPage } from '../../features/masters/pages/ProgressMethodsPage';
 import { BoqListPage } from '../../features/boq/pages/BoqListPage';
+import { BoqCreatePage } from '../../features/boq/pages/BoqCreatePage';
 import { BoqSectionsPage } from '../../features/boq/pages/BoqSectionsPage';
 import { BoqItemsPage } from '../../features/boq/pages/BoqItemsPage';
 import { PlannedQuantitiesPage } from '../../features/boq/pages/PlannedQuantitiesPage';
@@ -250,7 +251,11 @@ export const router = createBrowserRouter([
 
           // ─── 3. BOQ & Project Budget ─────────────────────
           { path: 'project-boqs', element: R('boq.view', BoqListPage) },
+          { path: 'project-boqs/create', element: R('boq.view', BoqCreatePage) },
+          { path: 'project-boqs/:id/edit', element: R('boq.view', BoqCreatePage) },
           { path: 'boq', element: R('boq.view', BoqListPage) },
+          { path: 'boq/create', element: R('boq.view', BoqCreatePage) },
+          { path: 'boq/:id/edit', element: R('boq.view', BoqCreatePage) },
           { path: 'boq/sections', element: R('boq.view', BoqSectionsPage) },
           { path: 'boq/items', element: R('boq.view', BoqItemsPage) },
           { path: 'boq/items/planned-quantities', element: R('boq.view', PlannedQuantitiesPage) },

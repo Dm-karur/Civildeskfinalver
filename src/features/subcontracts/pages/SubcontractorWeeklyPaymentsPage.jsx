@@ -264,7 +264,9 @@ export function SubcontractorWeeklyPaymentsPage() {
       const cList = contrRes?.data?.subcontractors ?? contrRes?.data?.data ?? [];
       let masterSubs = [];
       try {
-        masterSubs = JSON.parse(localStorage.getItem('mock_subcontractors_master') || '[]');
+        const rawSubs = JSON.parse(localStorage.getItem('mock_subcontractors_master') || '[]');
+        const MOCK_CODES = new Set(['SUB-2026-001', 'SUB-2026-002', 'SUB-2026-003', 'SUB-2026-004']);
+        masterSubs = rawSubs.filter(s => !MOCK_CODES.has(s.contractor_code));
       } catch {
         masterSubs = [];
       }

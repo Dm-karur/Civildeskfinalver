@@ -90,7 +90,7 @@ export function SubcontractorsPage() {
         notes: c.notes || '',
       }));
       setContractors(normalized);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => { }).finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -305,7 +305,7 @@ export function SubcontractorsPage() {
                 totalItems={filtered.length}
                 itemsPerPage={perPage}
                 onPageChange={setPage}
-                onItemsPerPageChange={() => {}}
+                onItemsPerPageChange={() => { }}
               />
             }
           >
@@ -461,7 +461,7 @@ export function SubcontractorsPage() {
               totalItems={filtered.length}
               itemsPerPage={perPage}
               onPageChange={setPage}
-              onItemsPerPageChange={() => {}}
+              onItemsPerPageChange={() => { }}
             />
           </div>
         </div>
