@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MapPin, Activity, CheckCircle2, Clock, Construction, Plus, Building2, Layers, Search, Filter } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -13,9 +14,9 @@ import { sitesApi, mastersApi, projectsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 export function SitesListPage() {
+  const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingSite, setEditingSite] = useState(null);
   const [viewingSite, setViewingSite] = useState(null);
   const [deletingSite, setDeletingSite] = useState(null);
@@ -110,7 +111,7 @@ export function SitesListPage() {
         <SitesFilterBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          onAdd={() => setIsAddOpen(true)}
+          onAdd={() => navigate('/sites/create')}
           canCreate={hasPermission('site.create')}
           filters={filters}
           onFilterChange={(name, value) => setFilters((current) => ({ ...current, [name]: value }))}
@@ -129,12 +130,7 @@ export function SitesListPage() {
         />
       </div>
 
-      {/* Add / Edit Site Modal */}
-      <SiteFormModal
-        isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
-        onSaveSuccess={() => setRefreshKey((v) => v + 1)}
-      />
+      {/* Edit Site Modal */}
       <SiteFormModal
         isOpen={Boolean(editingSite)}
         site={editingSite}

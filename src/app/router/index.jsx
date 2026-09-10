@@ -24,6 +24,7 @@ import { SubcontractorTypesPage } from '../../features/masters/pages/Subcontract
 import { SubcontractorsMasterPage } from '../../features/masters/pages/SubcontractorsMasterPage';
 // Phase 1 — Sites, Masters, BOQ, Budgets
 import { SitesListPage } from '../../features/sites/pages/SitesListPage';
+import { SiteCreatePage } from '../../features/sites/pages/SiteCreatePage';
 import { SiteZonesPage } from '../../features/sites/pages/SiteZonesPage';
 import { WorkLocationsPage } from '../../features/sites/pages/WorkLocationsPage';
 import { SiteTeamPage } from '../../features/sites/pages/SiteTeamPage';
@@ -235,6 +236,7 @@ export const router = createBrowserRouter([
 
           // ─── 2. Sites & Locations ─────────────────────────
           { path: 'sites', element: R('site.view', SitesListPage) },
+          { path: 'sites/create', element: R('site.create', SiteCreatePage) },
           { path: 'sites/zones', element: R('site.view', SiteZonesPage) },
           { path: 'sites/work-locations', element: R('site.view', WorkLocationsPage) },
           { path: 'sites/team', element: R('site.view', SiteTeamPage) },
