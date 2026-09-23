@@ -3,7 +3,7 @@ import { UnderDevelopment } from '../../masters/pages/UnderDevelopment';
 import {
   FileText, Upload, Download, Eye, Edit, Trash2, Search, Filter,
   FileCode, FileSpreadsheet, Image, File, CheckCircle2, Clock,
-  ShieldCheck, Plus, Briefcase, Calendar, MapPin, Camera, Truck
+  ShieldCheck, Plus, Briefcase, Calendar, MapPin, Camera, Truck, ExternalLink
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -20,7 +20,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { sitesApi, projectsApi, projectDocumentsApi, request } from '../../../api/apiservice';
+import { sitesApi, projectsApi, projectDocumentsApi, request, mastersApi } from '../../../api/apiservice';
 
 const SITE_DOC_CATEGORIES = [
   { id: 'all', name: 'All Field Documents' },
@@ -50,16 +50,6 @@ const EMPTY_FORM = {
 };
 
 export function SiteDocumentsPage() {
-  return (
-    <UnderDevelopment 
-      title="Site Documents" 
-      featureName="Site Documents" 
-    />
-  );
-}
-
-// Keeping the original code for future development as requested
-function SiteDocumentsPage_OLD() {
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
   const [documents, setDocuments] = useState([]);
@@ -81,17 +71,27 @@ function SiteDocumentsPage_OLD() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState(SITE_DOC_CATEGORIES);
 
-  // Load Projects & Sites
+  // Load Projects, Sites & Masters
   useEffect(() => {
     Promise.all([
       projectsApi.list().catch(() => ({ data: { projects: [] } })),
       sitesApi.list().catch(() => ({ data: { sites: [] } })),
-    ]).then(([pRes, sRes]) => {
+      mastersApi.all().catch(() => ({ data: {} }))
+    ]).then(([pRes, sRes, mRes]) => {
       const pList = pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []);
       const sList = sRes?.data?.sites ?? sRes?.sites ?? (Array.isArray(sRes?.data) ? sRes.data : []);
       setProjects(Array.isArray(pList) ? pList : []);
       setSites(Array.isArray(sList) ? sList : []);
+
+      const cats = mRes?.data?.document_types ?? mRes?.data?.project_document_types ?? mRes?.data?.project_document_categories ?? mRes?.data?.document_categories ?? mRes?.document_types ?? mRes?.project_document_categories ?? [];
+      if (Array.isArray(cats) && cats.length > 0) {
+        setCategories([
+          { id: 'all', name: 'All Documents' },
+          ...cats.map(c => ({ id: String(c.id), name: c.name || c.category_name || c.code }))
+        ]);
+      }
     });
   }, []);
 
@@ -131,6 +131,8 @@ function SiteDocumentsPage_OLD() {
       ...EMPTY_FORM,
       project_id: defaultProj,
       site_id: defaultSite,
+      category_id: categories.length > 1 ? categories[1].id : 'photos',
+      document_type_id: categories.length > 1 ? categories[1].id : '1',
       document_number: `DOC-SITE-00${documents.length + 1}`,
       document_date: new Date().toISOString().split('T')[0],
     });
@@ -139,13 +141,15 @@ function SiteDocumentsPage_OLD() {
   };
 
   const handleOpenEdit = (doc) => {
+    const docCatId = doc.category_id || doc.project_document_category_id || doc.document_type_id;
     setForm({
       project_id: String(doc.project_id || '1'),
       site_id: String(doc.site_id || '1'),
       location_name: doc.location_name || '',
       document_title: doc.document_title || '',
       document_number: doc.document_number || '',
-      category_id: doc.category_id || 'photos',
+      category_id: String(docCatId || 'photos'),
+      document_type_id: String(doc.document_type_id || '1'),
       document_date: doc.document_date ? doc.document_date.split(' ')[0] : '',
       original_file_name: doc.original_file_name || '',
       file_extension: doc.file_extension || 'pdf',
@@ -177,36 +181,34 @@ function SiteDocumentsPage_OLD() {
     try {
       const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
       const selectedSite = sites.find(s => String(s.id) === String(form.site_id));
-      const catObj = SITE_DOC_CATEGORIES.find(c => c.id === form.category_id);
-      const docTypeId = 2; // Site Documents
+      // Safely map string fallback categories to integers to satisfy backend validation
+      const catId = form.category_id || form.document_type_id;
+      const docTypeId = isNaN(parseInt(catId)) ? '1' : String(parseInt(catId));
 
       let payload;
-      
-      const catIdMap = { 'photos': 1, 'dsr': 2, 'testing': 3, 'challans': 4, 'safety': 5, 'possession': 6 };
-      let catId = Number(form.category_id);
-      if (isNaN(catId)) catId = catIdMap[form.category_id] || 1;
 
       if (form.file) {
         payload = new FormData();
         Object.entries(form).forEach(([key, val]) => {
-          if (key !== 'file' && val !== null && val !== undefined && key !== 'category_id') {
+          if (key !== 'file' && val !== null && val !== undefined && key !== 'category_id' && key !== 'document_type_id') {
             payload.append(key, val);
           }
         });
-        payload.append('document_type_id', 2);
-        payload.append('category_id', catId);
-        payload.append('project_document_category_id', catId);
+        payload.append('document_type_id', docTypeId);
+        payload.append('category_id', docTypeId);
+        payload.append('project_document_category_id', docTypeId);
         payload.append('client_document_status_id', form.status_name === 'Verified' ? 2 : 1);
         payload.append('project_document_status_id', form.status_name === 'Verified' ? 2 : 1);
         payload.append('status_id', form.status_name === 'Verified' ? 2 : 1);
         payload.append('document_file', form.file);
+        payload.append('file', form.file);
       } else {
         payload = {
           project_id: form.project_id,
           site_id: form.site_id || null,
-          document_type_id: 2,
-          category_id: catId,
-          project_document_category_id: catId,
+          document_type_id: docTypeId,
+          category_id: docTypeId,
+          project_document_category_id: docTypeId,
           location_name: form.location_name || '',
           document_title: form.document_title,
           document_number: form.document_number,
@@ -253,11 +255,56 @@ function SiteDocumentsPage_OLD() {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteDoc?.id) return;
-    setDocuments(prev => prev.filter(d => d.id !== deleteDoc.id));
-    toast.success('Site document deleted.');
-    setDeleteDoc(null);
+    try {
+      await projectDocumentsApi.remove(deleteDoc.id);
+      setDocuments(prev => prev.filter(d => d.id !== deleteDoc.id));
+      toast.success('Site document deleted.');
+      setDeleteDoc(null);
+    } catch (err) {
+      toast.error('Failed to delete document.');
+    }
+  };
+
+  const handleDownload = async (doc) => {
+    if (!doc?.id) return;
+    try {
+      toast.info(`Downloading ${doc.original_file_name || 'document'}...`);
+      const blob = await projectDocumentsApi.download(doc.id);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', doc.original_file_name || `document-${doc.id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to download document.');
+    }
+  };
+
+  const handlePreview = async (doc) => {
+    if (!doc?.id) return;
+    try {
+      toast.info(`Opening ${doc.original_file_name || 'document'}...`);
+      const blob = await projectDocumentsApi.download(doc.id);
+      
+      let type = 'application/pdf';
+      const ext = (doc.file_extension || '').toLowerCase();
+      if (ext === 'jpg' || ext === 'jpeg') type = 'image/jpeg';
+      else if (ext === 'png') type = 'image/png';
+      else if (ext === 'csv') type = 'text/csv';
+      
+      const file = new Blob([blob], { type });
+      const url = window.URL.createObjectURL(file);
+      window.open(url, '_blank');
+      
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to preview document.');
+    }
   };
 
   // Filtered List
@@ -285,9 +332,9 @@ function SiteDocumentsPage_OLD() {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const photosCount = useMemo(() => documents.filter(d => d.category_id === 'photos' || (d.file_extension || '').includes('jpg') || (d.file_extension || '').includes('png')).length, [documents]);
-  const reportsCount = useMemo(() => documents.filter(d => d.category_id === 'dsr' || d.category_id === 'testing').length, [documents]);
-  const challansCount = useMemo(() => documents.filter(d => d.category_id === 'challans').length, [documents]);
+  const photosCount = useMemo(() => documents.filter(d => String(d.category_id) === '1' || (d.file_extension || '').includes('jpg') || (d.file_extension || '').includes('png')).length, [documents]);
+  const reportsCount = useMemo(() => documents.filter(d => String(d.category_id) === '2' || String(d.category_id) === '3').length, [documents]);
+  const challansCount = useMemo(() => documents.filter(d => String(d.category_id) === '4').length, [documents]);
 
   const formatFileSize = (bytes) => {
     if (!bytes) return '—';
@@ -301,6 +348,12 @@ function SiteDocumentsPage_OLD() {
     if (e.includes('pdf')) return <FileText className="w-4 h-4 text-red-500" />;
     if (e.includes('xls') || e.includes('csv')) return <FileSpreadsheet className="w-4 h-4 text-emerald-500" />;
     return <File className="w-4 h-4 text-text-secondary" />;
+  };
+
+  const getCategoryName = (doc) => {
+    if (!doc) return 'Other Documents';
+    const docCatId = String(doc.category_id || doc.document_type_id || doc.project_document_category_id);
+    return categories.find(c => String(c.id) === docCatId)?.name || doc.category_name || 'Other Documents';
   };
 
   const breadcrumbs = [
@@ -401,7 +454,7 @@ function SiteDocumentsPage_OLD() {
 
         {/* Category Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-none">
-          {SITE_DOC_CATEGORIES.map(cat => (
+          {categories.map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
@@ -490,8 +543,8 @@ function SiteDocumentsPage_OLD() {
                         </div>
                       </td>
                       <td className="px-3 py-2 hidden lg:table-cell">
-                        <span className="text-text-secondary text-[11px] bg-surface-muted px-2 py-0.5 rounded border border-border truncate block" title={doc.category_name}>
-                          {doc.category_name}
+                        <span className="text-text-secondary text-[11px] bg-surface-muted px-2 py-0.5 rounded border border-border truncate block" title={getCategoryName(doc)}>
+                          {getCategoryName(doc)}
                         </span>
                       </td>
                       <td className="px-3 py-2 hidden md:table-cell font-mono text-[11px] text-text-secondary">
@@ -523,8 +576,17 @@ function SiteDocumentsPage_OLD() {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
+                            title="Preview Document"
+                            onClick={() => handlePreview(doc)}
+                          >
+                            <ExternalLink className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
                             title="Download File"
-                            onClick={() => toast.success(`Downloading ${doc.original_file_name}...`)}
+                            onClick={() => handleDownload(doc)}
                           >
                             <Download className="w-3.5 h-3.5 text-text-secondary hover:text-emerald-600" />
                           </Button>
@@ -592,10 +654,13 @@ function SiteDocumentsPage_OLD() {
               <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
                 <span className="text-[10px] text-text-muted font-mono">{doc.document_date || '—'}</span>
                 <div className="flex items-center gap-1.5">
-                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingDoc(doc)}>
-                    <Eye className="w-3 h-3 mr-1" /> View
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handlePreview(doc)}>
+                    <ExternalLink className="w-3 h-3 mr-1" /> Preview
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => toast.success(`Downloading ${doc.original_file_name}...`)}>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setViewingDoc(doc)} title="Details">
+                    <Eye className="w-3.5 h-3.5 text-text-secondary" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload(doc)}>
                     <Download className="w-3.5 h-3.5 text-emerald-600" />
                   </Button>
                 </div>
@@ -637,7 +702,7 @@ function SiteDocumentsPage_OLD() {
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Site</span> <span className="font-semibold text-text-primary">{viewingDoc.site_name}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Category</span> <span className="font-medium text-primary">{viewingDoc.category_name}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Category</span> <span className="font-medium text-primary">{getCategoryName(viewingDoc)}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">File Name</span> <span className="font-mono text-text-primary break-all">{viewingDoc.original_file_name}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">File Size</span> <span className="font-mono">{formatFileSize(viewingDoc.file_size_bytes)}</span></div>
               </div>
@@ -655,7 +720,7 @@ function SiteDocumentsPage_OLD() {
                 variant="primary"
                 size="sm"
                 leftIcon={<Download className="w-3.5 h-3.5" />}
-                onClick={() => toast.success(`Downloading ${viewingDoc.original_file_name}...`)}
+                onClick={() => handleDownload(viewingDoc)}
               >
                 Download File
               </Button>
@@ -704,9 +769,12 @@ function SiteDocumentsPage_OLD() {
 
                 <FormField label="Document Category" required>
                   <Select
-                    options={SITE_DOC_CATEGORIES.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.name }))}
+                    options={categories.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.name }))}
                     value={form.category_id}
-                    onChange={(v) => handleFormChange('category_id', v)}
+                    onChange={(v) => {
+                      handleFormChange('category_id', v);
+                      handleFormChange('document_type_id', v);
+                    }}
                   />
                 </FormField>
 
