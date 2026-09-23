@@ -410,6 +410,9 @@ const subcontractDocument = (type, hasItems = true) => ({
 
 export const subcontractsApi = {
     masters: (params) => request.get('/subcontracts/masters', params),
+    contractorTypes: {
+        ...crud('/subcontracts/contractor-types'),
+    },
     contractors: {
         ...crud('/subcontracts/contractors'),
         uploadDocument: (id, payload) => request.upload(`/subcontracts/contractors/${enc(id)}/documents`, payload),
@@ -417,10 +420,14 @@ export const subcontractsApi = {
     },
     workOrders: {
         ...subcontractDocument('work-orders'),
+        returnForRevision: (id, payload = {}) => request.post(`/subcontracts/work-orders/${enc(id)}/return`, payload),
         integrations: (id, params) => request.get(`/subcontracts/work-orders/${enc(id)}/integrations`, params),
     },
     measurements: subcontractDocument('measurements'),
-    raBills: subcontractDocument('ra-bills'),
+    raBills: {
+        ...subcontractDocument('ra-bills'),
+        returnForRevision: (id, payload = {}) => request.post(`/subcontracts/ra-bills/${enc(id)}/return`, payload),
+    },
     payments: subcontractDocument('payments', false),
     weeklyPayments: subcontractDocument('weekly-payments', false),
 };

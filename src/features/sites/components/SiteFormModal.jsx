@@ -42,6 +42,7 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
+  const [teamRoles, setTeamRoles] = useState([]);
   const [masters, setMasters] = useState({});
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -91,17 +92,22 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
       setMasters(masterRes?.data ?? masterRes ?? {});
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
       const uList = userRes?.data?.users ?? userRes?.users ?? (Array.isArray(userRes?.data) ? userRes.data : []);
+      const roles = masterRes?.data?.project_team_roles ?? masterRes?.data?.team_roles ?? [];
       setProjects(Array.isArray(pList) ? pList : []);
       setUsers(Array.isArray(uList) ? uList : []);
+      setTeamRoles(Array.isArray(roles) ? roles : []);
 
       if (!site && pList.length > 0) {
-        setForm(f => ({
-          ...f,
-          project_id: String(pList[0].id),
-          site_code: `SITE-0${Math.floor(Math.random() * 90 + 10)}`,
-          site_type_id: masterRes?.data?.site_types?.[0]?.id ? String(masterRes.data.site_types[0].id) : '1',
-          site_status_id: masterRes?.data?.site_statuses?.[0]?.id ? String(masterRes.data.site_statuses[0].id) : '1',
-        }));
+        setForm(f => {
+          const draftStatus = masterRes?.data?.site_statuses?.find(s => (s.code || s.status_code || '').toUpperCase() === 'DRAFT');
+          return {
+            ...f,
+            project_id: String(pList[0].id),
+            site_code: `SITE-0${Math.floor(Math.random() * 90 + 10)}`,
+            site_type_id: masterRes?.data?.site_types?.[0]?.id ? String(masterRes.data.site_types[0].id) : '',
+            site_status_id: draftStatus ? String(draftStatus.id) : '',
+          };
+        });
       }
     });
   }, [isOpen, site]);
@@ -130,8 +136,8 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
         project_id: Number(form.project_id),
         site_code: form.site_code.trim(),
         site_name: form.site_name.trim(),
-        site_type_id: nullableNumber(form.site_type_id) || 1,
-        site_status_id: nullableNumber(form.site_status_id) || 1,
+        site_type_id: nullableNumber(form.site_type_id),
+        site_status_id: nullableNumber(form.site_status_id),
         address_line1: form.address_line1 || null,
         address_line2: form.address_line2 || null,
         landmark: form.landmark || null,
@@ -156,8 +162,11 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
         notes: form.notes || null,
       };
 
+      let finalSiteId = null;
+
       if (isEditing) {
         await sitesApi.update(site.id, payload);
+        finalSiteId = site.id;
         
         // The backend explicitly unsets site_status_id in the update method.
         // If the user changed the status, we must call the change-status API.
@@ -170,8 +179,70 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
         
         toast.success('Site updated successfully.');
       } else {
-        await sitesApi.create(payload);
+        const res = await sitesApi.create(payload);
+        finalSiteId = res?.data?.site?.id || res?.site?.id || res?.data?.id || res?.id;
         toast.success('Site created successfully.');
+      }
+
+      // Ensure Team Assignments for Engineer and Supervisor
+      if (finalSiteId) {
+        const getRoleId = (codePattern) => {
+          const role = teamRoles.find(r => 
+            String(r.code || r.name || r.role_name || '').toUpperCase().includes(codePattern)
+          );
+          return role ? Number(role.id) : null;
+        };
+
+        try {
+          const teamRes = await sitesApi.teamMembers.list(finalSiteId);
+          const existingTeam = teamRes?.data?.team_members ?? teamRes?.data?.data ?? teamRes?.team_members ?? [];
+          
+          const promises = [];
+          
+          if (form.site_engineer_id) {
+            const roleId = getRoleId('ENGINEER') || 2;
+            const exists = existingTeam.some(m => 
+              String(m.user_id) === String(form.site_engineer_id) && String(m.team_role_id) === String(roleId)
+            );
+            if (!exists) {
+              promises.push(
+                sitesApi.teamMembers.create(finalSiteId, {
+                  site_id: finalSiteId,
+                  user_id: Number(form.site_engineer_id),
+                  team_role_id: roleId,
+                  is_primary: 1,
+                  can_approve: 1,
+                  is_active: 1
+                }).catch(e => console.error('Auto-assign Engineer failed', e))
+              );
+            }
+          }
+
+          if (form.supervisor_id) {
+            const roleId = getRoleId('SUPERVISOR') || 3;
+            const exists = existingTeam.some(m => 
+              String(m.user_id) === String(form.supervisor_id) && String(m.team_role_id) === String(roleId)
+            );
+            if (!exists) {
+              promises.push(
+                sitesApi.teamMembers.create(finalSiteId, {
+                  site_id: finalSiteId,
+                  user_id: Number(form.supervisor_id),
+                  team_role_id: roleId,
+                  is_primary: 0,
+                  can_approve: 0,
+                  is_active: 1
+                }).catch(e => console.error('Auto-assign Supervisor failed', e))
+              );
+            }
+          }
+
+          if (promises.length > 0) {
+            await Promise.all(promises);
+          }
+        } catch (teamErr) {
+          toast.error('Site saved, but some Team Assignments could not be completed.');
+        }
       }
 
       onSaveSuccess?.();
@@ -210,6 +281,7 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
                   value={form.site_code}
                   onChange={(e) => change('site_code', e.target.value)}
                   placeholder="e.g. SITE-01"
+                  disabled={isEditing}
                 />
               </FormField>
 
@@ -223,7 +295,7 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
 
               <FormField label="Site Type" required error={errors.site_type_id}>
                 <Select
-                  options={(masters.site_types ?? [{ id: 1, type_name: 'Main Construction Site' }]).map(t => ({
+                  options={(masters.site_types || []).map(t => ({
                     value: String(t.id),
                     label: t.type_name || t.name
                   }))}
@@ -234,7 +306,7 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
 
               <FormField label="Site Status" required error={errors.site_status_id}>
                 <Select
-                  options={(masters.site_statuses ?? [{ id: 1, status_name: 'Active' }]).map(s => ({
+                  options={(masters.site_statuses || []).map(s => ({
                     value: String(s.id),
                     label: s.status_name || s.name
                   }))}

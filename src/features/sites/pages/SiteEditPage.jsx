@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Save,
   Building2,
@@ -13,7 +13,6 @@ import {
   AlertCircle,
   Loader2,
   Info,
-  ArrowLeft,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -96,7 +95,8 @@ const EMPTY_FORM = {
   notes: '',
 };
 
-export function SiteCreatePage() {
+export function SiteEditPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
@@ -108,7 +108,6 @@ export function SiteCreatePage() {
   const [siteTypes, setSiteTypes] = useState([]);
   const [siteStatuses, setSiteStatuses] = useState([]);
   const [users, setUsers] = useState([]);
-  const [teamRoles, setTeamRoles] = useState([]);
 
   // DRAFT status resolved from backend master data (never hardcoded)
   const [draftStatusId, setDraftStatusId] = useState(null);
@@ -139,15 +138,13 @@ export function SiteCreatePage() {
         const mData = mastersRes?.data ?? mastersRes ?? {};
         const types = Array.isArray(mData.site_types) ? mData.site_types : [];
         const statuses = Array.isArray(mData.site_statuses) ? mData.site_statuses : [];
-        const roles = mData.project_team_roles ?? mData.team_roles ?? [];
         setSiteTypes(types);
         setSiteStatuses(statuses);
-        setTeamRoles(Array.isArray(roles) ? roles : []);
 
-        // Resolve DRAFT status from backend master data (match by code or name, case-insensitive, fallback to first)
+        // Resolve DRAFT status from backend master data (match by code, case-insensitive)
         const draft = statuses.find(
-          (s) => (s.code || s.status_code || '').toUpperCase() === 'DRAFT' || (s.name || s.status_name || '').toUpperCase() === 'DRAFT'
-        ) || statuses[0];
+          (s) => (s.code || s.status_code || '').toUpperCase() === 'DRAFT'
+        );
         if (draft) {
           setDraftStatusId(String(draft.id));
           setDraftStatusName(draft.name || draft.status_name || 'Draft');
@@ -159,7 +156,43 @@ export function SiteCreatePage() {
           (Array.isArray(usersRes?.data) ? usersRes.data : Array.isArray(usersRes) ? usersRes : []);
         setUsers(Array.isArray(uList) ? uList : []);
 
-        // Preselect defaults if available (status is auto-assigned, not user-selectable)
+        // Preselect defaults if available
+        if (!id) {
+          setForm((prev) => ({
+            ...prev,
+            site_type_id: prev.site_type_id || (types[0]?.id ? String(types[0].id) : ''),
+          }));
+        } else {
+          sitesApi.get(id).then(res => {
+            const data = res.data || res;
+            setForm({
+              project_id: data.project_id ? String(data.project_id) : '',
+              site_code: data.site_code || '',
+              site_name: data.site_name || '',
+              site_type_id: data.site_type_id ? String(data.site_type_id) : '',
+              site_status_id: data.site_status_id ? String(data.site_status_id) : '',
+              address_line1: data.address_line1 || '',
+              address_line2: data.address_line2 || '',
+              landmark: data.landmark || '',
+              city: data.city || '',
+              state_code: data.state_code || '',
+              pincode: data.pincode || '',
+              latitude: data.latitude ? String(data.latitude) : '',
+              longitude: data.longitude ? String(data.longitude) : '',
+              geofence_radius_m: data.geofence_radius_m ? String(data.geofence_radius_m) : '',
+              planned_start_date: data.planned_start_date ? data.planned_start_date.split(' ')[0] : '',
+              planned_end_date: data.planned_end_date ? data.planned_end_date.split(' ')[0] : '',
+              actual_start_date: data.actual_start_date ? data.actual_start_date.split(' ')[0] : '',
+              actual_end_date: data.actual_end_date ? data.actual_end_date.split(' ')[0] : '',
+              budget_allocation: data.budget_allocation ? String(data.budget_allocation) : '',
+              engineer_in_charge_id: data.engineer_in_charge_id ? String(data.engineer_in_charge_id) : '',
+              contact_phone: data.contact_phone || '',
+              description: data.description || '',
+            });
+          }).catch(err => {
+             console.error(err);
+          });
+        }
         setForm((prev) => ({
           ...prev,
           site_type_id: prev.site_type_id || (types[0]?.id ? String(types[0].id) : ''),
@@ -219,8 +252,8 @@ export function SiteCreatePage() {
       errs.site_type_id = 'Site type is required.';
     }
 
-    if (!draftStatusId) {
-      errs._general = 'Unable to resolve DRAFT status from master data. Cannot create site.';
+    if (!String(form.site_status_id || '').trim()) {
+      errs.site_status_id = 'Site status is required.';
     }
 
     // State Code validation (if provided, must be exactly 2 alphanumeric chars)
@@ -309,7 +342,7 @@ export function SiteCreatePage() {
         site_code: generatedSiteCode,
         site_name: form.site_name.trim(),
         site_type_id: Number(form.site_type_id),
-        site_status_id: Number(draftStatusId),
+        site_status_id: Number(form.site_status_id),
         is_primary: form.is_primary ? 1 : 0,
         address_line1: form.address_line1.trim() || null,
         address_line2: form.address_line2.trim() || null,
@@ -339,78 +372,12 @@ export function SiteCreatePage() {
         notes: form.notes.trim() || null,
       };
 
-      const res = await sitesApi.create(payload);
-      const newSiteId = res?.data?.site?.id || res?.site?.id || res?.data?.id || res?.id;
-
-      // Ensure Team Assignments for Engineer and Supervisor
-      if (newSiteId) {
-        const getRoleId = (codePattern) => {
-          const role = teamRoles.find(r => 
-            String(r.code || r.name || r.role_name || '').toUpperCase().includes(codePattern)
-          );
-          return role ? Number(role.id) : null;
-        };
-
-        const promises = [];
-        
-        if (form.site_engineer_id) {
-          const roleId = getRoleId('ENGINEER') || 2; // Fallback to 2
-          promises.push(
-            sitesApi.teamMembers.create(newSiteId, {
-              site_id: newSiteId,
-              user_id: Number(form.site_engineer_id),
-              team_role_id: roleId,
-              is_primary: 1,
-              can_approve: 1,
-              is_active: 1
-            }).catch(e => console.error('Auto-assign Engineer failed', e))
-          );
-        }
-
-        if (form.supervisor_id) {
-          const roleId = getRoleId('SUPERVISOR') || 3; // Fallback to 3
-          promises.push(
-            sitesApi.teamMembers.create(newSiteId, {
-              site_id: newSiteId,
-              user_id: Number(form.supervisor_id),
-              team_role_id: roleId,
-              is_primary: 0,
-              can_approve: 0,
-              is_active: 1
-            }).catch(e => console.error('Auto-assign Supervisor failed', e))
-          );
-        }
-
-        if (promises.length > 0) {
-          try {
-            await Promise.all(promises);
-          } catch (teamErr) {
-            toast.error('Site created successfully, but some Team Assignments could not be completed.');
-          }
-        }
-      }
-
+      await sitesApi.create(payload);
       toast.success('Site created successfully.');
       navigate('/sites');
     } catch (err) {
       if (err?.errors) {
-        if (Array.isArray(err.errors)) {
-          if (err.errors.length > 0) {
-            setErrors({ _general: err.errors.join(', ') });
-          } else {
-            setErrors({ _general: err.message || 'Validation failed due to a constraint not tied to a specific field. Please check your data.' });
-          }
-        } else {
-          // It's an object. Some fields might be hidden (e.g. site_code). 
-          // Let's put a summary of all errors in _general just in case they aren't visible on the UI.
-          const errorValues = Object.values(err.errors).flat();
-          setErrors({
-            ...err.errors,
-            _general: errorValues.length > 0 ? `Validation Errors: ${errorValues.join(' | ')}` : (err.message || 'Validation failed.')
-          });
-        }
-      } else {
-        setErrors({ _general: err?.message || 'Unable to create site. Please try again.' });
+        setErrors(err.errors);
       }
       toast.error(err?.message || 'Unable to create site. Please try again.');
     } finally {
@@ -432,12 +399,6 @@ export function SiteCreatePage() {
           title="Create Site"
           subtitle="Register a new project site and configure its location, responsible team, schedule, and operational details."
           breadcrumbs={breadcrumbs}
-          actions={
-            <Button variant="secondary" onClick={() => navigate('/sites')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Site Register
-            </Button>
-          }
         />
         <div className="flex flex-col items-center justify-center py-20 text-text-secondary gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -453,12 +414,6 @@ export function SiteCreatePage() {
         title="Create Site"
         subtitle="Register a new project site and configure its location, responsible team, schedule, and operational details."
         breadcrumbs={breadcrumbs}
-        actions={
-          <Button variant="secondary" onClick={() => navigate('/sites')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Site Register
-          </Button>
-        }
       />
 
       <form onSubmit={handleSubmit} className="w-full space-y-5 pb-14" noValidate>

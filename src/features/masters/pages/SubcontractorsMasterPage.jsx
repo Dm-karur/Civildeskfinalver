@@ -76,9 +76,7 @@ export function SubcontractorsMasterPage() {
       });
 
       setSubcontractors(normalized);
-      try {
-        localStorage.setItem('mock_subcontractors_master', JSON.stringify(normalized));
-      } catch { }
+      setSubcontractors(normalized);
     } catch (err) {
       console.error('Failed to load subcontractors data from database', err);
     } finally {
@@ -125,7 +123,7 @@ export function SubcontractorsMasterPage() {
     setSubmitting(true);
     try {
       const payload = {
-        contractor_code: editingItem?.contractor_code || `SUB-2026-${String(subcontractors.length + 1).padStart(3, '0')}`,
+        contractor_code: editingItem?.contractor_code || `SUB-${Date.now().toString().slice(-6)}`,
         contractor_name: form.contractor_name.trim(),
         contractor_type_id: Number(form.subcontractor_type_id),
         phone: form.phone.trim() || undefined,

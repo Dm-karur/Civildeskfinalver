@@ -27,8 +27,8 @@ const EMPTY_FORM = {
   site_id: '',
   zone_code: '',
   zone_name: '',
-  zone_type_id: '1',
-  status_id: '1',
+  zone_type_id: '',
+  status_id: '',
   planned_start_date: '',
   planned_end_date: '',
   progress_percentage: '0',
@@ -99,15 +99,24 @@ export function SiteZonesPage() {
 
   // Form Handlers
   const handleOpenAdd = () => {
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
     const availableSites = sites.filter(s => String(s.project_id) === String(defaultProj));
-    const defaultSite = availableSites[0]?.id ? String(availableSites[0].id) : (sites[0]?.id ? String(sites[0].id) : '1');
+    const defaultSite = availableSites[0]?.id ? String(availableSites[0].id) : (sites[0]?.id ? String(sites[0].id) : '');
+    const defaultType = masters?.site_zone_types?.[0]?.id ? String(masters.site_zone_types[0].id) : '';
+    const defaultStatus = masters?.site_zone_statuses?.[0]?.id ? String(masters.site_zone_statuses[0].id) : '';
+
+    const pCode = projects.find(p => String(p.id) === String(defaultProj))?.project_code || '';
+    const sCode = sites.find(s => String(s.id) === String(defaultSite))?.site_code || '';
+    const siteZonesCount = zones.filter(z => String(z.site_id) === String(defaultSite)).length;
+    const initialZoneCode = pCode && sCode ? `${pCode}-${sCode}-ZN-0${siteZonesCount + 1}` : `ZN-0${zones.length + 1}`;
 
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
       site_id: defaultSite,
-      zone_code: `ZN-0${zones.length + 1}`,
+      zone_type_id: defaultType,
+      status_id: defaultStatus,
+      zone_code: initialZoneCode,
       planned_start_date: new Date().toISOString().split('T')[0],
     });
     setErrors({});
@@ -116,12 +125,12 @@ export function SiteZonesPage() {
 
   const handleOpenEdit = (z) => {
     setForm({
-      project_id: String(z.project_id || '1'),
-      site_id: String(z.site_id || '1'),
+      project_id: String(z.project_id || ''),
+      site_id: String(z.site_id || ''),
       zone_code: z.zone_code || '',
       zone_name: z.zone_name || '',
-      zone_type_id: String(z.zone_type_id || '1'),
-      status_id: String(z.status_id || '1'),
+      zone_type_id: String(z.zone_type_id || ''),
+      status_id: String(z.status_id || ''),
       planned_start_date: z.planned_start_date ? z.planned_start_date.split(' ')[0] : '',
       planned_end_date: z.planned_end_date ? z.planned_end_date.split(' ')[0] : '',
       progress_percentage: String(z.progress_percentage || 0),
@@ -132,7 +141,21 @@ export function SiteZonesPage() {
   };
 
   const handleFormChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm(prev => {
+      const next = { ...prev, [field]: value };
+
+      // Auto-generate zone code if creating a new zone and parent changes
+      if (!editingZone && (field === 'project_id' || field === 'site_id')) {
+        const pCode = projects.find(p => String(p.id) === String(next.project_id))?.project_code || '';
+        const sCode = sites.find(s => String(s.id) === String(next.site_id))?.site_code || '';
+        if (pCode && sCode) {
+          const siteZonesCount = zones.filter(z => String(z.site_id) === String(next.site_id)).length;
+          next.zone_code = `${pCode}-${sCode}-ZN-0${siteZonesCount + 1}`;
+        }
+      }
+
+      return next;
+    });
     setErrors(prev => ({ ...prev, [field]: null }));
   };
 
@@ -159,13 +182,16 @@ export function SiteZonesPage() {
         site_id: Number(form.site_id),
         zone_code: form.zone_code.trim(),
         zone_name: form.zone_name.trim(),
-        zone_type_id: Number(form.zone_type_id) || 1,
-        status_id: Number(form.status_id) || 1,
+        zone_type_id: form.zone_type_id ? Number(form.zone_type_id) : null,
+        status_id: form.status_id ? Number(form.status_id) : null,
         planned_start_date: form.planned_start_date || null,
         planned_end_date: form.planned_end_date || null,
         progress_percentage: Number(form.progress_percentage || 0),
         description: form.description || null,
       };
+
+      const selectedType = (masters.site_zone_types || []).find(t => String(t.id) === String(payload.zone_type_id));
+      const selectedStatus = (masters.site_zone_statuses || []).find(s => String(s.id) === String(payload.status_id));
 
       const newZoneItem = {
         id: editingZone?.id || Date.now(),
@@ -173,8 +199,8 @@ export function SiteZonesPage() {
         project_code: selectedProj?.project_code || 'PRJ-2026-001',
         project_name: selectedProj?.project_name || 'Civil Project',
         site_name: selectedSite?.site_name || 'Main Job Site',
-        zone_type_name: 'Construction Work Zone',
-        status_name: payload.progress_percentage === 100 ? 'Completed' : payload.progress_percentage > 0 ? 'In Progress' : 'Active',
+        zone_type_name: selectedType?.name || selectedType?.zone_type_name || 'Construction Work Zone',
+        status_name: selectedStatus?.name || selectedStatus?.status_name || 'Active',
       };
 
       try {
@@ -250,6 +276,17 @@ export function SiteZonesPage() {
     const sum = zones.reduce((acc, z) => acc + Number(z.progress_percentage || 0), 0);
     return Math.round(sum / zones.length);
   }, [zones]);
+
+  // Status Gating for adding zones
+  const canAddZone = useMemo(() => {
+    const siteId = selectedSiteId !== 'all' ? selectedSiteId : (sites.find(s => selectedProjectId === 'all' || String(s.project_id) === String(selectedProjectId))?.id);
+    if (!siteId) return false;
+    const site = sites.find(s => String(s.id) === String(siteId));
+    if (!site) return false;
+    const statusRecord = (masters.site_statuses || []).find(s => String(s.id) === String(site.site_status_id));
+    const code = (statusRecord?.code || site.status_code || '').toUpperCase();
+    return ['DRAFT', 'PLANNED', 'ACTIVE'].includes(code);
+  }, [selectedSiteId, selectedProjectId, sites, masters.site_statuses]);
 
   const getStatusVariant = (status) => {
     const s = String(status || '').toLowerCase();
@@ -348,6 +385,8 @@ export function SiteZonesPage() {
               size="sm"
               leftIcon={<Plus className="w-3.5 h-3.5" />}
               onClick={handleOpenAdd}
+              disabled={!canAddZone}
+              title={!canAddZone ? "Cannot add zones: Selected site is not in DRAFT, PLANNED, or ACTIVE status." : ""}
               className="text-xs h-8 shadow-xs"
             >
               Add Work Zone
@@ -365,7 +404,7 @@ export function SiteZonesPage() {
                 totalItems={filtered.length}
                 itemsPerPage={perPage}
                 onPageChange={setPage}
-                onItemsPerPageChange={() => {}}
+                onItemsPerPageChange={() => { }}
               />
             }
           >
@@ -438,9 +477,8 @@ export function SiteZonesPage() {
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-border rounded-full h-2 overflow-hidden">
                               <div
-                                className={`h-full rounded-full ${
-                                  z.progress_percentage === 100 ? 'bg-emerald-500' : 'bg-primary'
-                                }`}
+                                className={`h-full rounded-full ${z.progress_percentage === 100 ? 'bg-emerald-500' : 'bg-primary'
+                                  }`}
                                 style={{ width: `${z.progress_percentage || 0}%` }}
                               />
                             </div>
@@ -566,7 +604,7 @@ export function SiteZonesPage() {
               totalItems={filtered.length}
               itemsPerPage={perPage}
               onPageChange={setPage}
-              onItemsPerPageChange={() => {}}
+              onItemsPerPageChange={() => { }}
             />
           </div>
         </div>
@@ -627,7 +665,7 @@ export function SiteZonesPage() {
           <EntityEditModal.Body>
             <EntityEditModal.Section title="Zone Identification">
               <EntityEditModal.Grid>
-                <FormField label="Parent Project" required error={errors.project_id}>
+                <FormField label="Project" required error={errors.project_id}>
                   <Select
                     options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
                     value={form.project_id}
@@ -639,7 +677,7 @@ export function SiteZonesPage() {
                   />
                 </FormField>
 
-                <FormField label="Parent Site" required error={errors.site_id}>
+                <FormField label="Site" required error={errors.site_id}>
                   <Select
                     options={sites
                       .filter(s => !form.project_id || String(s.project_id) === String(form.project_id))
@@ -654,6 +692,7 @@ export function SiteZonesPage() {
                     value={form.zone_code}
                     onChange={(e) => handleFormChange('zone_code', e.target.value)}
                     placeholder="e.g. ZN-TWR-01"
+                    disabled
                   />
                 </FormField>
 
@@ -664,11 +703,44 @@ export function SiteZonesPage() {
                     placeholder="e.g. Tower A - Core & Foundation"
                   />
                 </FormField>
+
+                <FormField label="Zone Type" required error={errors.zone_type_id}>
+                  <Select
+                    options={(masters.site_zone_types || []).map(t => ({
+                      value: String(t.id),
+                      label: t.name || t.zone_type_name
+                    }))}
+                    value={form.zone_type_id}
+                    onChange={(v) => handleFormChange('zone_type_id', v)}
+                  />
+                </FormField>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>
 
             <EntityEditModal.Section title="Schedule & Progress">
               <EntityEditModal.Grid>
+                <FormField label="Zone Status" required error={errors.status_id}>
+                  <Select
+                    options={(masters.site_zone_statuses || []).map(s => ({
+                      value: String(s.id),
+                      label: s.name || s.status_name
+                    }))}
+                    value={form.status_id}
+                    onChange={(v) => handleFormChange('status_id', v)}
+                  />
+                </FormField>
+
+                <FormField label="Progress Percentage (%)">
+                  <Input
+                    type="number"
+                    step="5"
+                    min="0"
+                    max="100"
+                    value={form.progress_percentage}
+                    onChange={(e) => handleFormChange('progress_percentage', e.target.value)}
+                  />
+                </FormField>
+
                 <FormField label="Planned Start Date">
                   <Input
                     type="date"
@@ -682,17 +754,6 @@ export function SiteZonesPage() {
                     type="date"
                     value={form.planned_end_date}
                     onChange={(e) => handleFormChange('planned_end_date', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Progress Percentage (%)">
-                  <Input
-                    type="number"
-                    step="5"
-                    min="0"
-                    max="100"
-                    value={form.progress_percentage}
-                    onChange={(e) => handleFormChange('progress_percentage', e.target.value)}
                   />
                 </FormField>
 

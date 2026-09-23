@@ -16,7 +16,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { subcontractsApi } from '../../../api/apiservice';
+import { subcontractsApi, request } from '../../../api/apiservice';
 
 const EMPTY_FORM = {
   type_code: '',
@@ -35,61 +35,60 @@ const LEGACY_MOCK_TEMPLATES = new Set([
 
 export function SubcontractorTypesPage() {
   const [types, setTypes] = useState([]);
-  const [templates, setTemplates] = useState(() => {
+  const [templates, setTemplates] = useState([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  const fetchTemplates = async (typeId) => {
+    setLoadingTemplates(true);
     try {
-      const saved = localStorage.getItem('mock_subcontractor_templates');
-      if (!saved) return [];
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return [];
-      const filtered = parsed.filter(t => !LEGACY_MOCK_TEMPLATES.has(t.description));
-      if (filtered.length !== parsed.length) {
-        localStorage.setItem('mock_subcontractor_templates', JSON.stringify(filtered));
-      }
-      return filtered;
-    } catch {
-      return [];
+      const res = await request.get(`/subcontracts/types/${typeId}/templates`);
+      const backendData = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : (Object.values(res || {}).find(Array.isArray) || Object.values(res?.data || {}).find(Array.isArray) || []));
+      const normalizedTemplates = backendData.map(t => ({
+        ...t,
+        id: Number(t.id),
+        type_id: t.subcontractor_type_id || t.type_id,
+        description: t.item_description || t.description || t.template_name || t.name,
+        uom: t.unit || t.uom,
+        is_active: t.status == 1 || t.is_active == 1,
+        calculate_maistry: t.maistry_scope == 1 || t.calculate_maistry == 1,
+        classification: t.classification || 'Labour'
+      }));
+      setTemplates(normalizedTemplates);
+    } catch (err) {
+      toast.error('Failed to load templates');
+    } finally {
+      setLoadingTemplates(false);
     }
-  });
+  };
+
+  const handleViewTemplates = (item) => {
+    setViewingItem(item);
+    fetchTemplates(item.id);
+  };
 
   const [equipmentMasters, setEquipmentMasters] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchTypes = async () => {
     setLoading(true);
     try {
-      const res = await subcontractsApi.masters().catch(() => null);
-      const backendTypes = res?.data?.masters?.contractor_types ?? res?.data?.contractor_types ?? [];
+      const res = await request.get('/subcontracts/types').catch(() => null);
+      const backendTypes = res?.data?.types ?? res?.types ?? res?.data?.contractor_types ?? res?.contractor_types ?? res?.data?.data ?? res?.data ?? [];
 
       const liveTypes = (Array.isArray(backendTypes) ? backendTypes : []).map(t => ({
         id: t.id,
         type_code: t.contractor_type_code || t.type_code,
         type_name: t.contractor_type_name || t.type_name,
-        description: t.description || `${t.contractor_type_name || ''} Contractor`,
+        description: t.description || `${t.contractor_type_name || t.type_name || ''} Contractor`,
         is_active: t.is_active === 1 || t.is_active === true || t.is_active === '1' ? 1 : 0,
         is_system: true,
       }));
 
-      // Check any local custom types
-      try {
-        const saved = localStorage.getItem('mock_subcontractor_types');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            const liveCodes = new Set(liveTypes.map(lt => lt.type_code));
-            const liveIds = new Set(liveTypes.map(lt => String(lt.id)));
-            const customTypes = parsed.filter(pt => !liveCodes.has(pt.type_code) && !liveIds.has(String(pt.id)) && !LEGACY_MOCK_TYPE_CODES.has(pt.type_code));
-            const merged = [...liveTypes, ...customTypes];
-            setTypes(merged);
-            localStorage.setItem('mock_subcontractor_types', JSON.stringify(merged));
-            return;
-          }
-        }
-      } catch {}
-
       setTypes(liveTypes);
-      localStorage.setItem('mock_subcontractor_types', JSON.stringify(liveTypes));
     } catch (err) {
       console.error('Failed to load subcontractor types from database', err);
+      toast.error('Failed to load subcontractor types');
     } finally {
       setLoading(false);
     }
@@ -133,13 +132,7 @@ export function SubcontractorTypesPage() {
     calculate_maistry: false
   });
 
-  useEffect(() => {
-    localStorage.setItem('mock_subcontractor_types', JSON.stringify(types));
-  }, [types]);
 
-  useEffect(() => {
-    localStorage.setItem('mock_subcontractor_templates', JSON.stringify(templates));
-  }, [templates]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -164,7 +157,7 @@ export function SubcontractorTypesPage() {
     setErrors((prev) => ({ ...prev, [field]: null }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
     if (!form.type_name.trim()) errs.type_name = 'Type Name is required';
@@ -174,31 +167,60 @@ export function SubcontractorTypesPage() {
       return;
     }
 
-    const payload = {
-      type_code: form.type_code || `SUB-${Math.floor(Math.random() * 10000)}`, // Fallback for local testing
-      type_name: form.type_name.trim(),
-      description: form.description.trim(),
-      is_active: form.is_active === '1' ? 1 : 0,
-    };
+    setSubmitting(true);
+    try {
+      const payload = {
+        type_code: form.type_code || undefined,
+        code: form.type_code || undefined,
+        contractor_type_name: form.type_name.trim(),
+        type_name: form.type_name.trim(),
+        name: form.type_name.trim(),
+        description: form.description.trim(),
+        is_active: form.is_active === '1' ? 1 : 0,
+      };
 
-    if (editingItem?.id) {
-      setTypes(prev => prev.map(t => t.id === editingItem.id ? { ...t, ...payload } : t));
-      toast.success('Subcontractor Type updated successfully.');
-    } else {
-      const newId = types.length > 0 ? Math.max(...types.map(t => t.id)) + 1 : 1;
-      setTypes(prev => [{ id: newId, ...payload }, ...prev]);
-      toast.success('Subcontractor Type created successfully.');
+      if (editingItem?.id) {
+        await request.patch(`/subcontracts/types/${editingItem.id}`, payload);
+        toast.success('Subcontractor Type updated successfully.');
+      } else {
+        await request.post('/subcontracts/types', payload);
+        toast.success('Subcontractor Type created successfully.');
+      }
+
+      await fetchTypes();
+      setIsAddOpen(false);
+      setEditingItem(null);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save subcontractor type.');
+    } finally {
+      setSubmitting(false);
     }
-
-    setIsAddOpen(false);
-    setEditingItem(null);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deletingItem?.id) return;
-    setTypes(prev => prev.filter(t => t.id !== deletingItem.id));
-    toast.success('Subcontractor Type deleted successfully.');
-    setDeletingItem(null);
+    try {
+      try {
+        await request.delete(`/subcontracts/types/${deletingItem.id}`);
+      } catch {
+        const fallbackPayload = {
+          type_code: deletingItem.type_code || deletingItem.code || undefined,
+          code: deletingItem.type_code || deletingItem.code || undefined,
+          contractor_type_name: deletingItem.type_name || deletingItem.name || '',
+          type_name: deletingItem.type_name || deletingItem.name || '',
+          name: deletingItem.type_name || deletingItem.name || '',
+          description: deletingItem.description || '',
+          is_active: 0,
+        };
+        await request.patch(`/subcontracts/types/${deletingItem.id}`, fallbackPayload);
+      }
+      toast.success('Subcontractor Type deleted successfully.');
+      await fetchTypes();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to delete subcontractor type.');
+    } finally {
+      setDeletingItem(null);
+    }
   };
 
   // Template Form Handlers
@@ -221,7 +243,7 @@ export function SubcontractorTypesPage() {
     setTemplateForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleTemplateSubmit = (e) => {
+  const handleTemplateSubmit = async (e) => {
     e.preventDefault();
     if (!templateForm.description.trim()) {
       toast.error('Item Description is required');
@@ -237,33 +259,51 @@ export function SubcontractorTypesPage() {
       finalUom = templateForm.custom_uom.trim();
     }
 
-    const newId = templates.length > 0 ? Math.max(...templates.map(t => t.id)) + 1 : 1;
     const { custom_uom, ...restForm } = templateForm;
-    const newTemplate = {
-      id: newId,
-      type_id: selectedType.id,
+    const payload = {
       ...restForm,
-      uom: finalUom
+      item_description: restForm.description,
+      unit: finalUom,
+      uom: finalUom,
+      maistry_scope: restForm.calculate_maistry ? 1 : 0,
+      status: restForm.is_active ? 1 : 0,
+      subcontractor_type_id: selectedType.id
     };
-    setTemplates(prev => [...prev, newTemplate]);
-
-    toast.success('Template item created successfully.');
-    setIsTemplateOpen(false);
+    
+    try {
+      await request.post(`/subcontracts/types/${selectedType.id}/templates`, payload);
+      toast.success('Template item created successfully.');
+      setIsTemplateOpen(false);
+      if (viewingItem && viewingItem.id === selectedType.id) {
+        fetchTemplates(selectedType.id);
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Failed to create template item');
+    }
   };
 
   const handleSaveTemplateRates = async () => {
     try {
-      // Backend Team: Replace this with your actual PUT request to update templates
-      // const payload = templates.filter(t => t.type_id === viewingItem.id);
-      // await apiService.put(`/subcontractor-types/${viewingItem.id}/templates`, { templates: payload });
-
-      // Update local storage for mock purposes
-      localStorage.setItem('mock_subcontractor_templates', JSON.stringify(templates));
-
+      if (!viewingItem) return;
+      const promises = templates.map(t => 
+        request.patch(`/subcontracts/types/${viewingItem.id}/templates/${t.id}`, { default_rate: t.default_rate, is_active: t.is_active ? 1 : 0, status: t.is_active ? 1 : 0 })
+      );
+      await Promise.all(promises);
       toast.success('Template rates saved successfully');
       setViewingItem(null);
     } catch (error) {
       toast.error('Failed to save template rates');
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId) => {
+    if (!window.confirm("Are you sure you want to delete this template item?")) return;
+    try {
+      await request.delete(`/subcontracts/types/${viewingItem.id}/templates/${templateId}`);
+      toast.success('Template item deleted successfully');
+      fetchTemplates(viewingItem.id);
+    } catch (err) {
+      toast.error('Failed to delete template item');
     }
   };
 
@@ -294,6 +334,11 @@ export function SubcontractorTypesPage() {
         const [draggedItem] = copy.splice(dragIdx, 1);
         copy.splice(dropIdx, 0, draggedItem);
       }
+      
+      const orderedIds = copy.map(t => t.id);
+      request.post(`/subcontracts/types/${viewingItem.id}/templates/reorder`, { ordered_ids: orderedIds })
+        .catch(() => toast.error('Failed to reorder templates'));
+        
       return copy;
     });
   };
@@ -426,7 +471,7 @@ export function SubcontractorTypesPage() {
                             size="sm"
                             className="h-6 w-6 p-0"
                             title="View Templates"
-                            onClick={() => setViewingItem(item)}
+                            onClick={() => handleViewTemplates(item)}
                           >
                             <Eye className="h-3.5 w-3.5 text-blue-500 hover:text-blue-600" />
                           </Button>
@@ -487,7 +532,7 @@ export function SubcontractorTypesPage() {
 
               <div className="flex items-center justify-between pt-2 border-t border-border/60">
                 <div className="flex items-center gap-1.5">
-                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-blue-600 border-blue-200 bg-blue-50" onClick={() => setViewingItem(item)}>
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-blue-600 border-blue-200 bg-blue-50" onClick={() => handleViewTemplates(item)}>
                     <Eye className="w-3 h-3 mr-1" /> View
                   </Button>
                 </div>
@@ -586,8 +631,8 @@ export function SubcontractorTypesPage() {
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
-              {editingItem ? 'Save Changes' : 'Create Type'}
+            <Button type="submit" variant="primary" disabled={submitting}>
+              {submitting ? 'Saving...' : editingItem ? 'Save Changes' : 'Create Type'}
             </Button>
           </EntityEditModal.Footer>
         </form>
@@ -606,13 +651,15 @@ export function SubcontractorTypesPage() {
         />
         <EntityEditModal.Body>
           <div className="space-y-4 p-1">
-            {templates.filter(t => t.type_id === viewingItem?.id).length === 0 ? (
+            {loadingTemplates ? (
+              <div className="text-center p-6 text-text-muted text-[13px]">Loading templates...</div>
+            ) : templates.length === 0 ? (
               <div className="text-center p-6 bg-surface-muted border border-border rounded-lg text-text-muted text-[13px]">
                 No templates have been added yet for this type.
               </div>
             ) : (
               <div className="border border-border rounded-lg divide-y divide-border overflow-hidden shadow-xs">
-                {templates.filter(t => t.type_id === viewingItem?.id).map(t => (
+                {templates.map(t => (
                   <div
                     key={t.id}
                     draggable
@@ -629,10 +676,10 @@ export function SubcontractorTypesPage() {
                       {/* Name and classification */}
                       <div className="flex-1 min-w-0 flex items-center gap-2">
                         <Badge variant="neutral" className="text-[9px] uppercase tracking-wider font-bold shrink-0">
-                          {t.classification}
+                          {t.classification || 'ITEM'}
                         </Badge>
                         <span className="font-semibold text-text-primary text-[13px] truncate">
-                          {t.description}
+                          {t.description || 'Unnamed Item'}
                         </span>
                         {t.calculate_maistry && (
                           <span className="text-amber-700 font-sans font-medium text-[10px] bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-flex items-center shrink-0">
@@ -664,6 +711,11 @@ export function SubcontractorTypesPage() {
                           <Badge variant={t.is_active ? 'success' : 'neutral'} className="text-[9px] h-5 shrink-0">
                             {t.is_active ? 'Active' : 'Inactive'}
                           </Badge>
+                        </div>
+                        <div className="w-8 flex justify-end">
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-text-secondary hover:text-red-500" onClick={() => handleDeleteTemplate(t.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                       </div>
                     </div>

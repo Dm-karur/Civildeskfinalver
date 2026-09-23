@@ -75,7 +75,7 @@ function TeamMembersTab({ siteId }) {
                 {m.first_name || m.user_name || '—'} {m.last_name || ''}
               </td>
               <td className="px-2 sm:px-3 py-1.5 text-text-secondary truncate max-w-[80px] sm:max-w-none">
-                {m.role_name || m.role || '—'}
+                {m.role_name || m.team_role_name || m.role || '—'}
               </td>
               <td className="px-2 sm:px-3 py-1.5 text-right sm:text-left">
                 <Badge variant={m.is_active ? 'success' : 'neutral'} className="text-[8px] px-1.5 py-0.5">
@@ -116,7 +116,7 @@ function WorkZonesTab({ siteId }) {
               <div className="flex items-center gap-2">
                 <span className="font-mono font-semibold text-text-primary text-[11px]">{z.zone_code || '—'}</span>
                 <span className="text-text-secondary text-[11px]">·</span>
-                <span className="text-[11px] text-text-secondary truncate">{z.zone_type || z.type_name || '—'}</span>
+                <span className="text-[11px] text-text-secondary truncate">{z.zone_type_name || z.zone_type || z.type_name || '—'}</span>
               </div>
               <p className="text-[12px] font-medium text-text-primary truncate mt-0.5">{z.zone_name || z.name || '—'}</p>
             </div>
@@ -145,7 +145,7 @@ function WorkZonesTab({ siteId }) {
                 <td className="px-3 py-1.5 text-text-primary">{i + 1}</td>
                 <td className="px-3 py-1.5 font-mono font-semibold text-text-primary text-[11px]">{z.zone_code || '—'}</td>
                 <td className="px-3 py-1.5 text-text-primary font-medium">{z.zone_name || z.name || '—'}</td>
-                <td className="px-3 py-1.5 text-text-secondary">{z.zone_type || z.type_name || '—'}</td>
+                <td className="px-3 py-1.5 text-text-secondary">{z.zone_type_name || z.zone_type || z.type_name || '—'}</td>
                 <td className="px-3 py-1.5"><Badge variant={z.is_active ? 'success' : 'neutral'} className="text-[8px]">{z.status_name || (z.is_active ? 'Active' : 'Inactive')}</Badge></td>
               </tr>
             ))}
@@ -182,7 +182,7 @@ function WorkLocationsTab({ siteId }) {
               <div className="flex items-center gap-2">
                 <span className="font-mono font-semibold text-text-primary text-[11px]">{loc.location_code || '—'}</span>
                 <span className="text-text-secondary text-[11px]">·</span>
-                <span className="text-[11px] text-text-secondary truncate">{loc.location_type || loc.type_name || '—'}</span>
+                <span className="text-[11px] text-text-secondary truncate">{loc.location_type_name || loc.location_type || loc.type_name || '—'}</span>
               </div>
               <p className="text-[12px] font-medium text-text-primary truncate mt-0.5">{loc.location_name || loc.name || '—'}</p>
             </div>
@@ -211,7 +211,7 @@ function WorkLocationsTab({ siteId }) {
                 <td className="px-3 py-1.5 text-text-primary">{i + 1}</td>
                 <td className="px-3 py-1.5 font-mono font-semibold text-text-primary text-[11px]">{loc.location_code || '—'}</td>
                 <td className="px-3 py-1.5 text-text-primary font-medium">{loc.location_name || loc.name || '—'}</td>
-                <td className="px-3 py-1.5 text-text-secondary">{loc.location_type || loc.type_name || '—'}</td>
+                <td className="px-3 py-1.5 text-text-secondary">{loc.location_type_name || loc.location_type || loc.type_name || '—'}</td>
                 <td className="px-3 py-1.5"><Badge variant={loc.is_active ? 'success' : 'neutral'} className="text-[8px]">{loc.status_name || (loc.is_active ? 'Active' : 'Inactive')}</Badge></td>
               </tr>
             ))}
@@ -302,15 +302,15 @@ export function SiteDetailModal({ isOpen, site, onClose, onEdit, onDelete }) {
               <DetailRow label="Site Code" value={site.site_code || site.code} />
               <DetailRow label="Site Name" value={site.site_name || site.name} />
               <DetailRow label="Project" value={site.project_name || site.project} />
-              <DetailRow label="Site Type" value={site.site_type || site.type_name} />
+              <DetailRow label="Site Type" value={site.site_type_name || site.type_name || site.site_type} />
               <DetailRow label="Branch" value={site.branch_name} />
               <DetailRow label="Status" value={status} />
-              <DetailRow label="Address" value={site.address} />
+              <DetailRow label="Address" value={[site.address_line1, site.address_line2].filter(Boolean).join(', ') || site.address} />
               <DetailRow label="City" value={site.city} />
-              <DetailRow label="State" value={site.state} />
-              <DetailRow label="Pincode" value={site.pincode} />
-              <DetailRow label="Start Date" value={site.start_date ? site.start_date.split(' ')[0] : null} />
-              <DetailRow label="Expected Completion" value={site.expected_completion_date ? site.expected_completion_date.split(' ')[0] : null} />
+              <DetailRow label="State" value={site.state_name || site.state} />
+              <DetailRow label="Pincode" value={site.postal_code || site.pincode} />
+              <DetailRow label="Start Date" value={(site.planned_start_date || site.start_date) ? String(site.planned_start_date || site.start_date).split(' ')[0] : null} />
+              <DetailRow label="Expected Completion" value={(site.expected_end_date || site.expected_completion_date) ? String(site.expected_end_date || site.expected_completion_date).split(' ')[0] : null} />
               {site.description && <div className="col-span-full"><DetailRow label="Description" value={site.description} /></div>}
             </div>
           )}

@@ -15,6 +15,7 @@ import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { FormField } from '../../../components/composite/FormField';
 import { toast } from '../../../components/composite/Toast';
+import { request } from '../../../api/apiservice';
 
 const LEGACY_MOCK_CONTRACTOR_CODES = new Set(['SUB-2026-001', 'SUB-2026-002', 'SUB-2026-003', 'SUB-2026-004']);
 const LEGACY_MOCK_TEMPLATES = new Set([
@@ -24,13 +25,6 @@ const LEGACY_MOCK_TEMPLATES = new Set([
   'Rebar Bending & Cutting Unit'
 ]);
 
-const MOCK_SITES = [
-  { id: 1, site_code: 'GOW783', site_name: 'gowtham site 1', project_code: 'GOW-001', project_name: 'gowtham sweets', site_type: 'Main Site', location: 'Site Area', incharge: 'ram', status: 'PLANNED' },
-  { id: 2, site_code: 'SITE-020', site_name: 'Gowtham Tea stall', project_code: 'GOW-001', project_name: 'gowtham sweets', site_type: 'Remote Site', location: 'Site Area', incharge: 'Assigned Lead', status: 'ACTIVE' },
-  { id: 3, site_code: 'SITE-01', site_name: 'Greenfield Residency Main Site', project_code: 'PRJ-2026-001', project_name: 'Greenfield Residency - Phase 1', site_type: 'Main Site', location: 'Coimbatore, Tamil Nadu', incharge: 'Site Office', status: 'PLANNED' },
-  { id: 4, site_code: 'SITE-081', site_name: 'Ajantha theater trichy', project_code: 'PR-2025-26', project_name: 'karur kulathupalayam', site_type: 'Phase Site', location: 'Site Area', incharge: 'Assigned Lead', status: 'ACTIVE' },
-  { id: 5, site_code: 'SITE-021', site_name: 'Testing the site from add site', project_code: 'PR-2025-26', project_name: 'karur kulathupalayam', site_type: 'Remote Site', location: 'Site Area', incharge: 'Assigned Lead', status: 'CANCELLED' },
-];
 
 export function DailyWagesPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,7 +32,7 @@ export function DailyWagesPage() {
   const perPage = 10;
 
   // Add Wages Form State - Defaults to first site
-  const [selectedSite, setSelectedSite] = useState(() => MOCK_SITES[0]);
+  const [selectedSite, setSelectedSite] = useState(null);
   const [viewingSite, setViewingSite] = useState(null);
   const [subcontractors, setSubcontractors] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -54,41 +48,91 @@ export function DailyWagesPage() {
   const [itemFilter, setItemFilter] = useState('All');
   const [itemSearch, setItemSearch] = useState('');
 
-  const [dailyWagesList, setDailyWagesList] = useState([]); // Will hold data from backend/localstorage
+  const [dailyWagesList, setDailyWagesList] = useState([]); // Will hold data from backend
+  const [sitesList, setSitesList] = useState([]);
 
   useEffect(() => {
-    try {
-      const savedSubs = localStorage.getItem('mock_subcontractors_master');
-      let finalSubs = [];
-      if (savedSubs) {
-        const parsedSubs = JSON.parse(savedSubs);
-        if (Array.isArray(parsedSubs)) {
-          finalSubs = parsedSubs.filter(s => !LEGACY_MOCK_CONTRACTOR_CODES.has(s.contractor_code));
-        }
+    const fetchSites = async () => {
+      try {
+        const res = await request.get('/sites');
+        const list = res?.data?.sites ?? res?.sites ?? (Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
+        setSitesList(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.error('Failed to load sites:', err);
       }
-      setSubcontractors(finalSubs);
-      if (finalSubs.length > 0) {
-        setSelectedSubcontractorId(String(finalSubs[0].id));
-      }
+    };
+    fetchSites();
 
-      const savedTmpl = localStorage.getItem('mock_subcontractor_templates');
-      let finalTmpl = [];
-      if (savedTmpl) {
-        const parsedTmpl = JSON.parse(savedTmpl);
-        if (Array.isArray(parsedTmpl)) {
-          finalTmpl = parsedTmpl.filter(t => !LEGACY_MOCK_TEMPLATES.has(t.description));
+    const fetchData = async () => {
+      try {
+        const subsRes = await request.get('/subcontracts/contractors');
+        let finalSubs = subsRes?.data?.subcontractors ?? subsRes?.data?.data ?? subsRes?.subcontractors ?? subsRes?.data ?? subsRes ?? [];
+        if (!Array.isArray(finalSubs)) finalSubs = [];
+        setSubcontractors(finalSubs);
+        if (finalSubs.length > 0) {
+          setSelectedSubcontractorId(String(finalSubs[0].id));
         }
+      } catch (err) {
+        toast.error('Failed to load subcontractors');
       }
-      setTemplates(finalTmpl);
+    };
+    fetchData();
 
-      const wages = JSON.parse(localStorage.getItem('mock_daily_wages') || '[]');
-      setDailyWagesList(wages);
-    } catch {
-      setSubcontractors([]);
-      setTemplates([]);
-      setDailyWagesList([]);
-    }
+    const fetchDailyWages = async () => {
+      try {
+        const response = await request.get('/daily-wages');
+        let wages = [];
+        if (Array.isArray(response)) wages = response;
+        else if (Array.isArray(response?.data)) wages = response.data;
+        else if (Array.isArray(response?.data?.data)) wages = response.data.data;
+        else if (Array.isArray(response?.daily_wages)) wages = response.daily_wages;
+        else if (Array.isArray(response?.data?.daily_wages)) wages = response.data.daily_wages;
+        else if (Array.isArray(response?.wages)) wages = response.wages;
+        else if (Array.isArray(response?.data?.wages)) wages = response.data.wages;
+        
+        setDailyWagesList(wages);
+      } catch (err) {
+        toast.error('Failed to load daily wages from backend');
+        setDailyWagesList([]);
+      }
+    };
+    fetchDailyWages();
   }, []);
+
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      if (!selectedSubcontractorId) {
+        setTemplates([]);
+        return;
+      }
+      const selectedSub = subcontractors.find(s => String(s.id) === String(selectedSubcontractorId));
+      if (!selectedSub) return;
+      const typeId = selectedSub.subcontractor_type_id || selectedSub.contractor_type_id;
+      if (!typeId) {
+        setTemplates([]);
+        return;
+      }
+      try {
+        const res = await request.get(`/subcontracts/types/${typeId}/templates`);
+        const backendData = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : (Object.values(res || {}).find(Array.isArray) || Object.values(res?.data || {}).find(Array.isArray) || []));
+        const normalizedTemplates = backendData.map(t => ({
+          ...t,
+          id: Number(t.id),
+          type_id: t.subcontractor_type_id || t.type_id,
+          description: t.item_description || t.description || t.template_name || t.name,
+          uom: t.unit || t.uom,
+          is_active: t.status == 1 || t.is_active == 1 || t.is_active === true,
+          calculate_maistry: t.maistry_scope == 1 || t.calculate_maistry == 1,
+          classification: t.classification || 'Labour'
+        }));
+        setTemplates(normalizedTemplates);
+      } catch (err) {
+        toast.error('Failed to load templates for this subcontractor');
+        setTemplates([]);
+      }
+    };
+    fetchTemplates();
+  }, [selectedSubcontractorId, subcontractors]);
 
   const handleOpenWages = (site) => {
     setSelectedSite(site);
@@ -110,7 +154,7 @@ export function DailyWagesPage() {
   const selectedSub = subcontractors.find(s => String(s.id) === String(selectedSubcontractorId));
   const availableTemplates = useMemo(() => {
     if (!selectedSub) return [];
-    return templates.filter(t => String(t.type_id) === String(selectedSub.subcontractor_type_id) && Boolean(t.is_active));
+    return templates.filter(t => Boolean(t.is_active));
   }, [selectedSub, templates]);
 
   // Set default rates when subcontractor changes
@@ -195,47 +239,90 @@ export function DailyWagesPage() {
       return;
     }
 
-    try {
-      const savedWages = JSON.parse(localStorage.getItem('mock_daily_wages') || '[]');
-      const newEntry = {
-        id: Date.now(),
-        site_id: selectedSite.id,
-        subcontractor_id: selectedSubcontractorId,
-        date: wageDate,
-        entries: wageEntries,
-        rates: wageRates,
-        remarks: wageRemarks,
-        globalRemarks,
-        customItems
-      };
-      const updatedWages = [...savedWages, newEntry];
-      localStorage.setItem('mock_daily_wages', JSON.stringify(updatedWages));
-      setDailyWagesList(updatedWages);
+    const submitData = async () => {
+      try {
+        const submittedItems = allTemplates
+          .filter(t => Number(wageEntries[t.id]) > 0)
+          .map(t => ({
+            id: t.id,
+            description: t.description,
+            classification: t.classification,
+            uom: t.uom,
+            shift: wageEntries[t.id],
+            rate: wageRates[t.id] !== undefined && wageRates[t.id] !== '' ? Number(wageRates[t.id]) : Number(t.default_rate || 0),
+            remarks: wageRemarks[t.id] || '',
+            isCustom: t.isCustom
+          }));
 
-      toast.success('Daily wages submitted successfully.');
-      handleCloseWages();
-    } catch {
-      toast.error('Failed to save daily wages.');
-    }
+        const newEntry = {
+          project_id: selectedSite.project_id || 1, // Validation requires project_id
+          site_id: selectedSite.id,
+          subcontractor_id: selectedSubcontractorId,
+          wage_date: wageDate,
+          global_remarks: globalRemarks,
+          lines: submittedItems.map(item => {
+            const cls = String(item.classification || '').toLowerCase();
+            let mappedClass = 'Manpower';
+            if (cls.includes('equip')) mappedClass = 'Equipment';
+            else if (cls.includes('expens')) mappedClass = 'Expense';
+
+            return {
+              description: item.description,
+              classification: mappedClass,
+              uom: item.uom,
+              quantity: Number(item.shift) || 0,
+              rate: Number(item.rate) || 0,
+              amount: (Number(item.shift) || 0) * (Number(item.rate) || 0),
+              remarks: item.remarks || ''
+            };
+          })
+        };
+        
+        await request.post('/daily-wages', newEntry);
+        
+        // Refresh list from backend after successful submit
+        const response = await request.get('/daily-wages');
+        let wages = [];
+        if (Array.isArray(response)) wages = response;
+        else if (Array.isArray(response?.data)) wages = response.data;
+        else if (Array.isArray(response?.data?.data)) wages = response.data.data;
+        else if (Array.isArray(response?.daily_wages)) wages = response.daily_wages;
+        else if (Array.isArray(response?.data?.daily_wages)) wages = response.data.daily_wages;
+        else if (Array.isArray(response?.wages)) wages = response.wages;
+        else if (Array.isArray(response?.data?.wages)) wages = response.data.wages;
+        
+        setDailyWagesList(wages);
+
+        toast.success('Daily wages submitted successfully.');
+        handleCloseWages();
+      } catch {
+        toast.error('Failed to save daily wages.');
+      }
+    };
+    submitData();
   };
 
   const filteredSites = useMemo(() => {
-    if (!searchQuery) return MOCK_SITES;
+    if (!searchQuery) return sitesList;
     const q = searchQuery.toLowerCase();
-    return MOCK_SITES.filter(s =>
-      s.site_name.toLowerCase().includes(q) ||
-      s.site_code.toLowerCase().includes(q) ||
-      s.project_name.toLowerCase().includes(q) ||
-      s.project_code.toLowerCase().includes(q)
+    return sitesList.filter(s =>
+      (s.site_name || s.name || '').toLowerCase().includes(q) ||
+      (s.site_code || '').toLowerCase().includes(q) ||
+      (s.project_name || '').toLowerCase().includes(q) ||
+      (s.project_code || '').toLowerCase().includes(q)
     );
-  }, [searchQuery]);
+  }, [searchQuery, sitesList]);
 
   const totalPages = Math.max(1, Math.ceil(filteredSites.length / perPage));
   const pagedSites = filteredSites.slice((page - 1) * perPage, page * perPage);
 
   const getSiteWageStatus = (siteId) => {
     const today = new Date().toISOString().split('T')[0];
-    const hasSubmittedToday = dailyWagesList.some(w => String(w.site_id) === String(siteId) && w.date === today);
+    const hasSubmittedToday = dailyWagesList.some(w => {
+      const wDate = (w.date || w.wage_date || '').split('T')[0];
+      const sId = String(w.site_id || w.project_site_id);
+      return sId === String(siteId) && wDate === today;
+    });
     return hasSubmittedToday ? 'SUBMITTED' : 'PENDING';
   };
 
@@ -245,7 +332,11 @@ export function DailyWagesPage() {
 
   if (viewingSite) {
     const today = new Date().toISOString().split('T')[0];
-    const todaysEntries = dailyWagesList.filter(w => String(w.site_id) === String(viewingSite.id) && w.date === today);
+    const todaysEntries = dailyWagesList.filter(w => {
+      const wDate = (w.date || w.wage_date || '').split('T')[0];
+      const sId = String(w.site_id || w.project_site_id);
+      return sId === String(viewingSite.id) && wDate === today;
+    });
 
     return (
       <PageContainer>
@@ -271,33 +362,49 @@ export function DailyWagesPage() {
             {todaysEntries.map((entry, index) => {
               const sub = subcontractors.find(s => String(s.id) === String(entry.subcontractor_id));
               
-              const allEntryItems = [];
-              if (entry.entries) {
-                Object.keys(entry.entries).forEach(itemId => {
-                  if (!String(itemId).startsWith('custom-')) {
-                    const t = templates.find(temp => String(temp.id) === String(itemId));
-                    if (t) {
+              let allEntryItems = [];
+              if (entry.lines && Array.isArray(entry.lines)) {
+                allEntryItems = entry.lines.map(line => ({
+                  id: line.id || line.template_id || `line-${Math.random()}`,
+                  description: line.item_description || line.description,
+                  classification: line.classification || 'Labour',
+                  uom: line.uom || line.unit || 'Shift',
+                  shift: line.qty || line.shift || 0,
+                  rate: line.rate || 0,
+                  remarks: line.remarks || ''
+                }));
+              } else if (entry.submittedItems) {
+                allEntryItems = entry.submittedItems;
+              } else {
+                if (entry.entries) {
+                  Object.keys(entry.entries).forEach(itemId => {
+                    if (!String(itemId).startsWith('custom-')) {
+                      const t = templates.find(temp => String(temp.id) === String(itemId)) || {
+                        id: itemId, description: `Item ${itemId}`, classification: 'Labour', uom: 'shift'
+                      };
+                      if (t) {
+                        allEntryItems.push({
+                          ...t,
+                          shift: entry.entries[itemId],
+                          rate: entry.rates?.[itemId] || 0,
+                          remarks: entry.remarks?.[itemId] || ''
+                        });
+                      }
+                    }
+                  });
+                }
+                if (entry.customItems) {
+                  entry.customItems.forEach(ci => {
+                    if (entry.entries?.[ci.id]) {
                       allEntryItems.push({
-                        ...t,
-                        shift: entry.entries[itemId],
-                        rate: entry.rates?.[itemId] || 0,
-                        remarks: entry.remarks?.[itemId] || ''
+                        ...ci,
+                        shift: entry.entries[ci.id],
+                        rate: entry.rates?.[ci.id] || 0,
+                        remarks: entry.remarks?.[ci.id] || ''
                       });
                     }
-                  }
-                });
-              }
-              if (entry.customItems) {
-                entry.customItems.forEach(ci => {
-                  if (entry.entries?.[ci.id]) {
-                    allEntryItems.push({
-                      ...ci,
-                      shift: entry.entries[ci.id],
-                      rate: entry.rates?.[ci.id] || 0,
-                      remarks: entry.remarks?.[ci.id] || ''
-                    });
-                  }
-                });
+                  });
+                }
               }
 
               const entryTotal = allEntryItems.reduce((acc, item) => acc + (Number(item.shift) * Number(item.rate)), 0);
@@ -421,11 +528,9 @@ export function DailyWagesPage() {
                     leftIcon={<Search className="w-4 h-4 text-text-muted" />}
                     options={[
                       { value: '', label: 'Select a Subcontractor...' },
-                      { value: 'search', label: '🔍 Search Subcontractor...' }, // BACKEND TEAM: Hook up search modal/logic here
-                      // BACKEND TEAM: Map your subcontractor API response here
-                      ...subcontractors.map(sub => ({
-                        value: String(sub.id),
-                        label: `${sub.contractor_name} (${sub.subcontractor_type_label || 'Unknown'})`
+                      ...subcontractors.map(s => ({
+                        value: String(s.id),
+                        label: `${s.contractor_name} (${s.contractor_code})`
                       }))
                     ]}
                     value={selectedSubcontractorId}
@@ -871,7 +976,7 @@ export function DailyWagesPage() {
                       <td className="px-3 py-2.5">
                         <div className="flex flex-col min-w-0">
                           <span className="font-semibold text-text-primary text-[13px] leading-tight truncate">
-                            {site.site_name}
+                            {site.site_name || site.name}
                           </span>
                           <span className="font-mono text-[10px] text-text-muted">
                             {site.site_code}
@@ -890,14 +995,14 @@ export function DailyWagesPage() {
                       </td>
                       <td className="px-3 py-2.5">
                         <Badge variant="neutral" className="text-[10px] h-5">
-                          {site.site_type}
+                          {site.site_type_name || site.type_name || site.site_type || 'Main Construction'}
                         </Badge>
                       </td>
                       <td className="px-3 py-2.5 text-[11px] text-text-secondary truncate">
-                        {site.location}
+                        {[site.city, site.state_name].filter(Boolean).join(', ') || site.address_line1 || site.location || 'Site Area'}
                       </td>
                       <td className="px-3 py-2.5 text-[11px] text-text-secondary truncate">
-                        {site.incharge}
+                        {[site.site_engineer_first_name, site.site_engineer_last_name].filter(Boolean).join(' ') || site.contact_name || site.incharge || 'Assigned Lead'}
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         <Badge
@@ -967,12 +1072,12 @@ export function DailyWagesPage() {
               <div className="flex items-center text-[12px] text-text-secondary gap-3 bg-surface-muted/50 p-2 rounded-lg border border-border/50">
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   <MapPin className="w-3.5 h-3.5 shrink-0 text-text-muted" />
-                  <span className="truncate">{site.location}</span>
+                  <span className="truncate">{[site.city, site.state_name].filter(Boolean).join(', ') || site.address_line1 || site.location || 'Site Area'}</span>
                 </div>
                 <div className="w-px h-3.5 bg-border shrink-0" />
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   <UserCircle className="w-3.5 h-3.5 shrink-0 text-text-muted" />
-                  <span className="truncate">{site.incharge}</span>
+                  <span className="truncate">{[site.site_engineer_first_name, site.site_engineer_last_name].filter(Boolean).join(' ') || site.contact_name || site.incharge || 'Assigned Lead'}</span>
                 </div>
               </div>
 

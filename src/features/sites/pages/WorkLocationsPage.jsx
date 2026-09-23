@@ -28,8 +28,8 @@ const EMPTY_FORM = {
   zone_id: '',
   location_code: '',
   location_name: '',
-  location_type_id: '1',
-  status_id: '1',
+  location_type_id: '',
+  status_id: '',
   planned_start_date: '',
   planned_end_date: '',
   progress_percentage: '0',
@@ -41,6 +41,7 @@ export function WorkLocationsPage() {
   const [sites, setSites] = useState([]);
   const [zones, setZones] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [masters, setMasters] = useState({});
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -66,7 +67,8 @@ export function WorkLocationsPage() {
       projectsApi.list().catch(() => ({ data: { projects: [] } })),
       sitesApi.list().catch(() => ({ data: { sites: [] } })),
       siteZonesApi.list().catch(() => ({ data: { zones: [] } })),
-    ]).then(([pRes, sRes, zRes]) => {
+      mastersApi.all().catch(() => ({ data: {} })),
+    ]).then(([pRes, sRes, zRes, mRes]) => {
       const pList = pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : []);
       const sList = sRes?.data?.sites ?? sRes?.sites ?? (Array.isArray(sRes?.data) ? sRes.data : []);
       const zList = zRes?.data?.zones ?? zRes?.data?.data ?? zRes?.data ?? (Array.isArray(zRes) ? zRes : []);
@@ -74,8 +76,20 @@ export function WorkLocationsPage() {
       setProjects(Array.isArray(pList) ? pList : []);
       setSites(Array.isArray(sList) ? sList : []);
       setZones(Array.isArray(zList) ? zList : []);
+      setMasters(mRes?.data ?? mRes ?? {});
     });
   }, []);
+
+  // Status Gating for adding locations
+  const canAddLocation = useMemo(() => {
+    const siteId = selectedSiteId !== 'all' ? selectedSiteId : (sites.find(s => selectedProjectId === 'all' || String(s.project_id) === String(selectedProjectId))?.id);
+    if (!siteId) return false;
+    const site = sites.find(s => String(s.id) === String(siteId));
+    if (!site) return false;
+    const statusRecord = (masters.site_statuses || []).find(s => String(s.id) === String(site.site_status_id));
+    const code = (statusRecord?.code || site.status_code || '').toUpperCase();
+    return ['DRAFT', 'PLANNED', 'ACTIVE'].includes(code);
+  }, [selectedSiteId, selectedProjectId, sites, masters.site_statuses]);
 
   // Fetch Locations from API
   const fetchLocations = async () => {
@@ -106,18 +120,26 @@ export function WorkLocationsPage() {
 
   // Form Handlers
   const handleOpenAdd = () => {
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
     const availableSites = sites.filter(s => String(s.project_id) === String(defaultProj));
-    const defaultSite = availableSites[0]?.id ? String(availableSites[0].id) : (sites[0]?.id ? String(sites[0].id) : '1');
+    const defaultSite = availableSites[0]?.id ? String(availableSites[0].id) : (sites[0]?.id ? String(sites[0].id) : '');
     const availableZones = zones.filter(z => String(z.site_id) === String(defaultSite));
     const defaultZone = availableZones[0]?.id ? String(availableZones[0].id) : '';
+    const defaultType = masters?.work_location_types?.[0]?.id ? String(masters.work_location_types[0].id) : '';
+    const defaultStatus = masters?.work_location_statuses?.[0]?.id ? String(masters.work_location_statuses[0].id) : '';
+
+    const zCode = zones.find(z => String(z.id) === String(defaultZone))?.zone_code || '';
+    const zoneLocsCount = locations.filter(l => String(l.zone_id) === String(defaultZone)).length;
+    const initialLocCode = zCode ? `${zCode}-LOC-0${zoneLocsCount + 1}` : `LOC-0${locations.length + 1}`;
 
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
       site_id: defaultSite,
       zone_id: defaultZone,
-      location_code: `LOC-0${locations.length + 1}`,
+      location_type_id: defaultType,
+      status_id: defaultStatus,
+      location_code: initialLocCode,
       planned_start_date: new Date().toISOString().split('T')[0],
     });
     setErrors({});
@@ -126,13 +148,13 @@ export function WorkLocationsPage() {
 
   const handleOpenEdit = (loc) => {
     setForm({
-      project_id: String(loc.project_id || '1'),
-      site_id: String(loc.site_id || '1'),
+      project_id: String(loc.project_id || ''),
+      site_id: String(loc.site_id || ''),
       zone_id: String(loc.zone_id || ''),
       location_code: loc.location_code || '',
       location_name: loc.location_name || '',
-      location_type_id: String(loc.location_type_id || '1'),
-      status_id: String(loc.status_id || '1'),
+      location_type_id: String(loc.location_type_id || ''),
+      status_id: String(loc.status_id || ''),
       planned_start_date: loc.planned_start_date ? loc.planned_start_date.split(' ')[0] : '',
       planned_end_date: loc.planned_end_date ? loc.planned_end_date.split(' ')[0] : '',
       progress_percentage: String(loc.progress_percentage || 0),
@@ -143,7 +165,20 @@ export function WorkLocationsPage() {
   };
 
   const handleFormChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm(prev => {
+      const next = { ...prev, [field]: value };
+
+      // Auto-generate location code if creating a new location and parent changes
+      if (!editingLoc && (field === 'project_id' || field === 'site_id' || field === 'zone_id')) {
+        const zCode = zones.find(z => String(z.id) === String(next.zone_id))?.zone_code || '';
+        if (zCode) {
+          const zoneLocsCount = locations.filter(l => String(l.zone_id) === String(next.zone_id)).length;
+          next.location_code = `${zCode}-LOC-0${zoneLocsCount + 1}`;
+        }
+      }
+
+      return next;
+    });
     setErrors(prev => ({ ...prev, [field]: null }));
   };
 
@@ -172,13 +207,16 @@ export function WorkLocationsPage() {
         zone_id: form.zone_id ? Number(form.zone_id) : null,
         location_code: form.location_code.trim(),
         location_name: form.location_name.trim(),
-        location_type_id: Number(form.location_type_id) || 1,
-        status_id: Number(form.status_id) || 1,
+        location_type_id: form.location_type_id ? Number(form.location_type_id) : null,
+        status_id: form.status_id ? Number(form.status_id) : null,
         planned_start_date: form.planned_start_date || null,
         planned_end_date: form.planned_end_date || null,
         progress_percentage: Number(form.progress_percentage || 0),
         description: form.description || null,
       };
+
+      const selectedType = (masters.work_location_types || []).find(t => String(t.id) === String(payload.location_type_id));
+      const selectedStatus = (masters.work_location_statuses || []).find(s => String(s.id) === String(payload.status_id));
 
       const newLocItem = {
         id: editingLoc?.id || Date.now(),
@@ -187,8 +225,8 @@ export function WorkLocationsPage() {
         project_name: selectedProj?.project_name || 'Civil Project',
         site_name: selectedSite?.site_name || 'Main Job Site',
         zone_name: selectedZone?.zone_name || 'Work Zone Area',
-        location_type_name: 'Execution Work Location',
-        status_name: payload.progress_percentage === 100 ? 'Completed' : payload.progress_percentage > 0 ? 'In Progress' : 'Active',
+        location_type_name: selectedType?.name || selectedType?.type_name || 'Execution Work Location',
+        status_name: selectedStatus?.name || selectedStatus?.status_name || 'Active',
       };
 
       try {
@@ -375,6 +413,8 @@ export function WorkLocationsPage() {
               size="sm"
               leftIcon={<Plus className="w-3.5 h-3.5" />}
               onClick={handleOpenAdd}
+              disabled={!canAddLocation}
+              title={!canAddLocation ? "Cannot add locations: Selected site is not in DRAFT, PLANNED, or ACTIVE status." : ""}
               className="text-xs h-8 shadow-xs"
             >
               Add Location
@@ -392,7 +432,7 @@ export function WorkLocationsPage() {
                 totalItems={filtered.length}
                 itemsPerPage={perPage}
                 onPageChange={setPage}
-                onItemsPerPageChange={() => {}}
+                onItemsPerPageChange={() => { }}
               />
             }
           >
@@ -465,9 +505,8 @@ export function WorkLocationsPage() {
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-border rounded-full h-2 overflow-hidden">
                               <div
-                                className={`h-full rounded-full ${
-                                  loc.progress_percentage === 100 ? 'bg-emerald-500' : 'bg-primary'
-                                }`}
+                                className={`h-full rounded-full ${loc.progress_percentage === 100 ? 'bg-emerald-500' : 'bg-primary'
+                                  }`}
                                 style={{ width: `${loc.progress_percentage || 0}%` }}
                               />
                             </div>
@@ -593,7 +632,7 @@ export function WorkLocationsPage() {
               totalItems={filtered.length}
               itemsPerPage={perPage}
               onPageChange={setPage}
-              onItemsPerPageChange={() => {}}
+              onItemsPerPageChange={() => { }}
             />
           </div>
         </div>
@@ -654,7 +693,7 @@ export function WorkLocationsPage() {
           <EntityEditModal.Body>
             <EntityEditModal.Section title="Hierarchy Mapping">
               <EntityEditModal.Grid>
-                <FormField label="Parent Project" required error={errors.project_id}>
+                <FormField label="Project" required error={errors.project_id}>
                   <Select
                     options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
                     value={form.project_id}
@@ -670,7 +709,7 @@ export function WorkLocationsPage() {
                   />
                 </FormField>
 
-                <FormField label="Parent Site" required error={errors.site_id}>
+                <FormField label="Site" required error={errors.site_id}>
                   <Select
                     options={sites
                       .filter(s => !form.project_id || String(s.project_id) === String(form.project_id))
@@ -702,6 +741,7 @@ export function WorkLocationsPage() {
                     value={form.location_code}
                     onChange={(e) => handleFormChange('location_code', e.target.value)}
                     placeholder="e.g. LOC-FL01-SLAB"
+                    disabled
                   />
                 </FormField>
 
@@ -712,11 +752,44 @@ export function WorkLocationsPage() {
                     placeholder="e.g. First Floor Slab Casting Area (Grid 1-4)"
                   />
                 </FormField>
+
+                <FormField label="Location Type" required error={errors.location_type_id}>
+                  <Select
+                    options={(masters.work_location_types || []).map(t => ({
+                      value: String(t.id),
+                      label: t.name || t.type_name
+                    }))}
+                    value={form.location_type_id}
+                    onChange={(v) => handleFormChange('location_type_id', v)}
+                  />
+                </FormField>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>
 
             <EntityEditModal.Section title="Schedule & Progress">
               <EntityEditModal.Grid>
+                <FormField label="Location Status" required error={errors.status_id}>
+                  <Select
+                    options={(masters.work_location_statuses || []).map(s => ({
+                      value: String(s.id),
+                      label: s.name || s.status_name
+                    }))}
+                    value={form.status_id}
+                    onChange={(v) => handleFormChange('status_id', v)}
+                  />
+                </FormField>
+
+                <FormField label="Progress Percentage (%)">
+                  <Input
+                    type="number"
+                    step="5"
+                    min="0"
+                    max="100"
+                    value={form.progress_percentage}
+                    onChange={(e) => handleFormChange('progress_percentage', e.target.value)}
+                  />
+                </FormField>
+
                 <FormField label="Planned Start Date">
                   <Input
                     type="date"
@@ -730,17 +803,6 @@ export function WorkLocationsPage() {
                     type="date"
                     value={form.planned_end_date}
                     onChange={(e) => handleFormChange('planned_end_date', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Progress Percentage (%)">
-                  <Input
-                    type="number"
-                    step="5"
-                    min="0"
-                    max="100"
-                    value={form.progress_percentage}
-                    onChange={(e) => handleFormChange('progress_percentage', e.target.value)}
                   />
                 </FormField>
 
