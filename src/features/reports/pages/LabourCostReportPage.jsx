@@ -14,7 +14,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, reportsApi } from '../../../api/apiservice';
+import { projectsApi, reportsApi, wagesApi, dailyWagesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -37,44 +37,91 @@ export function LabourCostReportPage() {
   // Load Projects & API Data
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      projectsApi.list().catch(() => ({ data: [] })),
-      reportsApi?.labour ? reportsApi.labour().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([projRes, repRes]) => {
-      const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
+    Promise.allSettled([
+      projectsApi.list(),
+      reportsApi?.labour ? reportsApi.labour() : Promise.resolve({ data: [] }),
+      wagesApi.list(),
+      dailyWagesApi.list()
+    ]).then(([projRes, repRes, wagesRes, dailyRes]) => {
+      const pList = projRes.status === 'fulfilled' ? (projRes.value?.data?.projects ?? projRes.value?.projects ?? (Array.isArray(projRes.value?.data) ? projRes.value.data : [])) : [];
       setProjects(Array.isArray(pList) ? pList : []);
-      const rList = repRes?.data?.labour_report ?? repRes?.data?.data ?? [];
-      if (Array.isArray(rList) && rList.length > 0) {
-        const normalized = rList.map((r, idx) => {
-          const project = pList.find(p => String(p.id) === String(r.project_id));
-          const regularHours = Number(r.regular_hours || 0);
-          const otHours = Number(r.overtime_hours || 0);
 
-          const mandays = Math.round(regularHours / 8) || 1;
-          const nmrWages = regularHours * 60;
-          const pieceWages = regularHours * 20;
-          const otWages = otHours * 90;
-          const totalCost = nmrWages + pieceWages + otWages;
+      const rList = repRes.status === 'fulfilled' ? (repRes.value?.data?.labour_report ?? repRes.value?.data?.data ?? []) : [];
+      const wList = wagesRes.status === 'fulfilled' ? (wagesRes.value?.data?.wage_periods ?? []) : [];
+      const dList = dailyRes.status === 'fulfilled' ? (dailyRes.value?.data?.daily_wages ?? []) : [];
 
-          return {
-            id: idx + 1,
-            project_id: r.project_id || 1,
-            project_code: project ? project.project_code : 'PRJ-2026',
-            project_name: r.project_name || (project ? project.project_name : 'Civil Project'),
-            trade_name: r.attendance_date ? r.attendance_date.split(' ')[0] : 'N/A',
-            gang_contractor: 'NMR Labour Gang',
-            mandays_deployed: mandays,
-            nmr_wages: nmrWages,
-            piecerate_wages: pieceWages,
-            overtime_wages: otWages,
-            total_labour_cost: totalCost,
-            avg_cost_per_day: Math.round(totalCost / mandays),
-            productivity_index: '1.00',
-            status: totalCost > 0 ? 'Optimal Cost' : 'No Cost'
-          };
+      const normalized = [];
+
+      // Add Wage Periods
+      wList.forEach((w, idx) => {
+        const net = Number(w.net_payable || w.gross_wages || 0);
+        const gross = Number(w.gross_wages || 0);
+        const proj = pList.find(p => String(p.id) === String(w.project_id));
+        normalized.push({
+          id: `wage-${w.id || idx}`,
+          project_id: w.project_id,
+          project_code: w.project_code || (proj ? proj.project_code : 'PRJ'),
+          project_name: w.project_name || (proj ? proj.project_name : 'Civil Project'),
+          trade_name: w.period_code || `Wage Period #${w.id}`,
+          gang_contractor: w.contractor_name || 'Direct Roll Payroll',
+          mandays_deployed: 1,
+          nmr_wages: gross,
+          piecerate_wages: 0,
+          overtime_wages: Number(w.total_additions || 0),
+          total_labour_cost: net > 0 ? net : gross,
+          avg_cost_per_day: net > 0 ? net : gross,
+          productivity_index: '1.00',
+          status: w.status_name || w.status_code || 'Recorded'
         });
-        setLabourCosts(normalized);
-      }
+      });
+
+      // Add Daily Wages
+      dList.forEach((d, idx) => {
+        const amt = Number(d.total_amount || 0);
+        const proj = pList.find(p => String(p.id) === String(d.project_id));
+        normalized.push({
+          id: `daily-${d.id || idx}`,
+          project_id: d.project_id,
+          project_code: d.project_code || (proj ? proj.project_code : 'PRJ'),
+          project_name: d.project_name || (proj ? proj.project_name : 'Civil Project'),
+          trade_name: d.wage_date ? `Daily Register (${d.wage_date})` : 'Daily Muster',
+          gang_contractor: d.contractor_name || 'Daily Gang Contractor',
+          mandays_deployed: 1,
+          nmr_wages: amt,
+          piecerate_wages: 0,
+          overtime_wages: 0,
+          total_labour_cost: amt,
+          avg_cost_per_day: amt,
+          productivity_index: '1.00',
+          status: d.status || 'Verified'
+        });
+      });
+
+      // Add Attendance utilization reports
+      rList.forEach((r, idx) => {
+        const project = pList.find(p => String(p.id) === String(r.project_id));
+        const regularHours = Number(r.regular_hours || 0);
+        const otHours = Number(r.overtime_hours || 0);
+        const mandays = Math.max(1, Math.round(regularHours / 8));
+        normalized.push({
+          id: `rep-${idx + 1}`,
+          project_id: r.project_id || 1,
+          project_code: project ? project.project_code : 'PRJ-2026',
+          project_name: r.project_name || (project ? project.project_name : 'Civil Project'),
+          trade_name: r.attendance_date ? `Attendance Muster (${r.attendance_date})` : 'Site Muster',
+          gang_contractor: `${r.worker_entries || 1} Workers Deployed`,
+          mandays_deployed: mandays,
+          nmr_wages: 0,
+          piecerate_wages: 0,
+          overtime_wages: 0,
+          total_labour_cost: 0,
+          avg_cost_per_day: 0,
+          productivity_index: '1.00',
+          status: `${regularHours}h Reg / ${otHours}h OT`
+        });
+      });
+
+      setLabourCosts(normalized);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 

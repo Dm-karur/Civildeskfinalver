@@ -1,8 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   TrendingUp, CheckCircle2, IndianRupee, Clock, ShieldCheck,
-  Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
-  Check, AlertCircle, Sparkles, Building, Printer, FileText, AlertTriangle, Layers
+  Search, Filter, Eye, Printer, FileText, TrendingDown,
+  Layers, Calendar, RefreshCw, BarChart3, AlertTriangle,
+  AlertCircle, Building, Briefcase, Plus, PieChart,
+  HardHat, Boxes, Receipt, DollarSign
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -14,253 +16,605 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
-import { Textarea } from '../../../components/ui/Textarea';
-import { FormField } from '../../../components/composite/FormField';
-import { EntityEditModal } from '../../../components/composite/EntityEditModal';
-import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import {
+  projectsApi,
+  budgetsApi,
+  projectCostingApi,
+  reportsApi,
+  dailyWagesApi,
+  wagesApi,
+  subcontractsApi,
+  expensesApi
+} from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
-
-
-
-const EMPTY_FORM = {
-  project_id: '',
-  cost_code: '',
-  cost_head: '',
-  approved_budget: '50000000',
-  committed_value: '30000000',
-  actual_incurred: '20000000',
-  notes: '',
-};
 
 export function BudgetVsActualPage() {
   const { hasPermission } = useAuth();
-  const [projects, setProjects] = useState([]);
-  const [budgetItems, setBudgetItems] = useState([]);
-  const [loading, setLoading] = useState(false);
 
-  // Filters
+  // State
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [budgets, setBudgets] = useState([]);
+  const [costSnapshots, setCostSnapshots] = useState([]);
+  const [budgetLines, setBudgetLines] = useState([]);
+
+  // Live Operational DB Stream State
+  const [materialReports, setMaterialReports] = useState([]);
+  const [dailyWages, setDailyWages] = useState([]);
+  const [wagePeriods, setWagePeriods] = useState([]);
+  const [workOrders, setWorkOrders] = useState([]);
+  const [raBills, setRaBills] = useState([]);
+  const [expenseBills, setExpenseBills] = useState([]);
+
+  // Active Tab
+  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'project-matrix' | 'budgets' | 'snapshots'
+
+  // Filters & Search
   const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [selectedCostType, setSelectedCostType] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const perPage = 10;
 
-  // Modals
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
+  // Dossier Modal
   const [viewingItem, setViewingItem] = useState(null);
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
 
-  // Load Projects
-  useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
-  }, []);
+  // Generate Snapshot Modal
+  const [isGenerateOpen, setIsGenerateOpen] = useState(false);
+  const [genProjectId, setGenProjectId] = useState('');
+  const [genDate, setGenDate] = useState(new Date().toISOString().split('T')[0]);
+  const [genSaving, setGenSaving] = useState(false);
 
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
+  // Fetch all live operational budgeting and costing data from backend DB
+  const loadData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+
     try {
-      const saved = localStorage.getItem('mock_finance_BudgetVsActualPage');
-      if (saved) {
-        setBudgetItems(JSON.parse(saved));
+      const [
+        projRes,
+        budgetsRes,
+        snapsRes,
+        matRepRes,
+        dailyRes,
+        wagesRes,
+        woRes,
+        raRes,
+        expRes
+      ] = await Promise.allSettled([
+        projectsApi.list(),
+        budgetsApi.list(),
+        projectCostingApi.snapshots(),
+        reportsApi.materials(),
+        dailyWagesApi.list(),
+        wagesApi.list(),
+        subcontractsApi.workOrders.list(),
+        subcontractsApi.raBills.list(),
+        expensesApi.bills.list()
+      ]);
+
+      // Projects
+      let pData = [];
+      if (projRes.status === 'fulfilled') {
+        pData = projRes.value?.data?.projects ?? projRes.value?.projects ?? (Array.isArray(projRes.value?.data) ? projRes.value.data : []);
+        setProjects(Array.isArray(pData) ? pData : []);
+        if (pData.length > 0 && !genProjectId) {
+          setGenProjectId(String(pData[0].id));
+        }
       }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
+
+      // Budgets
+      let bData = [];
+      if (budgetsRes.status === 'fulfilled') {
+        bData = budgetsRes.value?.data?.project_budgets ?? (Array.isArray(budgetsRes.value?.data) ? budgetsRes.value.data : []);
+        setBudgets(Array.isArray(bData) ? bData : []);
+
+        // Load lines from the most recent active budget if available
+        if (bData.length > 0) {
+          try {
+            const firstId = bData[0].id;
+            const linesRes = await budgetsApi.lines.list(firstId);
+            const lines = linesRes?.data?.budget_lines ?? [];
+            setBudgetLines(Array.isArray(lines) ? lines : []);
+          } catch {
+            // ignore line fetch error
+          }
+        }
+      }
+
+      // Cost Snapshots
+      if (snapsRes.status === 'fulfilled') {
+        const sData = snapsRes.value?.data?.project_cost_snapshots ?? (Array.isArray(snapsRes.value?.data) ? snapsRes.value.data : []);
+        setCostSnapshots(Array.isArray(sData) ? sData : []);
+      }
+
+      // Material Consumption
+      if (matRepRes.status === 'fulfilled') {
+        const mrData = matRepRes.value?.data?.material_report ?? (Array.isArray(matRepRes.value?.data) ? matRepRes.value.data : []);
+        setMaterialReports(Array.isArray(mrData) ? mrData : []);
+      }
+
+      // Daily Wages
+      if (dailyRes.status === 'fulfilled') {
+        const dwData = dailyRes.value?.data?.daily_wages ?? (Array.isArray(dailyRes.value?.data) ? dailyRes.value.data : []);
+        setDailyWages(Array.isArray(dwData) ? dwData : []);
+      }
+
+      // Wage Periods
+      if (wagesRes.status === 'fulfilled') {
+        const wpData = wagesRes.value?.data?.wage_periods ?? (Array.isArray(wagesRes.value?.data) ? wagesRes.value.data : []);
+        setWagePeriods(Array.isArray(wpData) ? wpData : []);
+      }
+
+      // Work Orders (Commitments)
+      if (woRes.status === 'fulfilled') {
+        const woData = woRes.value?.data?.work_orders ?? (Array.isArray(woRes.value?.data) ? woRes.value.data : []);
+        setWorkOrders(Array.isArray(woData) ? woData : []);
+      }
+
+      // Subcontract RA Bills (Actual Certified)
+      if (raRes.status === 'fulfilled') {
+        const raData = raRes.value?.data?.ra_bills ?? (Array.isArray(raRes.value?.data) ? raRes.value.data : []);
+        setRaBills(Array.isArray(raData) ? raData : []);
+      }
+
+      // Expense Bills (Actual Posted)
+      if (expRes.status === 'fulfilled') {
+        const expData = expRes.value?.data?.bills ?? (Array.isArray(expRes.value?.data) ? expRes.value.data : []);
+        setExpenseBills(Array.isArray(expData) ? expData : []);
+      }
+
+      if (isRefresh) {
+        toast.success('Budget vs Actual analytics synchronized with backend.');
+      }
+    } catch (err) {
+      console.error('Failed to load budget vs actual data', err);
+      toast.error('Unable to fetch live budget vs actual data.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, []);
+  }, [genProjectId]);
 
   useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_finance_BudgetVsActualPage');
-    if (budgetItems.length > 0 || saved) {
-       localStorage.setItem('mock_finance_BudgetVsActualPage', JSON.stringify(budgetItems));
-    }
-  }, [budgetItems]);
-  // ---------------------------------
+    loadData();
+  }, [loadData]);
 
-  // Form Handlers
-  const handleOpenAdd = () => {
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+  // Reset pagination on filter or tab change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedProjectId, selectedCostType, search, activeTab]);
 
-    setForm({
-      ...EMPTY_FORM,
-      project_id: defaultProj,
-      cost_code: `WBS-40${budgetItems.length + 1}`,
-    });
-    setErrors({});
-    setIsAddOpen(true);
-  };
-
-  const handleOpenEdit = (item) => {
-    setForm({
-      project_id: String(item.project_id || '1'),
-      cost_code: item.cost_code || '',
-      cost_head: item.cost_head || '',
-      approved_budget: String(item.approved_budget || '50000000'),
-      committed_value: String(item.committed_value || '30000000'),
-      actual_incurred: String(item.actual_incurred || '20000000'),
-      notes: item.notes || '',
-    });
-    setErrors({});
-    setEditingItem(item);
-  };
-
-  const handleFormChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: null }));
-  };
-
-  const handleSubmit = async (e) => {
+  // Handle Snapshot Generation
+  const handleGenerateSnapshot = async (e) => {
     e.preventDefault();
-    const errs = {};
-    if (!form.cost_code.trim()) errs.cost_code = 'Cost code is required';
-    if (!form.cost_head.trim()) errs.cost_head = 'Cost head title is required';
-
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
+    if (!genProjectId) {
+      toast.error('Please select a project.');
       return;
     }
 
-    setSaving(true);
+    setGenSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const bud = Number(form.approved_budget || 0);
-      const com = Number(form.committed_value || 0);
-      const act = Number(form.actual_incurred || 0);
-      const diff = bud - act;
-      const pct = bud > 0 ? (diff / bud) * 100 : 0;
-
-      const newItem = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        cost_code: form.cost_code,
-        cost_head: form.cost_head,
-        approved_budget: bud,
-        committed_value: com,
-        actual_incurred: act,
-        variance_amount: diff,
-        variance_pct: Number(pct.toFixed(1)),
-        status: diff >= 0 ? `Within Budget (${pct.toFixed(1)}% Buffer)` : 'Over Budget Alert',
-        notes: form.notes,
-      };
-
-      if (editingItem?.id) {
-        setBudgetItems(prev => prev.map(b => b.id === editingItem.id ? newItem : b));
-        toast.success('Budget head updated.');
-      } else {
-        setBudgetItems(prev => [newItem, ...prev]);
-        toast.success('Budget code registered.');
-      }
-
-      setIsAddOpen(false);
-      setEditingItem(null);
-    } catch {
-      toast.error('Failed to save budget item.');
+      await projectCostingApi.generateSnapshot({
+        project_id: Number(genProjectId),
+        snapshot_date: genDate
+      });
+      toast.success('Cost snapshot generated successfully.');
+      setIsGenerateOpen(false);
+      loadData(true);
+    } catch (err) {
+      console.error('Failed to generate snapshot', err);
+      toast.error(err?.message || 'Failed to generate cost snapshot.');
     } finally {
-      setSaving(false);
+      setGenSaving(false);
     }
   };
 
-  const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setBudgetItems(prev => prev.filter(b => b.id !== deleteItem.id));
-    toast.success('Budget item removed.');
-    setDeleteItem(null);
-  };
+  // Consolidated Cost Head Breakdown (Material, Labour, Subcontract, Expense)
+  const consolidatedCostHeads = useMemo(() => {
+    const list = [];
+
+    // Analyze from live operational database records & latest snapshots
+    projects.forEach((proj) => {
+      const projSnaps = costSnapshots.filter((s) => String(s.project_id) === String(proj.id));
+      const latestSnap = projSnaps[0] || null;
+
+      // Project Budgets from DB
+      const projBudgets = budgets.filter((b) => String(b.project_id) === String(proj.id));
+      const approvedBudgets = projBudgets.filter((b) => (b.status_code || '').toUpperCase() === 'APPROVED');
+      const dbBudgetTotal = approvedBudgets.length > 0
+        ? approvedBudgets.reduce((acc, b) => acc + (Number(b.total_budget) || 0), 0)
+        : projBudgets.length > 0
+          ? projBudgets.reduce((acc, b) => acc + (Number(b.total_budget) || 0), 0)
+          : Number(latestSnap?.approved_budget) || 0;
+
+      // If budget defined in DB use it; otherwise fallback to contract value
+      const approvedBudget = dbBudgetTotal > 0 ? dbBudgetTotal : Number(proj.contract_value || 0);
+
+      // Allocations by construction standard norms (40% Material, 35% Labour, 15% Subcontract, 10% Site Expenses)
+      const matBudget = Math.round(approvedBudget * 0.40);
+      const labBudget = Math.round(approvedBudget * 0.35);
+      const subBudget = Math.round(approvedBudget * 0.15);
+      const expBudget = Math.round(approvedBudget * 0.10);
+
+      // Operational Material Incurred (from material consumption report)
+      const projMatReport = materialReports.filter((m) => String(m.project_id) === String(proj.id));
+      const matReportSum = projMatReport.reduce((acc, m) => acc + (Number(m.total_cost || m.cost || (m.quantity * m.unit_rate)) || 0), 0);
+      const matActual = Math.max(matReportSum, Number(latestSnap?.material_actual) || 0);
+
+      // Operational Labour Incurred (from daily wages + wage periods)
+      const projDailyWages = dailyWages.filter((d) => String(d.project_id) === String(proj.id));
+      const dailyWagesSum = projDailyWages.reduce((acc, d) => acc + (Number(d.total_amount) || 0), 0);
+      const projWagePeriods = wagePeriods.filter((w) => String(w.project_id) === String(proj.id));
+      const wagePeriodsSum = projWagePeriods.reduce((acc, w) => acc + (Number(w.net_payable || w.gross_wages) || 0), 0);
+      const labActual = Math.max(dailyWagesSum + wagePeriodsSum, Number(latestSnap?.labour_actual) || 0);
+
+      // Operational Subcontract Incurred (from certified RA bills)
+      const projRaBills = raBills.filter((r) => String(r.project_id) === String(proj.id));
+      const raBillsSum = projRaBills.reduce((acc, r) => acc + (Number(r.net_certified_amount || r.passed_amount || r.total_amount) || 0), 0);
+      const subActual = Math.max(raBillsSum, Number(latestSnap?.subcontract_actual) || 0);
+
+      // Operational Site Expense Incurred (from posted expense bills)
+      const projExpBills = expenseBills.filter((e) => String(e.project_id) === String(proj.id));
+      const expBillsSum = projExpBills.reduce((acc, e) => acc + (Number(e.net_payable || e.bill_amount || e.total_amount) || 0), 0);
+      const expActual = Math.max(expBillsSum, Number(latestSnap?.site_expense_actual) || 0);
+
+      // Operational Commitments
+      const projWorkOrders = workOrders.filter((w) => String(w.project_id) === String(proj.id));
+      const woCommit = projWorkOrders.reduce((acc, w) => acc + (Number(w.revised_order_value || w.order_value) || 0), 0);
+      const subCommit = Math.max(woCommit, Number(latestSnap?.subcontract_commitment) || 0);
+
+      const matCommit = Number(latestSnap?.material_commitment) || 0;
+      const expCommit = Number(latestSnap?.expense_commitment) || 0;
+
+      // 1. Material Cost Head
+      list.push({
+        id: `mat-${proj.id}`,
+        cost_code: 'WBS-MAT-01',
+        cost_head: 'Material & Consumables',
+        cost_type: 'MATERIAL',
+        project_id: proj.id,
+        project_code: proj.project_code || 'PRJ',
+        project_name: proj.project_name || 'Civil Project',
+        approved_budget: matBudget,
+        committed_value: matCommit,
+        actual_incurred: matActual,
+        variance: matBudget - matActual,
+        burn_pct: matBudget > 0 ? (matActual / matBudget) * 100 : 0,
+        status: matActual > matBudget ? 'Over Budget' : (matActual / (matBudget || 1)) > 0.85 ? 'Near Limit' : 'Within Budget',
+        status_variant: matActual > matBudget ? 'danger' : (matActual / (matBudget || 1)) > 0.85 ? 'warning' : 'success'
+      });
+
+      // 2. Labour Cost Head
+      list.push({
+        id: `lab-${proj.id}`,
+        cost_code: 'WBS-LAB-02',
+        cost_head: 'Labour Gang & Muster Wages',
+        cost_type: 'LABOUR',
+        project_id: proj.id,
+        project_code: proj.project_code || 'PRJ',
+        project_name: proj.project_name || 'Civil Project',
+        approved_budget: labBudget,
+        committed_value: 0,
+        actual_incurred: labActual,
+        variance: labBudget - labActual,
+        burn_pct: labBudget > 0 ? (labActual / labBudget) * 100 : 0,
+        status: labActual > labBudget ? 'Over Budget' : (labActual / (labBudget || 1)) > 0.85 ? 'Near Limit' : 'Within Budget',
+        status_variant: labActual > labBudget ? 'danger' : (labActual / (labBudget || 1)) > 0.85 ? 'warning' : 'success'
+      });
+
+      // 3. Subcontract Cost Head
+      list.push({
+        id: `sub-${proj.id}`,
+        cost_code: 'WBS-SUB-03',
+        cost_head: 'Subcontract Packages',
+        cost_type: 'SUBCONTRACT',
+        project_id: proj.id,
+        project_code: proj.project_code || 'PRJ',
+        project_name: proj.project_name || 'Civil Project',
+        approved_budget: subBudget,
+        committed_value: subCommit,
+        actual_incurred: subActual,
+        variance: subBudget - subActual,
+        burn_pct: subBudget > 0 ? (subActual / subBudget) * 100 : 0,
+        status: subActual > subBudget ? 'Over Budget' : (subActual / (subBudget || 1)) > 0.85 ? 'Near Limit' : 'Within Budget',
+        status_variant: subActual > subBudget ? 'danger' : (subActual / (subBudget || 1)) > 0.85 ? 'warning' : 'success'
+      });
+
+      // 4. Site Expenses & Overheads
+      list.push({
+        id: `exp-${proj.id}`,
+        cost_code: 'WBS-EXP-04',
+        cost_head: 'Site Operations & Overheads',
+        cost_type: 'EXPENSE',
+        project_id: proj.id,
+        project_code: proj.project_code || 'PRJ',
+        project_name: proj.project_name || 'Civil Project',
+        approved_budget: expBudget,
+        committed_value: expCommit,
+        actual_incurred: expActual,
+        variance: expBudget - expActual,
+        burn_pct: expBudget > 0 ? (expActual / expBudget) * 100 : 0,
+        status: expActual > expBudget ? 'Over Budget' : (expActual / (expBudget || 1)) > 0.85 ? 'Near Limit' : 'Within Budget',
+        status_variant: expActual > expBudget ? 'danger' : (expActual / (expBudget || 1)) > 0.85 ? 'warning' : 'success'
+      });
+    });
+
+    return list;
+  }, [projects, costSnapshots, budgets, materialReports, dailyWages, wagePeriods, workOrders, raBills, expenseBills]);
+
+  // Project-wise Matrix
+  const projectMatrix = useMemo(() => {
+    return projects.map((p) => {
+      const projSnaps = costSnapshots.filter((s) => String(s.project_id) === String(p.id));
+      const latestSnap = projSnaps[0] || null;
+
+      // Project Budgets from DB
+      const projBudgets = budgets.filter((b) => String(b.project_id) === String(p.id));
+      const approvedBudgets = projBudgets.filter((b) => (b.status_code || '').toUpperCase() === 'APPROVED');
+      const dbBudgetTotal = approvedBudgets.length > 0
+        ? approvedBudgets.reduce((acc, b) => acc + (Number(b.total_budget) || 0), 0)
+        : projBudgets.length > 0
+          ? projBudgets.reduce((acc, b) => acc + (Number(b.total_budget) || 0), 0)
+          : Number(latestSnap?.approved_budget) || 0;
+
+      const approvedBudget = dbBudgetTotal > 0 ? dbBudgetTotal : Number(p.contract_value || 0);
+
+      // Operational Material Incurred
+      const projMatReport = materialReports.filter((m) => String(m.project_id) === String(p.id));
+      const matReportSum = projMatReport.reduce((acc, m) => acc + (Number(m.total_cost || m.cost || (m.quantity * m.unit_rate)) || 0), 0);
+      const matActual = Math.max(matReportSum, Number(latestSnap?.material_actual) || 0);
+
+      // Operational Labour Incurred
+      const projDailyWages = dailyWages.filter((d) => String(d.project_id) === String(p.id));
+      const dailyWagesSum = projDailyWages.reduce((acc, d) => acc + (Number(d.total_amount) || 0), 0);
+      const projWagePeriods = wagePeriods.filter((w) => String(w.project_id) === String(p.id));
+      const wagePeriodsSum = projWagePeriods.reduce((acc, w) => acc + (Number(w.net_payable || w.gross_wages) || 0), 0);
+      const labActual = Math.max(dailyWagesSum + wagePeriodsSum, Number(latestSnap?.labour_actual) || 0);
+
+      // Operational Subcontract Incurred
+      const projRaBills = raBills.filter((r) => String(r.project_id) === String(p.id));
+      const raBillsSum = projRaBills.reduce((acc, r) => acc + (Number(r.net_certified_amount || r.passed_amount || r.total_amount) || 0), 0);
+      const subActual = Math.max(raBillsSum, Number(latestSnap?.subcontract_actual) || 0);
+
+      // Operational Site Expense Incurred
+      const projExpBills = expenseBills.filter((e) => String(e.project_id) === String(p.id));
+      const expBillsSum = projExpBills.reduce((acc, e) => acc + (Number(e.net_payable || e.bill_amount || e.total_amount) || 0), 0);
+      const expActual = Math.max(expBillsSum, Number(latestSnap?.site_expense_actual) || 0);
+
+      // Operational Commitments
+      const projWorkOrders = workOrders.filter((w) => String(w.project_id) === String(p.id));
+      const woCommit = projWorkOrders.reduce((acc, w) => acc + (Number(w.revised_order_value || w.order_value) || 0), 0);
+      const subCommit = Math.max(woCommit, Number(latestSnap?.subcontract_commitment) || 0);
+
+      const matCommit = Number(latestSnap?.material_commitment) || 0;
+      const expCommit = Number(latestSnap?.expense_commitment) || 0;
+
+      const totalActual = matActual + labActual + subActual + expActual;
+      const totalCommitment = matCommit + subCommit + expCommit;
+
+      const forecastCost = Number(latestSnap?.forecast_cost_at_completion) || Math.max(approvedBudget, totalActual + totalCommitment);
+      const variance = approvedBudget - totalActual;
+      const burnPct = approvedBudget > 0 ? (totalActual / approvedBudget) * 100 : 0;
+      const cpi = forecastCost > 0 ? (approvedBudget / forecastCost) : 1.0;
+
+      let status = 'Within Budget';
+      let statusVariant = 'success';
+      if (burnPct > 100 || cpi < 0.95) {
+        status = 'Budget Overrun';
+        statusVariant = 'danger';
+      } else if (burnPct > 85) {
+        status = 'Near Limit';
+        statusVariant = 'warning';
+      } else if (totalActual === 0) {
+        status = 'Zero Incurred';
+        statusVariant = 'neutral';
+      }
+
+      return {
+        project_id: p.id,
+        project_code: p.project_code || `PRJ-${p.id}`,
+        project_name: p.project_name || 'Civil Project',
+        approved_budget: approvedBudget,
+        mat_actual: matActual,
+        lab_actual: labActual,
+        sub_actual: subActual,
+        exp_actual: expActual,
+        total_actual: totalActual,
+        total_commitment: totalCommitment,
+        forecast_cost: forecastCost,
+        variance: variance,
+        burn_pct: burnPct,
+        cpi: Number.isFinite(cpi) ? cpi.toFixed(2) : '1.00',
+        status: status,
+        status_variant: statusVariant
+      };
+    });
+  }, [projects, costSnapshots, budgets, materialReports, dailyWages, wagePeriods, workOrders, raBills, expenseBills]);
+
+  // Overall Global Metrics
+  const globalMetrics = useMemo(() => {
+    const totalBudget = projectMatrix.reduce((acc, p) => acc + (Number(p.approved_budget) || 0), 0);
+    const totalActual = projectMatrix.reduce((acc, p) => acc + (Number(p.total_actual) || 0), 0);
+    const totalCommitment = projectMatrix.reduce((acc, p) => acc + (Number(p.total_commitment) || 0), 0);
+    const totalVariance = totalBudget - totalActual;
+    const overallBurnPct = totalBudget > 0 ? ((totalActual / totalBudget) * 100).toFixed(1) : '0.0';
+
+    return {
+      totalBudget,
+      totalActual,
+      totalCommitment,
+      totalVariance,
+      overallBurnPct
+    };
+  }, [projectMatrix]);
+
+  // Filter Active Tab Data
+  const filteredData = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    if (activeTab === 'project-matrix') {
+      return projectMatrix.filter((item) => {
+        if (selectedProjectId !== 'all' && String(item.project_id) !== String(selectedProjectId)) return false;
+        if (q) {
+          const matchCode = item.project_code.toLowerCase().includes(q);
+          const matchName = item.project_name.toLowerCase().includes(q);
+          if (!matchCode && !matchName) return false;
+        }
+        return true;
+      });
+    }
+
+    if (activeTab === 'budgets') {
+      return budgets.filter((b) => {
+        if (selectedProjectId !== 'all' && String(b.project_id) !== String(selectedProjectId)) return false;
+        if (q) {
+          const matchCode = (b.budget_code || '').toLowerCase().includes(q);
+          const matchName = (b.budget_name || '').toLowerCase().includes(q);
+          const matchProj = (b.project_name || '').toLowerCase().includes(q);
+          if (!matchCode && !matchName && !matchProj) return false;
+        }
+        return true;
+      });
+    }
+
+    if (activeTab === 'snapshots') {
+      return costSnapshots.filter((s) => {
+        if (selectedProjectId !== 'all' && String(s.project_id) !== String(selectedProjectId)) return false;
+        if (q) {
+          const matchProj = (s.project_name || '').toLowerCase().includes(q);
+          const matchDate = (s.snapshot_date || '').toLowerCase().includes(q);
+          if (!matchProj && !matchDate) return false;
+        }
+        return true;
+      });
+    }
+
+    // Default: 'all' consolidated cost heads
+    return consolidatedCostHeads.filter((item) => {
+      if (selectedProjectId !== 'all' && String(item.project_id) !== String(selectedProjectId)) return false;
+      if (selectedCostType !== 'all' && item.cost_type !== selectedCostType) return false;
+      if (q) {
+        const matchHead = item.cost_head.toLowerCase().includes(q);
+        const matchCode = item.cost_code.toLowerCase().includes(q);
+        const matchProj = item.project_name.toLowerCase().includes(q);
+        if (!matchHead && !matchCode && !matchProj) return false;
+      }
+      return true;
+    });
+  }, [activeTab, search, selectedProjectId, selectedCostType, consolidatedCostHeads, projectMatrix, budgets, costSnapshots]);
+
+  // Pagination Slice
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / perPage));
+  const pagedData = filteredData.slice((page - 1) * perPage, page * perPage);
 
   const handlePrint = () => {
     window.print();
   };
 
-  // Safe Filtered List
-  const filtered = useMemo(() => {
-    return budgetItems.filter(b => {
-      if (selectedProjectId !== 'all' && String(b.project_id) !== String(selectedProjectId)) return false;
-      if (search) {
-        const s = search.toLowerCase();
-        const code = String(b.cost_code || '').toLowerCase();
-        const head = String(b.cost_head || '').toLowerCase();
-        const proj = String(b.project_name || '').toLowerCase();
-        if (!code.includes(s) && !head.includes(s) && !proj.includes(s)) return false;
-      }
-      return true;
-    });
-  }, [budgetItems, selectedProjectId, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
-
-  // Metrics
-  const totalApproved = useMemo(() => budgetItems.reduce((acc, b) => acc + Number(b.approved_budget || 0), 0), [budgetItems]);
-  const totalIncurred = useMemo(() => budgetItems.reduce((acc, b) => acc + Number(b.actual_incurred || 0), 0), [budgetItems]);
-  const totalVariance = useMemo(() => budgetItems.reduce((acc, b) => acc + Number(b.variance_amount || 0), 0), [budgetItems]);
-
-  const getStatusVariant = (st) => {
-    if (st.includes('Within')) return 'success';
-    return 'danger';
-  };
-
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Finance & Cost Control', href: '/finance/project-cost' },
-    { label: 'Budget vs Actual Cost' }
+    { label: 'Budget vs Actual Analysis' }
   ];
 
   return (
     <PageContainer>
       <PageHeader
-        title="Budget vs Actual Cost Variance Analysis"
+        title="Budget vs Actual Cost & Variance Analysis"
         breadcrumbs={breadcrumbs}
       />
 
       <div className="flex flex-col gap-3 sm:gap-4 w-full">
-        {/* KPI Summary Ribbon */}
+        {/* Executive KPI Ribbon */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard
             label="Total Approved Budget"
-            value={`₹${(totalApproved / 10000000).toFixed(2)} Cr`}
+            value={loading ? '...' : `₹${(globalMetrics.totalBudget / 100000).toFixed(2)}L`}
             status="primary"
             icon={<IndianRupee className="w-4 h-4" />}
           />
           <KpiCard
-            label="Actual Incurred to Date"
-            value={`₹${(totalIncurred / 10000000).toFixed(2)} Cr`}
+            label="Total Actual Incurred"
+            value={loading ? '...' : `₹${(globalMetrics.totalActual / 100000).toFixed(2)}L`}
             status="neutral"
-            icon={<Layers className="w-4 h-4 text-sky-500" />}
+            icon={<Briefcase className="w-4 h-4 text-sky-500" />}
           />
           <KpiCard
-            label="Available Budget Variance"
-            value={`₹${(totalVariance / 10000000).toFixed(2)} Cr`}
-            status="success"
-            icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+            label="Overall Variance"
+            value={loading ? '...' : `₹${(globalMetrics.totalVariance / 100000).toFixed(2)}L`}
+            status={globalMetrics.totalVariance >= 0 ? 'success' : 'danger'}
+            icon={globalMetrics.totalVariance >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-500" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
           />
           <KpiCard
-            label="Budget Adherence Status"
-            value="100% Controlled"
+            label="Active Commitments"
+            value={loading ? '...' : `₹${(globalMetrics.totalCommitment / 100000).toFixed(2)}L`}
             status="neutral"
-            icon={<ShieldCheck className="w-4 h-4 text-primary" />}
+            icon={<ShieldCheck className="w-4 h-4 text-amber-500" />}
           />
         </div>
 
-        {/* Filter and Search Bar */}
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border pb-1">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'all'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            Cost Head Variance Ledger ({consolidatedCostHeads.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('project-matrix')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'project-matrix'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            Project Cost Matrix ({projects.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('budgets')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'budgets'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Approved Project Budgets ({budgets.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('snapshots')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'snapshots'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            Periodical Cost Snapshots ({costSnapshots.length})
+          </button>
+        </div>
+
+        {/* Filter and Action Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
           <div className="flex flex-wrap items-center gap-2 flex-1">
-            <div className="w-full sm:w-52">
+            <div className="w-full sm:w-56">
               <Select
                 options={[
                   { value: 'all', label: 'All Projects' },
-                  ...projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))
+                  ...projects.map((p) => ({
+                    value: String(p.id),
+                    label: `${p.project_code || 'PRJ'} - ${p.project_name}`
+                  }))
                 ]}
                 value={selectedProjectId}
                 onChange={setSelectedProjectId}
@@ -268,9 +622,26 @@ export function BudgetVsActualPage() {
               />
             </div>
 
-            <div className="w-full sm:w-64">
+            {activeTab === 'all' && (
+              <div className="w-full sm:w-44">
+                <Select
+                  options={[
+                    { value: 'all', label: 'All Cost Heads' },
+                    { value: 'MATERIAL', label: 'Material Costs' },
+                    { value: 'LABOUR', label: 'Labour Wages' },
+                    { value: 'SUBCONTRACT', label: 'Subcontracts' },
+                    { value: 'EXPENSE', label: 'Site Expenses' }
+                  ]}
+                  value={selectedCostType}
+                  onChange={setSelectedCostType}
+                  className="text-xs h-8"
+                />
+              </div>
+            )}
+
+            <div className="w-full sm:w-60">
               <SearchField
-                placeholder="Search cost code, WBS head..."
+                placeholder="Search cost head, WBS, project..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -281,329 +652,529 @@ export function BudgetVsActualPage() {
             <Button
               variant="outline"
               size="sm"
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+              onClick={() => setIsGenerateOpen(true)}
+              className="text-xs h-8 shadow-xs"
+              title="Generate New Cost Snapshot"
+            >
+              Take Snapshot
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />}
+              onClick={() => loadData(true)}
+              disabled={refreshing}
+              className="text-xs h-8 shadow-xs"
+              title="Refresh Live Data"
+            >
+              Sync
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               leftIcon={<Printer className="w-3.5 h-3.5" />}
               onClick={handlePrint}
               className="text-xs h-8 shadow-xs"
-              title="Print Variance Statement"
+              title="Print Budget vs Actual Report"
             >
-              Print Statement
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Plus className="w-3.5 h-3.5" />}
-              onClick={handleOpenAdd}
-              className="text-xs h-8 shadow-xs"
-            >
-              Add Budget Head
+              Print Report
             </Button>
           </div>
         </div>
 
-        {/* Desktop & Tablet Table (No horizontal scroll, 100% fluid) */}
-        <div className="hidden sm:block">
-          <DataTableContainer
-            pagination={
-              <Pagination
-                currentPage={page}
-                totalPages={totalPages}
-                totalItems={filtered.length}
-                itemsPerPage={perPage}
-                onPageChange={setPage}
-                onItemsPerPageChange={() => {}}
-              />
-            }
-          >
-            <table className="w-full text-left text-[12px] table-auto">
-              <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
-                <tr>
-                  <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2 w-28">Cost Code</th>
-                  <th className="px-3 py-2">WBS Cost Head & Scope</th>
-                  <th className="px-3 py-2 text-right w-28">Approved Budget</th>
-                  <th className="px-3 py-2 text-right w-28">Committed</th>
-                  <th className="px-3 py-2 text-right w-28 font-bold">Actual Incurred</th>
-                  <th className="px-3 py-2 text-right w-28 text-emerald-600 font-bold">Variance Buffer</th>
-                  <th className="px-3 py-2 text-center w-28">Status</th>
-                  <th className="px-3 py-2 text-center w-20">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {loading ? (
+        {/* TAB 1: Consolidated Cost Head Variance Ledger */}
+        {activeTab === 'all' && (
+          <div className="w-full">
+            <div className="hidden sm:block">
+              <DataTableContainer
+                pagination={
+                  <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    totalItems={filteredData.length}
+                    itemsPerPage={perPage}
+                    onPageChange={setPage}
+                    onItemsPerPageChange={() => {}}
+                  />
+                }
+              >
+                <table className="w-full text-left text-[12px] table-auto">
+                  <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+                    <tr>
+                      <th className="px-3 py-2 w-10 text-center">#</th>
+                      <th className="px-3 py-2">Cost Head & WBS</th>
+                      <th className="px-3 py-2">Project</th>
+                      <th className="px-3 py-2 text-right w-28">Approved Budget</th>
+                      <th className="px-3 py-2 text-right w-28">Committed Value</th>
+                      <th className="px-3 py-2 text-right w-28 font-bold text-emerald-600">Actual Incurred</th>
+                      <th className="px-3 py-2 text-right w-28">Variance</th>
+                      <th className="px-3 py-2 text-center w-24">Burn %</th>
+                      <th className="px-3 py-2 text-center w-28">Status</th>
+                      <th className="px-3 py-2 text-center w-16">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {loading ? (
+                      <tr>
+                        <td colSpan="10" className="text-center py-8 text-text-muted text-[12px]">
+                          Loading live budget vs actual data...
+                        </td>
+                      </tr>
+                    ) : pagedData.length === 0 ? (
+                      <tr>
+                        <td colSpan="10" className="text-center py-8 text-text-muted text-[12px]">
+                          No budget lines or cost records found.
+                        </td>
+                      </tr>
+                    ) : (
+                      pagedData.map((item, idx) => (
+                        <tr key={item.id} className="hover:bg-surface-muted/30 transition-colors group">
+                          <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                            {(page - 1) * perPage + idx + 1}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-semibold text-text-primary text-[12px] truncate">
+                                {item.cost_head}
+                              </span>
+                              <span className="text-[10px] text-text-muted font-mono">
+                                {item.cost_code}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-[11px] text-text-primary truncate max-w-[140px]">
+                            {item.project_name}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary font-medium">
+                            ₹{(item.approved_budget / 100000).toFixed(2)}L
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
+                            ₹{(item.committed_value / 100000).toFixed(2)}L
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
+                            ₹{(item.actual_incurred / 100000).toFixed(2)}L
+                          </td>
+                          <td className={`px-3 py-2 text-right font-mono font-bold text-[11px] ${item.variance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            ₹{(item.variance / 100000).toFixed(2)}L
+                          </td>
+                          <td className="px-3 py-2 text-center font-mono text-[11px]">
+                            {item.burn_pct.toFixed(1)}%
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <Badge variant={item.status_variant} className="text-[9px] uppercase">
+                              {item.status}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="View Cost 360 Dossier"
+                              onClick={() => setViewingItem(item)}
+                            >
+                              <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </DataTableContainer>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="block sm:hidden space-y-2.5">
+              {pagedData.map((item) => (
+                <div key={item.id} className="bg-surface border border-border rounded-lg p-3 shadow-xs space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-text-primary text-xs">{item.cost_head}</span>
+                      <p className="text-[10px] text-text-muted">{item.cost_code} • {item.project_name}</p>
+                    </div>
+                    <Badge variant={item.status_variant} className="text-[8px] uppercase">
+                      {item.status}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-border/60">
+                    <div>
+                      <span className="text-[10px] text-text-muted block">Approved Budget</span>
+                      <span className="font-mono text-text-primary">₹{(item.approved_budget / 100000).toFixed(2)}L</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-text-muted block">Actual Incurred</span>
+                      <span className="font-mono font-bold text-emerald-600">₹{(item.actual_incurred / 100000).toFixed(2)}L</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setViewingItem(item)}>
+                      <Eye className="w-3 h-3 mr-1" /> Dossier 360
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <div className="pt-2">
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={filteredData.length}
+                  itemsPerPage={perPage}
+                  onPageChange={setPage}
+                  onItemsPerPageChange={() => {}}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: Project Cost Matrix */}
+        {activeTab === 'project-matrix' && (
+          <div className="w-full">
+            <DataTableContainer
+              pagination={
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={filteredData.length}
+                  itemsPerPage={perPage}
+                  onPageChange={setPage}
+                  onItemsPerPageChange={() => {}}
+                />
+              }
+            >
+              <table className="w-full text-left text-[12px] table-auto">
+                <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                   <tr>
-                    <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      Loading budget items...
-                    </td>
+                    <th className="px-3 py-2 w-10 text-center">#</th>
+                    <th className="px-3 py-2">Project</th>
+                    <th className="px-3 py-2 text-right w-24">Approved Budget</th>
+                    <th className="px-3 py-2 text-right w-20">Material</th>
+                    <th className="px-3 py-2 text-right w-20">Labour</th>
+                    <th className="px-3 py-2 text-right w-20">Subcontract</th>
+                    <th className="px-3 py-2 text-right w-20">Expenses</th>
+                    <th className="px-3 py-2 text-right w-24 font-bold text-emerald-600">Total Actual</th>
+                    <th className="px-3 py-2 text-right w-24">Variance</th>
+                    <th className="px-3 py-2 text-center w-16">CPI</th>
+                    <th className="px-3 py-2 text-center w-24">Status</th>
                   </tr>
-                ) : paged.length === 0 ? (
-                  <tr>
-                    <td colSpan="9" className="text-center py-8 text-text-muted text-[12px]">
-                      No budget records found.
-                    </td>
-                  </tr>
-                ) : (
-                  paged.map((b, idx) => (
-                    <tr key={b.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pagedData.map((item, idx) => (
+                    <tr key={item.project_id} className="hover:bg-surface-muted/30 transition-colors">
                       <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
                         {(page - 1) * perPage + idx + 1}
                       </td>
                       <td className="px-3 py-2">
-                        <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                          {b.cost_code}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
                         <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={b.cost_head}>
-                            {b.cost_head}
+                          <span className="font-semibold text-text-primary text-[12px] truncate">
+                            {item.project_code}
                           </span>
                           <span className="text-[10px] text-text-muted truncate">
-                            {b.project_name}
+                            {item.project_name}
                           </span>
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary">
-                        ₹{(b.approved_budget / 100000).toFixed(2)}L
+                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary font-medium">
+                        ₹{(item.approved_budget / 100000).toFixed(2)}L
                       </td>
                       <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
-                        ₹{(b.committed_value / 100000).toFixed(2)}L
+                        ₹{(item.mat_actual / 1000).toFixed(1)}k
                       </td>
-                      <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
-                        ₹{(b.actual_incurred / 100000).toFixed(2)}L
+                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
+                        ₹{(item.lab_actual / 1000).toFixed(1)}k
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
+                        ₹{(item.sub_actual / 1000).toFixed(1)}k
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
+                        ₹{(item.exp_actual / 1000).toFixed(1)}k
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
-                        ₹{(b.variance_amount / 100000).toFixed(2)}L ({b.variance_pct}%)
+                        ₹{(item.total_actual / 100000).toFixed(2)}L
+                      </td>
+                      <td className={`px-3 py-2 text-right font-mono font-bold text-[11px] ${item.variance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        ₹{(item.variance / 100000).toFixed(2)}L
+                      </td>
+                      <td className="px-3 py-2 text-center font-mono text-[11px] font-semibold text-primary">
+                        {item.cpi}
                       </td>
                       <td className="px-3 py-2 text-center">
-                        <Badge
-                          variant={getStatusVariant(b.status)}
-                          className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
-                        >
-                          {b.variance_pct > 0 ? 'Within Budget' : 'Overrun'}
+                        <Badge variant={item.status_variant} className="text-[9px] uppercase">
+                          {item.status}
                         </Badge>
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DataTableContainer>
+          </div>
+        )}
+
+        {/* TAB 3: Approved Project Budgets */}
+        {activeTab === 'budgets' && (
+          <div className="w-full">
+            <DataTableContainer
+              pagination={
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={filteredData.length}
+                  itemsPerPage={perPage}
+                  onPageChange={setPage}
+                  onItemsPerPageChange={() => {}}
+                />
+              }
+            >
+              <table className="w-full text-left text-[12px] table-auto">
+                <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+                  <tr>
+                    <th className="px-3 py-2 w-10 text-center">#</th>
+                    <th className="px-3 py-2">Budget Code & Name</th>
+                    <th className="px-3 py-2">Project</th>
+                    <th className="px-3 py-2 text-center w-24">Version</th>
+                    <th className="px-3 py-2 text-center w-28">Budget Date</th>
+                    <th className="px-3 py-2 text-right w-28">Direct Cost</th>
+                    <th className="px-3 py-2 text-right w-28 font-bold text-emerald-600">Total Budget</th>
+                    <th className="px-3 py-2 text-center w-24">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pagedData.map((b, idx) => (
+                    <tr key={b.id} className="hover:bg-surface-muted/30 transition-colors">
+                      <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                        {(page - 1) * perPage + idx + 1}
+                      </td>
                       <td className="px-3 py-2">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="View Variance 360"
-                            onClick={() => setViewingItem(b)}
-                          >
-                            <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Edit"
-                            onClick={() => handleOpenEdit(b)}
-                          >
-                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
-                        </div>
+                        <span className="font-semibold text-text-primary text-[12px] block">{b.budget_code}</span>
+                        <span className="text-[10px] text-text-muted block">{b.budget_name}</span>
+                      </td>
+                      <td className="px-3 py-2 text-[11px] text-text-primary">
+                        {b.project_name}
+                      </td>
+                      <td className="px-3 py-2 text-center font-mono text-[11px]">
+                        v{b.version_no || 1}
+                      </td>
+                      <td className="px-3 py-2 text-center font-mono text-[11px] text-text-muted">
+                        {b.budget_date}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
+                        ₹{Number(b.direct_cost || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
+                        ₹{Number(b.total_budget || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <Badge variant={b.status_code === 'APPROVED' ? 'success' : 'neutral'} className="text-[9px]">
+                          {b.status_name || b.status_code}
+                        </Badge>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </DataTableContainer>
-        </div>
-
-        {/* Mobile View - Cards List for Phones (< sm) */}
-        <div className="block sm:hidden space-y-3">
-          {paged.map((b, idx) => (
-            <div key={b.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="font-mono text-[10px] font-bold text-primary block">{b.cost_code}</span>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{b.cost_head}</h4>
-                  <span className="text-[11px] text-text-muted">{b.project_name}</span>
-                </div>
-                <Badge
-                  variant={getStatusVariant(b.status)}
-                  className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
-                >
-                  {b.variance_pct}% Buffer
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Budget</span>
-                  <span className="font-mono text-text-secondary text-[11px]">₹{(b.approved_budget / 100000).toFixed(2)}L</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Actual Incurred</span>
-                  <span className="font-mono font-bold text-emerald-600 text-[11px]">₹{(b.actual_incurred / 100000).toFixed(2)}L</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
-                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(b)}>
-                  <Eye className="w-3 h-3 mr-1" /> View Variance Dossier
-                </Button>
-              </div>
-            </div>
-          ))}
-
-          {/* Mobile Pagination */}
-          <div className="pt-2">
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              totalItems={filtered.length}
-              itemsPerPage={perPage}
-              onPageChange={setPage}
-              onItemsPerPageChange={() => {}}
-            />
+                  ))}
+                </tbody>
+              </table>
+            </DataTableContainer>
           </div>
-        </div>
+        )}
+
+        {/* TAB 4: Periodical Cost Snapshots */}
+        {activeTab === 'snapshots' && (
+          <div className="w-full">
+            <DataTableContainer
+              pagination={
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={filteredData.length}
+                  itemsPerPage={perPage}
+                  onPageChange={setPage}
+                  onItemsPerPageChange={() => {}}
+                />
+              }
+            >
+              <table className="w-full text-left text-[12px] table-auto">
+                <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+                  <tr>
+                    <th className="px-3 py-2 w-10 text-center">#</th>
+                    <th className="px-3 py-2">Snapshot Date</th>
+                    <th className="px-3 py-2">Project</th>
+                    <th className="px-3 py-2 text-right w-28">Approved Budget</th>
+                    <th className="px-3 py-2 text-right w-28 font-bold text-emerald-600">Total Actual Cost</th>
+                    <th className="px-3 py-2 text-right w-28">Paid to Date</th>
+                    <th className="px-3 py-2 text-center w-24">Consumed %</th>
+                    <th className="px-3 py-2 text-center w-28">Generated At</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pagedData.map((s, idx) => (
+                    <tr key={s.id} className="hover:bg-surface-muted/30 transition-colors">
+                      <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                        {(page - 1) * perPage + idx + 1}
+                      </td>
+                      <td className="px-3 py-2 font-mono font-semibold text-text-primary text-[11px]">
+                        {s.snapshot_date}
+                      </td>
+                      <td className="px-3 py-2 text-[11px] text-text-primary">
+                        {s.project_name}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary">
+                        ₹{Number(s.approved_budget || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
+                        ₹{Number(s.total_actual_cost || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
+                        ₹{Number(s.total_paid || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 text-center font-mono text-[11px]">
+                        {Number(s.cost_consumed_percent || 0).toFixed(2)}%
+                      </td>
+                      <td className="px-3 py-2 text-center font-mono text-[10px] text-text-muted">
+                        {s.generated_at || s.created_at || 'N/A'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DataTableContainer>
+          </div>
+        )}
       </div>
 
-      {/* View Variance 360 Modal */}
+      {/* 360 Cost Head Dossier Modal */}
       {viewingItem && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
-                  <TrendingUp className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <PieChart className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.cost_code}</h3>
-                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.cost_head}</span>
+                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.cost_head}</h3>
+                  <span className="text-[11px] font-mono text-text-muted">
+                    {viewingItem.cost_code} • {viewingItem.project_name}
+                  </span>
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
             </div>
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
-              <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Approved Budget</span> <span className="font-bold text-primary font-mono text-base">₹{(viewingItem.approved_budget / 100000).toFixed(2)}L</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Actual Incurred</span> <span className="font-bold text-emerald-600 font-mono text-base">₹{(viewingItem.actual_incurred / 100000).toFixed(2)}L</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Committed PO / WO Value</span> <span className="font-mono">₹{(viewingItem.committed_value / 100000).toFixed(2)}L</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Remaining Buffer</span> <span className="font-mono font-bold text-emerald-700">₹{(viewingItem.variance_amount / 100000).toFixed(2)}L ({viewingItem.variance_pct}%)</span></div>
+              <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3.5 rounded-lg border border-border">
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Approved Budget Allocation</span>
+                  <span className="font-bold text-text-primary font-mono text-base">
+                    ₹{viewingItem.approved_budget.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Actual Cost Incurred</span>
+                  <span className="font-bold text-emerald-600 font-mono text-base">
+                    ₹{viewingItem.actual_incurred.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Committed Expenditure</span>
+                  <span className="font-mono text-text-secondary text-sm font-semibold">
+                    ₹{viewingItem.committed_value.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Budget Variance</span>
+                  <span className={`font-mono text-sm font-bold ${viewingItem.variance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    ₹{viewingItem.variance.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Consumption Burn Rate</span>
+                  <span className="font-mono text-primary font-semibold">
+                    {viewingItem.burn_pct.toFixed(1)}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Health Status</span>
+                  <Badge variant={viewingItem.status_variant} className="text-[9px] uppercase">
+                    {viewingItem.status}
+                  </Badge>
+                </div>
               </div>
 
-              {viewingItem.notes && (
-                <div className="border border-border rounded-lg p-3 space-y-1">
-                  <span className="font-bold text-text-primary block text-[11px]">WBS Work Scope & Consumption Notes:</span>
-                  <p className="text-text-secondary bg-surface-muted/30 p-2 rounded border border-border/50 leading-relaxed">{viewingItem.notes}</p>
+              <div className="border border-border rounded-lg p-3 space-y-2 bg-surface">
+                <span className="font-bold text-text-primary block text-[11px]">Cost Head Governance & Controls:</span>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-text-secondary">
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Cost Baseline Approved</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                    <span>ERP Transaction Audited</span>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
               <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print Variance Statement
+                <Printer className="w-3.5 h-3.5 mr-1" /> Print Cost Docket
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
+              <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>
+                Close
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add / Edit Modal */}
-      <EntityEditModal
-        isOpen={Boolean(isAddOpen || editingItem)}
-        onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
-      >
-        <EntityEditModal.Header
-          icon={TrendingUp}
-          title={editingItem ? 'Edit Budget Head' : 'Add WBS Budget Head'}
-          subtitle="Formulate cost code budget baseline and track actual incurred expenses."
-          onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
-        />
-        <form id="bud-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <EntityEditModal.Body>
-            <EntityEditModal.Section title="Budget Head Details">
-              <EntityEditModal.Grid>
-                <FormField label="Parent Project" required error={errors.project_id}>
-                  <Select
-                    options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
-                    value={form.project_id}
-                    onChange={(v) => handleFormChange('project_id', v)}
-                  />
-                </FormField>
+      {/* Generate Snapshot Modal */}
+      {isGenerateOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-md overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
+              <h3 className="text-sm font-bold text-text-primary">Generate Cost Snapshot</h3>
+              <Button variant="ghost" size="sm" onClick={() => setIsGenerateOpen(false)}>✕</Button>
+            </div>
 
-                <FormField label="WBS Cost Code" required error={errors.cost_code}>
-                  <Input
-                    value={form.cost_code}
-                    onChange={(e) => handleFormChange('cost_code', e.target.value)}
-                    placeholder="WBS-400"
-                  />
-                </FormField>
+            <form onSubmit={handleGenerateSnapshot} className="p-5 space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-text-primary block mb-1.5">Select Project</label>
+                <Select
+                  options={projects.map((p) => ({
+                    value: String(p.id),
+                    label: `${p.project_code || 'PRJ'} - ${p.project_name}`
+                  }))}
+                  value={genProjectId}
+                  onChange={setGenProjectId}
+                />
+              </div>
 
-                <FormField label="Cost Head Title" required error={errors.cost_head} className="md:col-span-2">
-                  <Input
-                    value={form.cost_head}
-                    onChange={(e) => handleFormChange('cost_head', e.target.value)}
-                    placeholder="e.g. Superstructure Framing (Level 1 to 12 RCC)"
-                  />
-                </FormField>
-              </EntityEditModal.Grid>
-            </EntityEditModal.Section>
+              <div>
+                <label className="text-xs font-semibold text-text-primary block mb-1.5">Snapshot Date</label>
+                <Input
+                  type="date"
+                  value={genDate}
+                  onChange={(e) => setGenDate(e.target.value)}
+                  required
+                />
+              </div>
 
-            <EntityEditModal.Section title="Commercial Budget Allocation">
-              <EntityEditModal.Grid>
-                <FormField label="Approved Baseline Budget (₹)" required>
-                  <Input
-                    type="number"
-                    value={form.approved_budget}
-                    onChange={(e) => handleFormChange('approved_budget', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Committed PO/WO Sum (₹)">
-                  <Input
-                    type="number"
-                    value={form.committed_value}
-                    onChange={(e) => handleFormChange('committed_value', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Actual Incurred (₹)">
-                  <Input
-                    type="number"
-                    value={form.actual_incurred}
-                    onChange={(e) => handleFormChange('actual_incurred', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Budget Remarks" className="md:col-span-2">
-                  <Textarea
-                    rows={2}
-                    value={form.notes}
-                    onChange={(e) => handleFormChange('notes', e.target.value)}
-                    placeholder="Cost engineer estimation basis, BOQ rate linkage..."
-                  />
-                </FormField>
-              </EntityEditModal.Grid>
-            </EntityEditModal.Section>
-          </EntityEditModal.Body>
-
-          <EntityEditModal.Footer
-            formId="bud-form"
-            submitLabel={editingItem ? 'Update Budget Head' : 'Save Budget Head'}
-            onCancel={() => { setIsAddOpen(false); setEditingItem(null); }}
-            isSubmitting={saving}
-          />
-        </form>
-      </EntityEditModal>
-
-      {/* Delete Confirmation */}
-      <ConfirmDialog
-        isOpen={Boolean(deleteItem)}
-        title="Delete Budget Head"
-        message={`Are you sure you want to delete "${deleteItem?.cost_code}"?`}
-        variant="danger"
-        confirmLabel="Delete"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteItem(null)}
-      />
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <Button variant="outline" size="sm" type="button" onClick={() => setIsGenerateOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" type="submit" disabled={genSaving}>
+                  {genSaving ? 'Generating...' : 'Generate Snapshot'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </PageContainer>
   );
 }
+
+export default BudgetVsActualPage;

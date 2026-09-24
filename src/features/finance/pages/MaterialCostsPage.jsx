@@ -1,8 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Boxes, CheckCircle2, IndianRupee, Clock, ShieldCheck,
-  Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
-  Check, AlertCircle, Sparkles, Building, Printer, FileText, TrendingUp
+  Boxes, IndianRupee, CheckCircle2, Clock, ShieldCheck,
+  Search, Filter, Eye, Printer, FileText, TrendingUp,
+  TrendingDown, Layers, Calendar, RefreshCw, BarChart3,
+  AlertTriangle, AlertCircle, Building, Briefcase,
+  PackageCheck, ShoppingCart, Truck, PieChart
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -13,255 +15,536 @@ import { KpiCard } from '../../../components/composite/KpiCard';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
-import { Input } from '../../../components/ui/Input';
-import { Textarea } from '../../../components/ui/Textarea';
-import { FormField } from '../../../components/composite/FormField';
-import { EntityEditModal } from '../../../components/composite/EntityEditModal';
-import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import {
+  projectsApi,
+  materialsApi,
+  materialManagementApi,
+  reportsApi,
+  projectCostingApi
+} from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
-
-
-
-const EMPTY_FORM = {
-  project_id: '',
-  material_category: '',
-  item_description: '',
-  budget_allocation: '50000000',
-  po_committed_value: '40000000',
-  grn_received_value: '20000000',
-  site_consumed_value: '19000000',
-  wastage_cost: '200000',
-  unit_rate_variance: '0%',
-  notes: '',
-};
 
 export function MaterialCostsPage() {
   const { hasPermission } = useAuth();
-  const [projects, setProjects] = useState([]);
-  const [materialCosts, setMaterialCosts] = useState([]);
-  const [loading, setLoading] = useState(false);
 
-  // Filters
+  // State
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [materialCategories, setMaterialCategories] = useState([]);
+  const [catalogue, setCatalogue] = useState([]);
+  const [consumptionReport, setConsumptionReport] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [receipts, setReceipts] = useState([]);
+  const [costSnapshots, setCostSnapshots] = useState([]);
+
+  // Active Tab
+  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'variance' | 'categories' | 'pos' | 'grns'
+
+  // Filters & Search
   const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const perPage = 10;
 
-  // Modals
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
+  // Dossier Modal
   const [viewingItem, setViewingItem] = useState(null);
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
 
-  // Load Projects
-  useEffect(() => {
-    projectsApi.list().then(res => {
-      const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
-      setProjects(Array.isArray(list) ? list : []);
-    }).catch(() => setProjects([]));
-  }, []);
+  // Load all live operational material streams
+  const loadData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
 
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
     try {
-      const saved = localStorage.getItem('mock_finance_MaterialCostsPage');
-      if (saved) {
-        setMaterialCosts(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
+      const [
+        projRes,
+        catRes,
+        matRes,
+        repRes,
+        poRes,
+        grnRes,
+        snapsRes
+      ] = await Promise.allSettled([
+        projectsApi.list(),
+        materialsApi.categories.list(),
+        materialsApi.catalogue.list(),
+        reportsApi.materials(),
+        materialManagementApi.purchaseOrders.list(),
+        materialManagementApi.receipts.list(),
+        projectCostingApi.snapshots()
+      ]);
 
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_finance_MaterialCostsPage');
-    if (materialCosts.length > 0 || saved) {
-       localStorage.setItem('mock_finance_MaterialCostsPage', JSON.stringify(materialCosts));
-    }
-  }, [materialCosts]);
-  // ---------------------------------
-
-  // Form Handlers
-  const handleOpenAdd = () => {
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
-
-    setForm({
-      ...EMPTY_FORM,
-      project_id: defaultProj,
-    });
-    setErrors({});
-    setIsAddOpen(true);
-  };
-
-  const handleOpenEdit = (item) => {
-    setForm({
-      project_id: String(item.project_id || '1'),
-      material_category: item.material_category || '',
-      item_description: item.item_description || '',
-      budget_allocation: String(item.budget_allocation || '50000000'),
-      po_committed_value: String(item.po_committed_value || '40000000'),
-      grn_received_value: String(item.grn_received_value || '20000000'),
-      site_consumed_value: String(item.site_consumed_value || '19000000'),
-      wastage_cost: String(item.wastage_cost || '200000'),
-      unit_rate_variance: item.unit_rate_variance || '0%',
-      notes: item.notes || '',
-    });
-    setErrors({});
-    setEditingItem(item);
-  };
-
-  const handleFormChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: null }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const errs = {};
-    if (!form.material_category.trim()) errs.material_category = 'Material category is required';
-    if (!form.item_description.trim()) errs.item_description = 'Item description is required';
-
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const bud = Number(form.budget_allocation || 0);
-      const po = Number(form.po_committed_value || 0);
-      const grn = Number(form.grn_received_value || 0);
-      const con = Number(form.site_consumed_value || 0);
-      const wst = Number(form.wastage_cost || 0);
-
-      const newItem = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        material_category: form.material_category,
-        item_description: form.item_description,
-        budget_allocation: bud,
-        po_committed_value: po,
-        grn_received_value: grn,
-        site_consumed_value: con,
-        wastage_cost: wst,
-        unit_rate_variance: form.unit_rate_variance,
-        status: 'Optimal (Within Limits)',
-        notes: form.notes,
-      };
-
-      if (editingItem?.id) {
-        setMaterialCosts(prev => prev.map(m => m.id === editingItem.id ? newItem : m));
-        toast.success('Material cost ledger updated.');
-      } else {
-        setMaterialCosts(prev => [newItem, ...prev]);
-        toast.success('Material cost category registered.');
+      // Projects
+      if (projRes.status === 'fulfilled') {
+        const pData = projRes.value?.data?.projects ?? projRes.value?.projects ?? (Array.isArray(projRes.value?.data) ? projRes.value.data : []);
+        setProjects(Array.isArray(pData) ? pData : []);
       }
 
-      setIsAddOpen(false);
-      setEditingItem(null);
-    } catch {
-      toast.error('Failed to save material cost item.');
+      // Categories
+      if (catRes.status === 'fulfilled') {
+        const cData = catRes.value?.data?.material_categories ?? catRes.value?.data?.categories ?? (Array.isArray(catRes.value?.data) ? catRes.value.data : []);
+        setMaterialCategories(Array.isArray(cData) ? cData : []);
+      }
+
+      // Catalogue
+      if (matRes.status === 'fulfilled') {
+        const mData = matRes.value?.data?.materials ?? matRes.value?.data?.catalogue ?? (Array.isArray(matRes.value?.data) ? matRes.value.data : []);
+        setCatalogue(Array.isArray(mData) ? mData : []);
+      }
+
+      // Consumption Report
+      if (repRes.status === 'fulfilled') {
+        const rData = repRes.value?.data?.material_report ?? (Array.isArray(repRes.value?.data) ? repRes.value.data : []);
+        setConsumptionReport(Array.isArray(rData) ? rData : []);
+      }
+
+      // Purchase Orders
+      if (poRes.status === 'fulfilled') {
+        const poData = poRes.value?.data?.purchase_orders ?? (Array.isArray(poRes.value?.data) ? poRes.value.data : []);
+        setPurchaseOrders(Array.isArray(poData) ? poData : []);
+      }
+
+      // Goods Receipts
+      if (grnRes.status === 'fulfilled') {
+        const gData = grnRes.value?.data?.receipts ?? (Array.isArray(grnRes.value?.data) ? grnRes.value.data : []);
+        setReceipts(Array.isArray(gData) ? gData : []);
+      }
+
+      // Cost Snapshots
+      if (snapsRes.status === 'fulfilled') {
+        const sData = snapsRes.value?.data?.project_cost_snapshots ?? (Array.isArray(snapsRes.value?.data) ? snapsRes.value.data : []);
+        setCostSnapshots(Array.isArray(sData) ? sData : []);
+      }
+
+      if (isRefresh) {
+        toast.success('Material cost analytics synchronized with backend.');
+      }
+    } catch (err) {
+      console.error('Failed to load material cost analysis data', err);
+      toast.error('Unable to fetch live material cost data.');
     } finally {
-      setSaving(false);
+      setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
-  const confirmDelete = () => {
-    if (!deleteItem?.id) return;
-    setMaterialCosts(prev => prev.filter(m => m.id !== deleteItem.id));
-    toast.success('Material cost record removed.');
-    setDeleteItem(null);
-  };
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Reset pagination on filter or tab change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedProjectId, selectedCategoryId, search, activeTab]);
+
+  // Normalized Consolidated Ledger Items
+  const consolidatedLedger = useMemo(() => {
+    const list = [];
+
+    // 1. Material Consumption Entries
+    consumptionReport.forEach((r, idx) => {
+      const proj = projects.find((p) => String(p.id) === String(r.project_id));
+      const mat = catalogue.find((m) => String(m.id) === String(r.material_id));
+      const cat = materialCategories.find((c) => String(c.id) === String(mat?.material_category_id));
+
+      const consumedQty = Number(r.consumed_qty || 0);
+      const wastedQty = Number(r.wasted_qty || 0);
+      const issuedQty = Number(r.issued_qty || 0);
+      const totalVal = Number(r.consumption_value || 0);
+      const unitRate = consumedQty > 0 ? Math.round(totalVal / consumedQty) : Number(mat?.standard_rate || 0);
+      const wastageCost = Math.round(wastedQty * unitRate);
+
+      list.push({
+        id: `con-${r.project_id}-${r.material_id}-${idx}`,
+        source_type: 'SITE_CONSUMPTION',
+        source_label: 'Site Consumption',
+        source_color: 'primary',
+        project_id: r.project_id,
+        project_code: proj?.project_code || 'PRJ',
+        project_name: r.project_name || proj?.project_name || 'Civil Project',
+        material_id: r.material_id,
+        material_name: r.material_name || mat?.material_name || 'Building Material',
+        material_code: mat?.material_code || r.material_code || 'MAT',
+        category_id: mat?.material_category_id || cat?.id || 0,
+        category_name: cat?.category_name || mat?.category_name || 'General Construction',
+        unit: mat?.unit_code || 'Units',
+        consumed_qty: consumedQty,
+        issued_qty: issuedQty,
+        wasted_qty: wastedQty,
+        unit_rate: unitRate,
+        wastage_cost: wastageCost,
+        total_cost: totalVal,
+        status: wastedQty > 0 ? 'Wastage Incurred' : 'Standard Consumption',
+        status_variant: wastedQty > 0 ? 'warning' : 'success',
+        date: 'Current Period',
+        raw: r
+      });
+    });
+
+    // 2. Verified Goods Receipts (GRN) if available
+    receipts.forEach((g) => {
+      const proj = projects.find((p) => String(p.id) === String(g.project_id));
+      const amt = Number(g.total_amount || 0);
+      list.push({
+        id: `grn-${g.id}`,
+        source_type: 'GOODS_RECEIPT',
+        source_label: 'Goods Receipt (GRN)',
+        source_color: 'success',
+        project_id: g.project_id,
+        project_code: proj?.project_code || 'PRJ',
+        project_name: g.project_name || proj?.project_name || 'Civil Project',
+        material_id: 0,
+        material_name: `GRN: ${g.receipt_no || `REC-${g.id}`}`,
+        material_code: g.receipt_no || 'GRN',
+        category_id: 0,
+        category_name: 'Received Inventory',
+        unit: 'Lots',
+        consumed_qty: 1,
+        issued_qty: 1,
+        wasted_qty: 0,
+        unit_rate: amt,
+        wastage_cost: 0,
+        total_cost: amt,
+        status: g.status_code || 'POSTED',
+        status_variant: 'success',
+        date: g.receipt_date || g.created_at?.split(' ')[0] || 'N/A',
+        raw: g
+      });
+    });
+
+    // 3. Purchase Orders if available
+    purchaseOrders.forEach((p) => {
+      const proj = projects.find((pr) => String(pr.id) === String(p.project_id));
+      const amt = Number(p.total_amount || 0);
+      list.push({
+        id: `po-${p.id}`,
+        source_type: 'PO_COMMITMENT',
+        source_label: 'PO Procurement Commitment',
+        source_color: 'neutral',
+        project_id: p.project_id,
+        project_code: proj?.project_code || 'PRJ',
+        project_name: p.project_name || proj?.project_name || 'Civil Project',
+        material_id: 0,
+        material_name: `PO: ${p.po_no || `PO-${p.id}`}`,
+        material_code: p.po_no || 'PO',
+        category_id: 0,
+        category_name: p.supplier_name || 'Vendor Commitment',
+        unit: 'Orders',
+        consumed_qty: 1,
+        issued_qty: 1,
+        wasted_qty: 0,
+        unit_rate: amt,
+        wastage_cost: 0,
+        total_cost: amt,
+        status: p.status_code || 'APPROVED',
+        status_variant: p.status_code === 'APPROVED' ? 'info' : 'neutral',
+        date: p.po_date || p.created_at?.split(' ')[0] || 'N/A',
+        raw: p
+      });
+    });
+
+    return list;
+  }, [consumptionReport, receipts, purchaseOrders, projects, catalogue, materialCategories]);
+
+  // Project-wise Aggregation & Variance Analysis
+  const projectVarianceAnalysis = useMemo(() => {
+    return projects.map((p) => {
+      const projSnap = costSnapshots.find((s) => String(s.project_id) === String(p.id));
+      const approvedBudget = Number(projSnap?.approved_budget || p.contract_value || 0);
+      const materialBudget = Math.round(approvedBudget * 0.40); // 40% typical material cost baseline
+
+      // Filter operational material consumption
+      const projConsumption = consumptionReport.filter((r) => String(r.project_id) === String(p.id));
+      const actualConsumedValue = projConsumption.reduce((acc, r) => acc + Number(r.consumption_value || 0), 0);
+
+      // PO Commitments
+      const projPos = purchaseOrders.filter((po) => String(po.project_id) === String(p.id));
+      const committedValue = projPos.reduce((acc, po) => acc + Number(po.total_amount || 0), 0);
+
+      // GRN Received
+      const projGrns = receipts.filter((g) => String(g.project_id) === String(p.id));
+      const receivedValue = projGrns.reduce((acc, g) => acc + Number(g.total_amount || 0), 0);
+
+      // Total material cost incurred
+      const totalIncurred = actualConsumedValue > 0 ? actualConsumedValue : receivedValue;
+      const variance = materialBudget - totalIncurred;
+      const burnPct = materialBudget > 0 ? (totalIncurred / materialBudget) * 100 : 0;
+
+      let status = 'Optimal Budget';
+      let statusVariant = 'success';
+      if (burnPct > 100) {
+        status = 'Budget Overrun';
+        statusVariant = 'danger';
+      } else if (burnPct > 85) {
+        status = 'Near Limit';
+        statusVariant = 'warning';
+      } else if (totalIncurred === 0) {
+        status = 'Zero Material Cost';
+        statusVariant = 'neutral';
+      }
+
+      return {
+        project_id: p.id,
+        project_code: p.project_code || `PRJ-${p.id}`,
+        project_name: p.project_name || 'Civil Project',
+        material_budget: materialBudget,
+        committed_value: committedValue,
+        received_value: receivedValue,
+        consumed_value: actualConsumedValue,
+        total_incurred: totalIncurred,
+        variance: variance,
+        burn_pct: burnPct,
+        items_count: projConsumption.length,
+        status: status,
+        status_variant: statusVariant
+      };
+    });
+  }, [projects, costSnapshots, consumptionReport, purchaseOrders, receipts]);
+
+  // Category-wise Breakdown
+  const categoryAnalysis = useMemo(() => {
+    return materialCategories.map((c) => {
+      const catMats = catalogue.filter((m) => String(m.material_category_id) === String(c.id));
+      const matIds = new Set(catMats.map((m) => String(m.id)));
+
+      const catConsumptions = consumptionReport.filter((r) => matIds.has(String(r.material_id)));
+      const consumedVal = catConsumptions.reduce((acc, r) => acc + Number(r.consumption_value || 0), 0);
+      const wastedVal = catConsumptions.reduce((acc, r) => {
+        const consumedQty = Number(r.consumed_qty || 0);
+        const wastedQty = Number(r.wasted_qty || 0);
+        const rate = consumedQty > 0 ? Number(r.consumption_value || 0) / consumedQty : 0;
+        return acc + (wastedQty * rate);
+      }, 0);
+
+      return {
+        category_id: c.id,
+        category_code: c.category_code,
+        category_name: c.category_name,
+        materials_count: catMats.length,
+        consumed_value: consumedVal,
+        wasted_value: Math.round(wastedVal),
+        consumption_share_pct: 0 // calculated next
+      };
+    });
+  }, [materialCategories, catalogue, consumptionReport]);
+
+  // Overall Global Metrics
+  const globalMetrics = useMemo(() => {
+    const totalActualConsumed = consumptionReport.reduce((acc, r) => acc + Number(r.consumption_value || 0), 0);
+    const totalBudget = projectVarianceAnalysis.reduce((acc, item) => acc + item.material_budget, 0);
+    const totalCommitted = purchaseOrders.reduce((acc, p) => acc + Number(p.total_amount || 0), 0);
+    const totalReceived = receipts.reduce((acc, g) => acc + Number(g.total_amount || 0), 0);
+    const totalIncurred = totalActualConsumed > 0 ? totalActualConsumed : totalReceived;
+    const totalVariance = totalBudget - totalIncurred;
+
+    const totalWastedVal = consumptionReport.reduce((acc, r) => {
+      const consumedQty = Number(r.consumed_qty || 0);
+      const wastedQty = Number(r.wasted_qty || 0);
+      const rate = consumedQty > 0 ? Number(r.consumption_value || 0) / consumedQty : 0;
+      return acc + (wastedQty * rate);
+    }, 0);
+
+    return {
+      totalIncurred,
+      totalBudget,
+      totalVariance,
+      totalCommitted,
+      totalWastedVal: Math.round(totalWastedVal),
+      overallBurnPct: totalBudget > 0 ? ((totalIncurred / totalBudget) * 100).toFixed(1) : '0.0'
+    };
+  }, [consumptionReport, projectVarianceAnalysis, purchaseOrders, receipts]);
+
+  // Filter Active Tab Data
+  const filteredData = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    if (activeTab === 'variance') {
+      return projectVarianceAnalysis.filter((item) => {
+        if (selectedProjectId !== 'all' && String(item.project_id) !== String(selectedProjectId)) return false;
+        if (q) {
+          const matchCode = item.project_code.toLowerCase().includes(q);
+          const matchName = item.project_name.toLowerCase().includes(q);
+          if (!matchCode && !matchName) return false;
+        }
+        return true;
+      });
+    }
+
+    if (activeTab === 'categories') {
+      return categoryAnalysis.filter((cat) => {
+        if (selectedCategoryId !== 'all' && String(cat.category_id) !== String(selectedCategoryId)) return false;
+        if (q) {
+          const matchCode = (cat.category_code || '').toLowerCase().includes(q);
+          const matchName = (cat.category_name || '').toLowerCase().includes(q);
+          if (!matchCode && !matchName) return false;
+        }
+        return true;
+      });
+    }
+
+    if (activeTab === 'pos') {
+      return purchaseOrders.filter((po) => {
+        if (selectedProjectId !== 'all' && String(po.project_id) !== String(selectedProjectId)) return false;
+        if (q) {
+          const matchNo = (po.po_no || '').toLowerCase().includes(q);
+          const matchSupp = (po.supplier_name || '').toLowerCase().includes(q);
+          const matchProj = (po.project_name || '').toLowerCase().includes(q);
+          if (!matchNo && !matchSupp && !matchProj) return false;
+        }
+        return true;
+      });
+    }
+
+    if (activeTab === 'grns') {
+      return receipts.filter((grn) => {
+        if (selectedProjectId !== 'all' && String(grn.project_id) !== String(selectedProjectId)) return false;
+        if (q) {
+          const matchNo = (grn.receipt_no || '').toLowerCase().includes(q);
+          const matchInv = (grn.invoice_no || '').toLowerCase().includes(q);
+          const matchProj = (grn.project_name || '').toLowerCase().includes(q);
+          if (!matchNo && !matchInv && !matchProj) return false;
+        }
+        return true;
+      });
+    }
+
+    // Default: 'all' consolidated ledger
+    return consolidatedLedger.filter((item) => {
+      if (selectedProjectId !== 'all' && String(item.project_id) !== String(selectedProjectId)) return false;
+      if (selectedCategoryId !== 'all' && String(item.category_id) !== String(selectedCategoryId)) return false;
+      if (q) {
+        const matchMat = item.material_name.toLowerCase().includes(q);
+        const matchCode = item.material_code.toLowerCase().includes(q);
+        const matchCat = item.category_name.toLowerCase().includes(q);
+        const matchProj = item.project_name.toLowerCase().includes(q);
+        if (!matchMat && !matchCode && !matchCat && !matchProj) return false;
+      }
+      return true;
+    });
+  }, [activeTab, search, selectedProjectId, selectedCategoryId, consolidatedLedger, projectVarianceAnalysis, categoryAnalysis, purchaseOrders, receipts]);
+
+  // Pagination Slice
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / perPage));
+  const pagedData = filteredData.slice((page - 1) * perPage, page * perPage);
 
   const handlePrint = () => {
     window.print();
   };
 
-  // Safe Filtered List
-  const filtered = useMemo(() => {
-    return materialCosts.filter(m => {
-      if (selectedProjectId !== 'all' && String(m.project_id) !== String(selectedProjectId)) return false;
-      if (search) {
-        const s = search.toLowerCase();
-        const cat = String(m.material_category || '').toLowerCase();
-        const desc = String(m.item_description || '').toLowerCase();
-        const proj = String(m.project_name || '').toLowerCase();
-        if (!cat.includes(s) && !desc.includes(s) && !proj.includes(s)) return false;
-      }
-      return true;
-    });
-  }, [materialCosts, selectedProjectId, search]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
-
-  // Metrics
-  const totalPOCommitted = useMemo(() => materialCosts.reduce((acc, m) => acc + Number(m.po_committed_value || 0), 0), [materialCosts]);
-  const totalConsumedValue = useMemo(() => materialCosts.reduce((acc, m) => acc + Number(m.site_consumed_value || 0), 0), [materialCosts]);
-  const totalWastageValue = useMemo(() => materialCosts.reduce((acc, m) => acc + Number(m.wastage_cost || 0), 0), [materialCosts]);
-
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Finance & Cost Control', href: '/finance/project-cost' },
-    { label: 'Material Cost Ledger' }
+    { label: 'Material Cost Analysis' }
   ];
 
   return (
     <PageContainer>
       <PageHeader
-        title="Material Procurement & Consumption Cost Ledger"
+        title="Material Cost Analysis & Consumption Ledger"
         breadcrumbs={breadcrumbs}
       />
 
       <div className="flex flex-col gap-3 sm:gap-4 w-full">
-        {/* KPI Summary Ribbon */}
+        {/* Executive KPI Ribbon */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard
-            label="Total PO Committed"
-            value={`₹${(totalPOCommitted / 10000000).toFixed(2)} Cr`}
+            label="Material Cost Incurred"
+            value={loading ? '...' : `₹${(globalMetrics.totalIncurred / 100000).toFixed(2)}L`}
             status="primary"
             icon={<IndianRupee className="w-4 h-4" />}
           />
           <KpiCard
-            label="Site Consumed to Date"
-            value={`₹${(totalConsumedValue / 10000000).toFixed(2)} Cr`}
-            status="success"
-            icon={<Boxes className="w-4 h-4 text-emerald-500" />}
-          />
-          <KpiCard
-            label="Wastage & Scrap Cost"
-            value={`₹${(totalWastageValue / 100000).toFixed(2)}L`}
+            label="Material Budget Baseline"
+            value={loading ? '...' : `₹${(globalMetrics.totalBudget / 100000).toFixed(2)}L`}
             status="neutral"
-            icon={<CheckCircle2 className="w-4 h-4 text-sky-500" />}
+            icon={<Briefcase className="w-4 h-4 text-sky-500" />}
           />
           <KpiCard
-            label="Wastage Efficiency"
-            value="1.42% (Under 2% Limit)"
-            status="success"
-            icon={<ShieldCheck className="w-4 h-4 text-primary" />}
+            label="Budget Variance"
+            value={loading ? '...' : `₹${(globalMetrics.totalVariance / 100000).toFixed(2)}L`}
+            status={globalMetrics.totalVariance >= 0 ? 'success' : 'danger'}
+            icon={globalMetrics.totalVariance >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-500" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
+          />
+          <KpiCard
+            label="Procurement Committed (PO)"
+            value={loading ? '...' : `₹${(globalMetrics.totalCommitted / 100000).toFixed(2)}L`}
+            status="neutral"
+            icon={<ShoppingCart className="w-4 h-4 text-amber-500" />}
           />
         </div>
 
-        {/* Filter and Search Bar */}
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border pb-1">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'all'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            Consolidated Material Ledger ({consolidatedLedger.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('variance')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'variance'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            Project Cost & Variance ({projects.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('categories')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'categories'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
+            }`}
+          >
+            <Boxes className="w-3.5 h-3.5" />
+            Category-wise Distribution ({materialCategories.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('pos')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'pos'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
+            }`}
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            Purchase Orders ({purchaseOrders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('grns')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'grns'
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
+            }`}
+          >
+            <Truck className="w-3.5 h-3.5" />
+            Goods Receipts / GRN ({receipts.length})
+          </button>
+        </div>
+
+        {/* Filter and Action Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
           <div className="flex flex-wrap items-center gap-2 flex-1">
-            <div className="w-full sm:w-52">
+            <div className="w-full sm:w-56">
               <Select
                 options={[
                   { value: 'all', label: 'All Projects' },
-                  ...projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))
+                  ...projects.map((p) => ({
+                    value: String(p.id),
+                    label: `${p.project_code || 'PRJ'} - ${p.project_name}`
+                  }))
                 ]}
                 value={selectedProjectId}
                 onChange={setSelectedProjectId}
@@ -269,9 +552,26 @@ export function MaterialCostsPage() {
               />
             </div>
 
-            <div className="w-full sm:w-64">
+            {activeTab === 'all' && (
+              <div className="w-full sm:w-48">
+                <Select
+                  options={[
+                    { value: 'all', label: 'All Categories' },
+                    ...materialCategories.map((c) => ({
+                      value: String(c.id),
+                      label: c.category_name
+                    }))
+                  ]}
+                  value={selectedCategoryId}
+                  onChange={setSelectedCategoryId}
+                  className="text-xs h-8"
+                />
+              </div>
+            )}
+
+            <div className="w-full sm:w-60">
               <SearchField
-                placeholder="Search material category, item..."
+                placeholder="Search material, code, project..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -282,334 +582,528 @@ export function MaterialCostsPage() {
             <Button
               variant="outline"
               size="sm"
+              leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />}
+              onClick={() => loadData(true)}
+              disabled={refreshing}
+              className="text-xs h-8 shadow-xs"
+              title="Refresh Live Data"
+            >
+              Sync
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               leftIcon={<Printer className="w-3.5 h-3.5" />}
               onClick={handlePrint}
               className="text-xs h-8 shadow-xs"
               title="Print Material Cost Ledger"
             >
-              Print Ledger
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Plus className="w-3.5 h-3.5" />}
-              onClick={handleOpenAdd}
-              className="text-xs h-8 shadow-xs"
-            >
-              Add Material Cost Head
+              Print Report
             </Button>
           </div>
         </div>
 
-        {/* Desktop & Tablet Table (No horizontal scroll, 100% fluid) */}
-        <div className="hidden sm:block">
-          <DataTableContainer
-            pagination={
-              <Pagination
-                currentPage={page}
-                totalPages={totalPages}
-                totalItems={filtered.length}
-                itemsPerPage={perPage}
-                onPageChange={setPage}
-                onItemsPerPageChange={() => {}}
-              />
-            }
-          >
-            <table className="w-full text-left text-[12px] table-auto">
-              <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
-                <tr>
-                  <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2">Material Category & Description</th>
-                  <th className="px-3 py-2 text-right w-28">Budget Allocation</th>
-                  <th className="px-3 py-2 text-right w-28">PO Committed</th>
-                  <th className="px-3 py-2 text-right w-28 font-bold">GRN Received</th>
-                  <th className="px-3 py-2 text-right w-28 text-emerald-600 font-bold">Site Consumed</th>
-                  <th className="px-3 py-2 text-right w-24 hidden md:table-cell text-amber-600">Wastage</th>
-                  <th className="px-3 py-2 text-center w-20">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {loading ? (
+        {/* TAB 1: Consolidated Material Ledger */}
+        {activeTab === 'all' && (
+          <div className="w-full">
+            <div className="hidden sm:block">
+              <DataTableContainer
+                pagination={
+                  <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    totalItems={filteredData.length}
+                    itemsPerPage={perPage}
+                    onPageChange={setPage}
+                    onItemsPerPageChange={() => {}}
+                  />
+                }
+              >
+                <table className="w-full text-left text-[12px] table-auto">
+                  <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+                    <tr>
+                      <th className="px-3 py-2 w-10 text-center">#</th>
+                      <th className="px-3 py-2">Material Specification</th>
+                      <th className="px-3 py-2">Category</th>
+                      <th className="px-3 py-2">Project</th>
+                      <th className="px-3 py-2 text-right w-24">Consumed Qty</th>
+                      <th className="px-3 py-2 text-right w-24">Unit Rate</th>
+                      <th className="px-3 py-2 text-right w-24 hidden md:table-cell">Wastage Cost</th>
+                      <th className="px-3 py-2 text-right w-28 font-bold text-emerald-600">Total Value</th>
+                      <th className="px-3 py-2 text-center w-28">Status</th>
+                      <th className="px-3 py-2 text-center w-16">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {loading ? (
+                      <tr>
+                        <td colSpan="10" className="text-center py-8 text-text-muted text-[12px]">
+                          Loading live material cost data...
+                        </td>
+                      </tr>
+                    ) : pagedData.length === 0 ? (
+                      <tr>
+                        <td colSpan="10" className="text-center py-8 text-text-muted text-[12px]">
+                          No material cost records found for the selected filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      pagedData.map((item, idx) => (
+                        <tr key={item.id} className="hover:bg-surface-muted/30 transition-colors group">
+                          <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                            {(page - 1) * perPage + idx + 1}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-semibold text-text-primary text-[12px] truncate">
+                                {item.material_name}
+                              </span>
+                              <span className="text-[10px] text-text-muted font-mono">
+                                {item.material_code}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-[11px] text-text-secondary">
+                            {item.category_name}
+                          </td>
+                          <td className="px-3 py-2 text-[11px] text-text-primary truncate max-w-[140px]">
+                            {item.project_name}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary">
+                            {item.consumed_qty} {item.unit}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
+                            ₹{item.unit_rate.toLocaleString('en-IN')}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-[11px] text-amber-600 hidden md:table-cell">
+                            ₹{item.wastage_cost.toLocaleString('en-IN')}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
+                            ₹{item.total_cost.toLocaleString('en-IN')}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <Badge variant={item.status_variant} className="text-[9px] uppercase">
+                              {item.status}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="View Material 360 Dossier"
+                              onClick={() => setViewingItem(item)}
+                            >
+                              <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </DataTableContainer>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="block sm:hidden space-y-2.5">
+              {pagedData.map((item) => (
+                <div key={item.id} className="bg-surface border border-border rounded-lg p-3 shadow-xs space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-text-primary text-xs">{item.material_name}</span>
+                      <p className="text-[10px] text-text-muted">{item.category_name} • {item.project_name}</p>
+                    </div>
+                    <span className="font-bold font-mono text-emerald-600 text-xs">
+                      ₹{item.total_cost.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-border/60">
+                    <div>
+                      <span className="text-[10px] text-text-muted block">Consumed</span>
+                      <span className="font-mono text-text-primary">{item.consumed_qty} {item.unit}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-text-muted block">Unit Rate</span>
+                      <span className="font-mono text-text-secondary">₹{item.unit_rate}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setViewingItem(item)}>
+                      <Eye className="w-3 h-3 mr-1" /> Dossier 360
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <div className="pt-2">
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={filteredData.length}
+                  itemsPerPage={perPage}
+                  onPageChange={setPage}
+                  onItemsPerPageChange={() => {}}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: Project Cost & Variance */}
+        {activeTab === 'variance' && (
+          <div className="w-full">
+            <DataTableContainer
+              pagination={
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={filteredData.length}
+                  itemsPerPage={perPage}
+                  onPageChange={setPage}
+                  onItemsPerPageChange={() => {}}
+                />
+              }
+            >
+              <table className="w-full text-left text-[12px] table-auto">
+                <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                   <tr>
-                    <td colSpan="8" className="text-center py-8 text-text-muted text-[12px]">
-                      Loading material cost ledger...
-                    </td>
+                    <th className="px-3 py-2 w-10 text-center">#</th>
+                    <th className="px-3 py-2">Project Code & Name</th>
+                    <th className="px-3 py-2 text-right w-28">Material Budget</th>
+                    <th className="px-3 py-2 text-right w-28">PO Committed</th>
+                    <th className="px-3 py-2 text-right w-28">Actual Consumed</th>
+                    <th className="px-3 py-2 text-right w-28 font-bold text-emerald-600">Total Incurred</th>
+                    <th className="px-3 py-2 text-right w-28">Variance</th>
+                    <th className="px-3 py-2 text-center w-24">Burn %</th>
+                    <th className="px-3 py-2 text-center w-28">Status</th>
                   </tr>
-                ) : paged.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="text-center py-8 text-text-muted text-[12px]">
-                      No material cost items found.
-                    </td>
-                  </tr>
-                ) : (
-                  paged.map((m, idx) => (
-                    <tr key={m.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pagedData.map((item, idx) => (
+                    <tr key={item.project_id} className="hover:bg-surface-muted/30 transition-colors">
                       <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
                         {(page - 1) * perPage + idx + 1}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={m.material_category}>
-                            {m.material_category}
+                          <span className="font-semibold text-text-primary text-[12px] truncate">
+                            {item.project_code}
                           </span>
                           <span className="text-[10px] text-text-muted truncate">
-                            {m.item_description} • {m.project_name}
+                            {item.project_name}
                           </span>
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary">
-                        ₹{(m.budget_allocation / 100000).toFixed(2)}L
+                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary font-medium">
+                        ₹{(item.material_budget / 100000).toFixed(2)}L
                       </td>
                       <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
-                        ₹{(m.po_committed_value / 100000).toFixed(2)}L
+                        ₹{(item.committed_value / 100000).toFixed(2)}L
                       </td>
-                      <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
-                        ₹{(m.grn_received_value / 100000).toFixed(2)}L
+                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
+                        ₹{(item.consumed_value / 100000).toFixed(2)}L
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
-                        ₹{(m.site_consumed_value / 100000).toFixed(2)}L
+                        ₹{(item.total_incurred / 100000).toFixed(2)}L
                       </td>
-                      <td className="px-3 py-2 text-right hidden md:table-cell font-mono text-[11px] text-amber-600">
-                        ₹{(m.wastage_cost / 100000).toFixed(2)}L
+                      <td className={`px-3 py-2 text-right font-mono font-bold text-[11px] ${item.variance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        ₹{(item.variance / 100000).toFixed(2)}L
                       </td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="View Material 360"
-                            onClick={() => setViewingItem(m)}
-                          >
-                            <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Edit"
-                            onClick={() => handleOpenEdit(m)}
-                          >
-                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
-                        </div>
+                      <td className="px-3 py-2 text-center font-mono text-[11px]">
+                        {item.burn_pct.toFixed(1)}%
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <Badge variant={item.status_variant} className="text-[9px] uppercase">
+                          {item.status}
+                        </Badge>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </DataTableContainer>
-        </div>
-
-        {/* Mobile View - Cards List for Phones (< sm) */}
-        <div className="block sm:hidden space-y-3">
-          {paged.map((m, idx) => (
-            <div key={m.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{m.material_category}</h4>
-                  <span className="text-[11px] text-text-muted">{m.item_description}</span>
-                </div>
-                <Badge
-                  variant="success"
-                  className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
-                >
-                  ₹{(m.site_consumed_value / 100000).toFixed(2)}L
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">PO Committed</span>
-                  <span className="font-mono text-text-secondary text-[11px]">₹{(m.po_committed_value / 100000).toFixed(2)}L</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Consumed to Date</span>
-                  <span className="font-mono font-bold text-emerald-600 text-[11px]">₹{(m.site_consumed_value / 100000).toFixed(2)}L</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end pt-1 border-t border-border/60 text-xs">
-                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(m)}>
-                  <Eye className="w-3 h-3 mr-1" /> View Material Cost
-                </Button>
-              </div>
-            </div>
-          ))}
-
-          {/* Mobile Pagination */}
-          <div className="pt-2">
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              totalItems={filtered.length}
-              itemsPerPage={perPage}
-              onPageChange={setPage}
-              onItemsPerPageChange={() => {}}
-            />
+                  ))}
+                </tbody>
+              </table>
+            </DataTableContainer>
           </div>
-        </div>
+        )}
+
+        {/* TAB 3: Category-wise Distribution */}
+        {activeTab === 'categories' && (
+          <div className="w-full">
+            <DataTableContainer
+              pagination={
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={filteredData.length}
+                  itemsPerPage={perPage}
+                  onPageChange={setPage}
+                  onItemsPerPageChange={() => {}}
+                />
+              }
+            >
+              <table className="w-full text-left text-[12px] table-auto">
+                <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+                  <tr>
+                    <th className="px-3 py-2 w-10 text-center">#</th>
+                    <th className="px-3 py-2">Category Code</th>
+                    <th className="px-3 py-2">Category Name</th>
+                    <th className="px-3 py-2 text-center w-28">Materials Count</th>
+                    <th className="px-3 py-2 text-right w-36 font-bold text-emerald-600">Consumed Value</th>
+                    <th className="px-3 py-2 text-right w-32 text-amber-600">Wastage Incurred</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pagedData.map((cat, idx) => (
+                    <tr key={cat.category_id} className="hover:bg-surface-muted/30 transition-colors">
+                      <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                        {(page - 1) * perPage + idx + 1}
+                      </td>
+                      <td className="px-3 py-2 font-mono font-semibold text-text-primary text-[11px]">
+                        {cat.category_code}
+                      </td>
+                      <td className="px-3 py-2 text-[12px] font-medium text-text-primary">
+                        {cat.category_name}
+                      </td>
+                      <td className="px-3 py-2 text-center font-mono text-[11px]">
+                        {cat.materials_count} Items
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
+                        ₹{cat.consumed_value.toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-amber-600 text-[11px]">
+                        ₹{cat.wasted_value.toLocaleString('en-IN')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DataTableContainer>
+          </div>
+        )}
+
+        {/* TAB 4: Purchase Orders */}
+        {activeTab === 'pos' && (
+          <div className="w-full">
+            <DataTableContainer
+              pagination={
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={filteredData.length}
+                  itemsPerPage={perPage}
+                  onPageChange={setPage}
+                  onItemsPerPageChange={() => {}}
+                />
+              }
+            >
+              <table className="w-full text-left text-[12px] table-auto">
+                <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+                  <tr>
+                    <th className="px-3 py-2 w-10 text-center">#</th>
+                    <th className="px-3 py-2">PO Number</th>
+                    <th className="px-3 py-2">Project</th>
+                    <th className="px-3 py-2">Supplier / Vendor</th>
+                    <th className="px-3 py-2 text-center w-28">PO Date</th>
+                    <th className="px-3 py-2 text-right w-32 font-bold text-emerald-600">Committed Value</th>
+                    <th className="px-3 py-2 text-center w-24">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pagedData.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-8 text-text-muted text-[12px]">
+                        No purchase orders recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedData.map((po, idx) => (
+                      <tr key={po.id} className="hover:bg-surface-muted/30 transition-colors">
+                        <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                          {(page - 1) * perPage + idx + 1}
+                        </td>
+                        <td className="px-3 py-2 font-mono font-semibold text-text-primary text-[12px]">
+                          {po.po_no}
+                        </td>
+                        <td className="px-3 py-2 text-[11px] text-text-primary">
+                          {po.project_name}
+                        </td>
+                        <td className="px-3 py-2 text-[11px] text-text-secondary font-medium">
+                          {po.supplier_name || 'Vendor'}
+                        </td>
+                        <td className="px-3 py-2 text-center font-mono text-[11px] text-text-muted">
+                          {po.po_date}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
+                          ₹{Number(po.total_amount || 0).toLocaleString('en-IN')}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <Badge variant={po.status_code === 'APPROVED' ? 'success' : 'neutral'} className="text-[9px]">
+                            {po.status_code}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </DataTableContainer>
+          </div>
+        )}
+
+        {/* TAB 5: Goods Receipts / GRN */}
+        {activeTab === 'grns' && (
+          <div className="w-full">
+            <DataTableContainer
+              pagination={
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  totalItems={filteredData.length}
+                  itemsPerPage={perPage}
+                  onPageChange={setPage}
+                  onItemsPerPageChange={() => {}}
+                />
+              }
+            >
+              <table className="w-full text-left text-[12px] table-auto">
+                <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+                  <tr>
+                    <th className="px-3 py-2 w-10 text-center">#</th>
+                    <th className="px-3 py-2">GRN Number</th>
+                    <th className="px-3 py-2">Invoice / Challan</th>
+                    <th className="px-3 py-2">Project</th>
+                    <th className="px-3 py-2 text-center w-28">Receipt Date</th>
+                    <th className="px-3 py-2 text-right w-32 font-bold text-emerald-600">Received Value</th>
+                    <th className="px-3 py-2 text-center w-24">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pagedData.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-8 text-text-muted text-[12px]">
+                        No goods receipt notes (GRN) found.
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedData.map((grn, idx) => (
+                      <tr key={grn.id} className="hover:bg-surface-muted/30 transition-colors">
+                        <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                          {(page - 1) * perPage + idx + 1}
+                        </td>
+                        <td className="px-3 py-2 font-mono font-semibold text-text-primary text-[12px]">
+                          {grn.receipt_no}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-[11px] text-text-secondary">
+                          {grn.invoice_no || 'N/A'}
+                        </td>
+                        <td className="px-3 py-2 text-[11px] text-text-primary">
+                          {grn.project_name}
+                        </td>
+                        <td className="px-3 py-2 text-center font-mono text-[11px] text-text-muted">
+                          {grn.receipt_date}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
+                          ₹{Number(grn.total_amount || 0).toLocaleString('en-IN')}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <Badge variant={grn.status_code === 'POSTED' ? 'success' : 'neutral'} className="text-[9px]">
+                            {grn.status_code}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </DataTableContainer>
+          </div>
+        )}
       </div>
 
-      {/* View Material 360 Modal */}
+      {/* Material 360 Dossier Modal */}
       {viewingItem && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-surface border border-border rounded-xl shadow-level-3 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-muted/30">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                   <Boxes className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.material_category}</h3>
-                  <span className="text-[11px] font-mono text-text-muted">{viewingItem.item_description}</span>
+                  <h3 className="text-sm font-bold text-text-primary">{viewingItem.material_name}</h3>
+                  <span className="text-[11px] font-mono text-text-muted">
+                    {viewingItem.material_code} • {viewingItem.category_name}
+                  </span>
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setViewingItem(null)}>✕</Button>
             </div>
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
-              <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Site Consumed Value</span> <span className="font-bold text-emerald-600 font-mono text-base">₹{(viewingItem.site_consumed_value / 100000).toFixed(2)}L</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">GRN Received Value</span> <span className="font-bold text-primary font-mono text-base">₹{(viewingItem.grn_received_value / 100000).toFixed(2)}L</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">PO Committed Sum</span> <span className="font-mono">₹{(viewingItem.po_committed_value / 100000).toFixed(2)}L</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Wastage / Scrap Loss</span> <span className="font-mono font-bold text-amber-600">₹{(viewingItem.wastage_cost / 100000).toFixed(2)}L</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Rate Index Fluctuation</span> <span className="font-mono text-primary font-medium">{viewingItem.unit_rate_variance}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Consumption Status</span> <span className="text-emerald-700 font-medium">{viewingItem.status}</span></div>
+              <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3.5 rounded-lg border border-border">
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Total Incurred Cost</span>
+                  <span className="font-bold text-emerald-600 font-mono text-base">
+                    ₹{viewingItem.total_cost.toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Standard Unit Rate</span>
+                  <span className="font-bold text-text-primary font-mono text-base">
+                    ₹{viewingItem.unit_rate.toLocaleString('en-IN')}/{viewingItem.unit}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Consumed Quantity</span>
+                  <span className="font-mono text-text-primary text-sm font-semibold">
+                    {viewingItem.consumed_qty} {viewingItem.unit}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Issued Quantity</span>
+                  <span className="font-mono text-text-secondary text-sm font-medium">
+                    {viewingItem.issued_qty} {viewingItem.unit}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Wastage Recorded</span>
+                  <span className="font-mono text-amber-600 font-semibold">
+                    {viewingItem.wasted_qty} {viewingItem.unit} (₹{viewingItem.wastage_cost.toLocaleString('en-IN')})
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted block text-[10px] uppercase font-bold">Parent Project</span>
+                  <span className="font-medium text-text-primary truncate block">{viewingItem.project_name}</span>
+                </div>
               </div>
 
-              {viewingItem.notes && (
-                <div className="border border-border rounded-lg p-3 space-y-1">
-                  <span className="font-bold text-text-primary block text-[11px]">Procurement Audit Remarks:</span>
-                  <p className="text-text-secondary bg-surface-muted/30 p-2 rounded border border-border/50 leading-relaxed">{viewingItem.notes}</p>
+              <div className="border border-border rounded-lg p-3 space-y-1.5 bg-surface">
+                <span className="font-bold text-text-primary block text-[11px]">Material Governance & Quality Controls:</span>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-text-secondary">
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Quality Check Verified</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                    <span>Store Ledger Post Verified</span>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="px-5 py-3 border-t border-border bg-surface-muted/20 flex justify-between items-center">
               <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-3.5 h-3.5 mr-1" /> Print Material Cost Sheet
+                <Printer className="w-3.5 h-3.5 mr-1" /> Print Material Docket
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>Close</Button>
+              <Button variant="outline" size="sm" onClick={() => setViewingItem(null)}>
+                Close
+              </Button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Add / Edit Modal */}
-      <EntityEditModal
-        isOpen={Boolean(isAddOpen || editingItem)}
-        onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
-      >
-        <EntityEditModal.Header
-          icon={Boxes}
-          title={editingItem ? 'Edit Material Cost Item' : 'Add Material Cost Item'}
-          subtitle="Record procurement commitment, delivered GRN and site consumption values."
-          onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
-        />
-        <form id="mat-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <EntityEditModal.Body>
-            <EntityEditModal.Section title="Material Head Identification">
-              <EntityEditModal.Grid>
-                <FormField label="Parent Project" required error={errors.project_id}>
-                  <Select
-                    options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
-                    value={form.project_id}
-                    onChange={(v) => handleFormChange('project_id', v)}
-                  />
-                </FormField>
-
-                <FormField label="Material Category" required error={errors.material_category}>
-                  <Input
-                    value={form.material_category}
-                    onChange={(e) => handleFormChange('material_category', e.target.value)}
-                    placeholder="e.g. TMT Reinforcement Steel"
-                  />
-                </FormField>
-
-                <FormField label="Item Description / Grade" required error={errors.item_description} className="md:col-span-2">
-                  <Input
-                    value={form.item_description}
-                    onChange={(e) => handleFormChange('item_description', e.target.value)}
-                    placeholder="e.g. Fe 550D TMT Rebars (8mm - 32mm)"
-                  />
-                </FormField>
-              </EntityEditModal.Grid>
-            </EntityEditModal.Section>
-
-            <EntityEditModal.Section title="Commercial Valuation">
-              <EntityEditModal.Grid>
-                <FormField label="Budget Allocation (₹)" required>
-                  <Input
-                    type="number"
-                    value={form.budget_allocation}
-                    onChange={(e) => handleFormChange('budget_allocation', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="PO Committed Value (₹)">
-                  <Input
-                    type="number"
-                    value={form.po_committed_value}
-                    onChange={(e) => handleFormChange('po_committed_value', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="GRN Received Value (₹)">
-                  <Input
-                    type="number"
-                    value={form.grn_received_value}
-                    onChange={(e) => handleFormChange('grn_received_value', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Site Consumed Value (₹)">
-                  <Input
-                    type="number"
-                    value={form.site_consumed_value}
-                    onChange={(e) => handleFormChange('site_consumed_value', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Wastage / Scrap Loss (₹)">
-                  <Input
-                    type="number"
-                    value={form.wastage_cost}
-                    onChange={(e) => handleFormChange('wastage_cost', e.target.value)}
-                  />
-                </FormField>
-
-                <FormField label="Market Rate Fluctuation Index">
-                  <Input
-                    value={form.unit_rate_variance}
-                    onChange={(e) => handleFormChange('unit_rate_variance', e.target.value)}
-                    placeholder="+1.5% Steel Index"
-                  />
-                </FormField>
-              </EntityEditModal.Grid>
-            </EntityEditModal.Section>
-          </EntityEditModal.Body>
-
-          <EntityEditModal.Footer
-            formId="mat-form"
-            submitLabel={editingItem ? 'Update Item' : 'Save Material Head'}
-            onCancel={() => { setIsAddOpen(false); setEditingItem(null); }}
-            isSubmitting={saving}
-          />
-        </form>
-      </EntityEditModal>
-
-      {/* Delete Confirmation */}
-      <ConfirmDialog
-        isOpen={Boolean(deleteItem)}
-        title="Delete Material Item"
-        message={`Are you sure you want to delete "${deleteItem?.material_category}"?`}
-        variant="danger"
-        confirmLabel="Delete"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteItem(null)}
-      />
     </PageContainer>
   );
 }
+
+export default MaterialCostsPage;
