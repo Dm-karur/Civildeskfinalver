@@ -4,7 +4,7 @@ import {
   Eye, RefreshCw, Filter, Search, IndianRupee,
   Layers, AlertTriangle, FileText, Check, ArrowRight,
   TrendingUp, TrendingDown, Calendar, Building,
-  History, AlertCircle, X, ChevronRight, Hash, UserCheck
+  History, AlertCircle, X, ChevronRight, Hash, UserCheck, RotateCcw
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -30,11 +30,10 @@ const formatLakhs = (val) => {
 };
 
 const getStatusBadgeVariant = (status) => {
-  const s = String(status || '').toUpperCase();
-  if (s === 'APPROVED') return 'success';
-  if (s === 'SUBMITTED' || s === 'PENDING' || s === 'UNDER_REVIEW') return 'warning';
-  if (s === 'REJECTED') return 'danger';
-  if (s === 'DRAFT') return 'neutral';
+  const s = String(status || '').toLowerCase();
+  if (s.includes('approved')) return 'success';
+  if (s.includes('review') || s.includes('submitted') || s.includes('pending')) return 'warning';
+  if (s.includes('rejected')) return 'error';
   return 'neutral';
 };
 
@@ -57,7 +56,7 @@ export function BudgetApprovalsPage() {
   const [activeTab, setActiveTab] = useState('initial');
 
   // Filter States
-  const [statusFilter, setStatusFilter] = useState('SUBMITTED'); // Default to pending approvals!
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedProjectId, setSelectedProjectId] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -320,10 +319,11 @@ export function BudgetApprovalsPage() {
       if (selectedProjectId !== 'all' && String(b.project_id) !== String(selectedProjectId)) return false;
 
       const statusCode = (b.status_code || '').toUpperCase();
-      if (statusFilter === 'SUBMITTED' && statusCode !== 'SUBMITTED') return false;
-      if (statusFilter === 'APPROVED' && statusCode !== 'APPROVED') return false;
-      if (statusFilter === 'DRAFT' && statusCode !== 'DRAFT') return false;
-      if (statusFilter === 'REJECTED' && statusCode !== 'REJECTED') return false;
+      const sf = (statusFilter || '').toUpperCase();
+      if (sf !== 'ALL' && sf !== '') {
+        if (sf === 'SUBMITTED' && statusCode !== 'SUBMITTED' && !statusCode.includes('PENDING') && !statusCode.includes('REVIEW')) return false;
+        else if (sf !== 'SUBMITTED' && statusCode !== sf) return false;
+      }
 
       if (q) {
         const matchCode = (b.budget_code || '').toLowerCase().includes(q);
@@ -342,10 +342,11 @@ export function BudgetApprovalsPage() {
       if (selectedProjectId !== 'all' && String(r.project_id) !== String(selectedProjectId)) return false;
 
       const statusCode = (r.status_code || '').toUpperCase();
-      if (statusFilter === 'SUBMITTED' && statusCode !== 'SUBMITTED') return false;
-      if (statusFilter === 'APPROVED' && statusCode !== 'APPROVED') return false;
-      if (statusFilter === 'DRAFT' && statusCode !== 'DRAFT') return false;
-      if (statusFilter === 'REJECTED' && statusCode !== 'REJECTED') return false;
+      const sf = (statusFilter || '').toUpperCase();
+      if (sf !== 'ALL' && sf !== '') {
+        if (sf === 'SUBMITTED' && statusCode !== 'SUBMITTED' && !statusCode.includes('PENDING') && !statusCode.includes('REVIEW')) return false;
+        else if (sf !== 'SUBMITTED' && statusCode !== sf) return false;
+      }
 
       if (q) {
         const matchReason = (r.reason || '').toLowerCase().includes(q);
@@ -407,6 +408,19 @@ export function BudgetApprovalsPage() {
     { label: 'BOQ & Project Budget', href: '/budgets' },
     { label: 'Budget Approval & Governance' }
   ];
+
+  const hasActiveFilters = Boolean(
+    (selectedProjectId && selectedProjectId !== 'all') ||
+    (statusFilter && statusFilter !== 'all') ||
+    search
+  );
+
+  const resetFilters = () => {
+    setSelectedProjectId('all');
+    setStatusFilter('all');
+    setSearch('');
+    setPage(1);
+  };
 
   return (
     <PageContainer>
@@ -494,57 +508,6 @@ export function BudgetApprovalsPage() {
         {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
-            {/* Status Segment Filter */}
-            {activeTab !== 'history' && (
-              <div className="flex items-center gap-1 p-0.5 bg-surface-muted/60 border border-border rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('SUBMITTED')}
-                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${
-                    statusFilter === 'SUBMITTED' ? 'bg-surface text-amber-600 shadow-xs' : 'text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  Pending Review
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('all')}
-                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${
-                    statusFilter === 'all' ? 'bg-surface text-text-primary shadow-xs' : 'text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('APPROVED')}
-                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${
-                    statusFilter === 'APPROVED' ? 'bg-surface text-emerald-600 shadow-xs' : 'text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  Approved
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('DRAFT')}
-                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${
-                    statusFilter === 'DRAFT' ? 'bg-surface text-text-primary shadow-xs' : 'text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  Draft
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('REJECTED')}
-                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors ${
-                    statusFilter === 'REJECTED' ? 'bg-surface text-red-600 shadow-xs' : 'text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  Rejected
-                </button>
-              </div>
-            )}
-
             {/* Project Filter */}
             <div className="w-full sm:w-56">
               <Select
@@ -552,23 +515,63 @@ export function BudgetApprovalsPage() {
                   { value: 'all', label: 'All Projects' },
                   ...projects.map((p) => ({
                     value: String(p.id),
-                    label: `${p.project_code || 'PRJ'} - ${p.project_name}`
+                    label: `${p.project_code || 'PRJ'} - ${p.project_name || p.name}`
                   }))
                 ]}
                 value={selectedProjectId}
-                onChange={setSelectedProjectId}
+                onChange={(val) => {
+                  setSelectedProjectId(val);
+                  setPage(1);
+                }}
                 className="text-xs h-8"
               />
             </div>
+
+            {/* Status Dropdown Filter */}
+            {activeTab !== 'history' && (
+              <div className="w-full sm:w-44">
+                <Select
+                  className="text-xs h-8"
+                  options={[
+                    { value: 'all', label: 'All Statuses' },
+                    { value: 'SUBMITTED', label: 'Pending Review' },
+                    { value: 'APPROVED', label: 'Approved' },
+                    { value: 'DRAFT', label: 'Draft' },
+                    { value: 'REJECTED', label: 'Rejected' },
+                  ]}
+                  value={statusFilter}
+                  onChange={(val) => {
+                    setStatusFilter(val);
+                    setPage(1);
+                  }}
+                />
+              </div>
+            )}
 
             {/* Search Box */}
             <div className="w-full sm:w-60">
               <SearchField
                 placeholder="Search budget, code, project..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
               />
             </div>
+
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-8 px-2 text-text-muted hover:text-text-primary"
+                onClick={resetFilters}
+                title="Reset all filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Reset
+              </Button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 justify-end">
@@ -671,7 +674,10 @@ export function BudgetApprovalsPage() {
                             {formatINR(b.total_budget)}
                           </td>
                           <td className="px-3 py-2 text-center">
-                            <Badge variant={getStatusBadgeVariant(b.status_code)} className="text-[9px] uppercase font-bold">
+                            <Badge
+                              variant={getStatusBadgeVariant(b.status_name || b.status_code)}
+                              className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center"
+                            >
                               {b.status_name || b.status_code}
                             </Badge>
                           </td>
@@ -823,7 +829,10 @@ export function BudgetApprovalsPage() {
                             {varAmt > 0 ? `+${formatINR(varAmt)}` : formatINR(varAmt)}
                           </td>
                           <td className="px-3 py-2 text-center">
-                            <Badge variant={getStatusBadgeVariant(r.status_code)} className="text-[9px] uppercase font-bold">
+                            <Badge
+                              variant={getStatusBadgeVariant(r.status_name || r.status_code)}
+                              className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center"
+                            >
                               {r.status_name || r.status_code}
                             </Badge>
                           </td>
@@ -936,7 +945,10 @@ export function BudgetApprovalsPage() {
                         {formatINR(log.amount)}
                       </td>
                       <td className="px-3 py-2 text-center">
-                        <Badge variant={getStatusBadgeVariant(log.status)} className="text-[9px] uppercase font-bold">
+                        <Badge
+                          variant={getStatusBadgeVariant(log.status)}
+                          className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center"
+                        >
                           {log.status_name || log.status}
                         </Badge>
                       </td>
@@ -971,7 +983,10 @@ export function BudgetApprovalsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-bold text-text-primary">{viewingBudget.budget_name}</h3>
-                    <Badge variant={getStatusBadgeVariant(viewingBudget.status_code)} className="text-[10px] uppercase font-bold">
+                    <Badge
+                      variant={getStatusBadgeVariant(viewingBudget.status_code || viewingBudget.status_name)}
+                      className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center"
+                    >
                       {viewingBudget.status_name || viewingBudget.status_code}
                     </Badge>
                   </div>
@@ -1192,7 +1207,10 @@ export function BudgetApprovalsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-bold text-text-primary">Budget Revision v{viewingRevision.revision_no}</h3>
-                    <Badge variant={getStatusBadgeVariant(viewingRevision.status_code)} className="text-[10px] uppercase font-bold">
+                    <Badge
+                      variant={getStatusBadgeVariant(viewingRevision.status_code || viewingRevision.status_name)}
+                      className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center"
+                    >
                       {viewingRevision.status_name || viewingRevision.status_code}
                     </Badge>
                   </div>

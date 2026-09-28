@@ -86,9 +86,9 @@ export function LoginPage() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <div className="h-[100dvh] overflow-hidden flex w-full bg-[#F8F9FC] font-sans">
+    <div className="fixed inset-0 h-screen w-screen overflow-hidden flex bg-[#F8F9FC] font-sans">
       {/* Left Panel - Hidden on smaller screens */}
-      <div className="hidden lg:flex relative w-1/2 flex-col overflow-hidden">
+      <div className="hidden lg:flex relative w-1/2 flex-col justify-center h-full overflow-hidden">
         {/* Background Image & Overlay */}
         <div className="absolute inset-0 z-0">
           <img
@@ -101,18 +101,18 @@ export function LoginPage() {
         </div>
 
         {/* Content Container */}
-        <div className="relative z-10 flex flex-col justify-center h-full px-12 xl:px-20 max-w-[650px] w-full">
+        <div className="relative z-10 flex flex-col justify-center h-full px-8 xl:px-16 2xl:px-20 max-w-[620px] w-full mx-auto py-8">
           {/* Logo Branding */}
-          <div className="flex items-center gap-3 mb-10">
-            <Building2 className="w-10 h-10 text-[#5A94DE]" />
-            <span className="text-[32px] font-bold tracking-tight text-white">Civil Desk</span>
+          <div className="flex items-center gap-3 mb-6 xl:mb-8">
+            <Building2 className="w-9 h-9 text-[#5A94DE]" />
+            <span className="text-[28px] xl:text-[32px] font-bold tracking-tight text-white">Civil Desk</span>
           </div>
 
-          <h1 className="text-[36px] font-bold leading-[1.2] text-white mb-6">
+          <h1 className="text-[28px] xl:text-[34px] font-bold leading-[1.2] text-white mb-4 xl:mb-5">
             Construction Management<br />Made Simple
           </h1>
-          <div className="w-12 h-[3px] bg-[#0056C9] mb-8" />
-          <p className="text-[16px] text-[#C8D1DC] leading-relaxed mb-16">
+          <div className="w-12 h-[3px] bg-[#0056C9] mb-4 xl:mb-6" />
+          <p className="text-[14px] xl:text-[15px] text-[#C8D1DC] leading-relaxed mb-8 xl:mb-12">
             Manage your projects, teams, materials and<br />
             costs efficiently. Real-time visibility.<br />
             Smarter decisions.
@@ -120,52 +120,52 @@ export function LoginPage() {
 
           {/* Bottom Features */}
           <div className="flex justify-between items-start w-full">
-            <div className="flex flex-col items-start gap-4 text-left">
-              <div className="w-[48px] h-[48px] rounded-xl flex items-center justify-center border border-[#5A94DE]/30 text-[#5A94DE]">
-                <Activity className="w-6 h-6" strokeWidth={1.5} />
+            <div className="flex flex-col items-start gap-3 text-left">
+              <div className="w-[42px] h-[42px] xl:w-[48px] xl:h-[48px] rounded-xl flex items-center justify-center border border-[#5A94DE]/30 text-[#5A94DE]">
+                <Activity className="w-5 h-5 xl:w-6 xl:h-6" strokeWidth={1.5} />
               </div>
-              <span className="text-[13px] font-medium text-white/90">Project<br />Tracking</span>
+              <span className="text-[12px] xl:text-[13px] font-medium text-white/90">Project<br />Tracking</span>
             </div>
 
-            <div className="flex flex-col items-start gap-4 text-left">
-              <div className="w-[48px] h-[48px] rounded-xl flex items-center justify-center border border-[#5A94DE]/30 text-[#5A94DE]">
-                <Users className="w-6 h-6" strokeWidth={1.5} />
+            <div className="flex flex-col items-start gap-3 text-left">
+              <div className="w-[42px] h-[42px] xl:w-[48px] xl:h-[48px] rounded-xl flex items-center justify-center border border-[#5A94DE]/30 text-[#5A94DE]">
+                <Users className="w-5 h-5 xl:w-6 xl:h-6" strokeWidth={1.5} />
               </div>
-              <span className="text-[13px] font-medium text-white/90">Labour<br />Management</span>
+              <span className="text-[12px] xl:text-[13px] font-medium text-white/90">Labour<br />Management</span>
             </div>
 
-            <div className="flex flex-col items-start gap-4 text-left">
-              <div className="w-[48px] h-[48px] rounded-xl flex items-center justify-center border border-[#5A94DE]/30 text-[#5A94DE]">
-                <Package className="w-6 h-6" strokeWidth={1.5} />
+            <div className="flex flex-col items-start gap-3 text-left">
+              <div className="w-[42px] h-[42px] xl:w-[48px] xl:h-[48px] rounded-xl flex items-center justify-center border border-[#5A94DE]/30 text-[#5A94DE]">
+                <Package className="w-5 h-5 xl:w-6 xl:h-6" strokeWidth={1.5} />
               </div>
-              <span className="text-[13px] font-medium text-white/90">Material<br />Management</span>
+              <span className="text-[12px] xl:text-[13px] font-medium text-white/90">Material<br />Management</span>
             </div>
 
-            <div className="flex flex-col items-start gap-4 text-left">
-              <div className="w-[48px] h-[48px] rounded-xl flex items-center justify-center border border-[#5A94DE]/30 text-[#5A94DE]">
-                <IndianRupee className="w-6 h-6" strokeWidth={1.5} />
+            <div className="flex flex-col items-start gap-3 text-left">
+              <div className="w-[42px] h-[42px] xl:w-[48px] xl:h-[48px] rounded-xl flex items-center justify-center border border-[#5A94DE]/30 text-[#5A94DE]">
+                <IndianRupee className="w-5 h-5 xl:w-6 xl:h-6" strokeWidth={1.5} />
               </div>
-              <span className="text-[13px] font-medium text-white/90">Cost<br />Control</span>
+              <span className="text-[12px] xl:text-[13px] font-medium text-white/90">Cost<br />Control</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex flex-col items-center justify-center p-0 sm:p-8 md:p-12 lg:p-24 relative z-10 bg-[#F8F9FC] h-full overflow-y-auto">
-        <div className="w-full max-w-[440px] px-4 sm:px-0 flex flex-col py-8">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 relative z-10 bg-[#F8F9FC] h-full overflow-y-auto lg:overflow-hidden">
+        <div className="w-full max-w-[420px] flex flex-col my-auto">
           {/* Mobile Logo (only visible on mobile) */}
-          <div className="flex lg:hidden items-center justify-center gap-2 mb-8 flex-shrink-0">
+          <div className="flex lg:hidden items-center justify-center gap-2 mb-4 flex-shrink-0">
             <Building2 className="w-8 h-8 text-primary" />
             <span className="text-2xl font-bold text-[#172033] tracking-tight">Civil Desk</span>
           </div>
 
-          <div className="bg-surface rounded-2xl p-6 sm:p-8 md:p-10 shadow-sm border border-border w-full flex-shrink-0">
-            <div className="text-center mb-8">
-              <h2 className="text-[24px] sm:text-[28px] font-bold text-[#172033] mb-2">Welcome Back!</h2>
-              <p className="text-[#535D6D] text-[14px] sm:text-[15px]">Sign in to your Civil Desk account</p>
+          <div className="bg-surface rounded-2xl p-6 sm:p-8 shadow-sm border border-border w-full flex-shrink-0">
+            <div className="text-center mb-5 sm:mb-6">
+              <h2 className="text-[22px] sm:text-[26px] font-bold text-[#172033] mb-1">Welcome Back!</h2>
+              <p className="text-[#535D6D] text-[13px] sm:text-[14px]">Sign in to your Civil Desk account</p>
             </div>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5 sm:gap-6">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
               <FormField label="Username or Email" error={errors.identifier} htmlFor="identifier">
                 <Input
@@ -174,7 +174,7 @@ export function LoginPage() {
                   value={formData.identifier}
                   onChange={handleChange}
                   placeholder="Enter your username or email"
-                  className="h-11"
+                  className="h-10 sm:h-11"
                   autoComplete="username"
                   disabled={isLoading}
                   leftIcon={<Mail className="h-[18px] w-[18px]" />}
@@ -189,7 +189,7 @@ export function LoginPage() {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Enter your password"
-                  className="h-11"
+                  className="h-10 sm:h-11"
                   autoComplete="current-password"
                   disabled={isLoading}
                   leftIcon={<Lock className="h-[18px] w-[18px]" />}
@@ -207,7 +207,7 @@ export function LoginPage() {
                 />
               </FormField>
 
-              <div className="flex items-center justify-between mt-1 mb-2">
+              <div className="flex items-center justify-between text-xs sm:text-sm my-0.5">
                 <Checkbox
                   id="remember"
                   name="remember"
@@ -216,7 +216,7 @@ export function LoginPage() {
                   onChange={handleChange}
                   disabled={isLoading}
                 />
-                <a href="#" className="text-[14px] font-semibold text-primary hover:text-primary-dark transition-colors">
+                <a href="#" className="text-[13px] sm:text-[14px] font-semibold text-primary hover:text-primary-dark transition-colors">
                   Forgot Password?
                 </a>
               </div>
@@ -224,15 +224,15 @@ export function LoginPage() {
               <Button
                 type="submit"
                 size="lg"
-                className="w-full h-11 text-[15px] font-semibold"
+                className="w-full h-10 sm:h-11 text-[14px] sm:text-[15px] font-semibold mt-1"
                 isLoading={isLoading}
               >
                 Sign In
               </Button>
             </form>
 
-            <div className="mt-8 text-center flex items-center justify-center border-t border-border pt-8">
-              <p className="text-[13px] text-[#7B8492]">
+            <div className="mt-5 sm:mt-6 text-center flex items-center justify-center border-t border-border pt-4 sm:pt-5">
+              <p className="text-[12px] text-[#7B8492]">
                 &copy; {currentYear} Civil Desk. All rights reserved.
               </p>
             </div>

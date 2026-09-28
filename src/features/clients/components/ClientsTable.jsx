@@ -358,6 +358,7 @@ export function ClientsTable({
         <ClientFormModal
           isOpen={Boolean(editingClient || isAddOpen)}
           client={editingClient}
+          existingClients={clients}
           onClose={() => {
             setEditingClient(null);
             setIsAddOpen(false);

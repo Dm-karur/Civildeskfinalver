@@ -418,7 +418,7 @@ export function BoqDetailModal({ isOpen, boq, onClose, onRefresh, onEdit }) {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-text-primary">{d.boq_name || d.name || 'BOQ Details'}</h2>
-                  <Badge variant={getStatusVariant(status)} className="text-[9px] font-bold uppercase tracking-wider">
+                  <Badge variant={getStatusVariant(status)} className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center">
                     {status}
                   </Badge>
                 </div>
@@ -544,7 +544,7 @@ export function BoqDetailModal({ isOpen, boq, onClose, onRefresh, onEdit }) {
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-rose-900">Approval / Review Information</h4>
-                        <Badge variant="error" className="text-[9px] font-bold uppercase tracking-wider">
+                        <Badge variant="error" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center">
                           REJECTED
                         </Badge>
                       </div>
@@ -596,7 +596,7 @@ export function BoqDetailModal({ isOpen, boq, onClose, onRefresh, onEdit }) {
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-900">Approval / Review Information</h4>
-                      <Badge variant="success" className="text-[9px] font-bold uppercase tracking-wider">
+                      <Badge variant="success" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center">
                         APPROVED
                       </Badge>
                     </div>

@@ -55,7 +55,9 @@ export function BudgetRevisionDetailModal({
   revisionId,
   onClose,
   onRefresh,
+  mode = 'revision', // 'revision' | 'variation'
 }) {
+  const isVariation = mode === 'variation';
   const { hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useState('lines');
   const [revision, setRevision] = useState(null);
@@ -141,10 +143,10 @@ export function BudgetRevisionDetailModal({
   const isApproved = status === 'APPROVED';
 
   const getVariant = (s) => {
-    const v = String(s).toUpperCase();
-    if (v === 'APPROVED') return 'success';
-    if (v === 'SUBMITTED' || v === 'PENDING') return 'warning';
-    if (v === 'REJECTED') return 'error';
+    const v = String(s || '').toUpperCase();
+    if (v.includes('APPROVED')) return 'success';
+    if (v.includes('SUBMITTED') || v.includes('PENDING') || v.includes('REVIEW')) return 'warning';
+    if (v.includes('REJECTED')) return 'error';
     return 'neutral';
   };
 
@@ -229,10 +231,10 @@ export function BudgetRevisionDetailModal({
     try {
       if (actionType === 'submit') {
         await budgetsApi.revisions.submit(budgetId, revisionId, { comments: actionComments || undefined });
-        toast.success('Budget revision submitted for approval.');
+        toast.success(isVariation ? 'Variation order submitted for commercial approval.' : 'Budget revision submitted for approval.');
       } else if (actionType === 'approve') {
         await budgetsApi.revisions.approve(budgetId, revisionId, { comments: actionComments || undefined });
-        toast.success('Budget revision approved. Budget baseline has been updated.');
+        toast.success(isVariation ? 'Variation order approved. Baseline updated.' : 'Budget revision approved. Budget baseline has been updated.');
       } else if (actionType === 'reject') {
         if (!actionComments.trim()) {
           toast.error('Rejection reason is required.');
@@ -240,7 +242,7 @@ export function BudgetRevisionDetailModal({
           return;
         }
         await budgetsApi.revisions.reject(budgetId, revisionId, { comments: actionComments });
-        toast.success('Budget revision rejected.');
+        toast.success(isVariation ? 'Variation order rejected.' : 'Budget revision rejected.');
       }
       setActionType(null);
       setActionComments('');
@@ -248,7 +250,7 @@ export function BudgetRevisionDetailModal({
       fetchHistory();
       onRefresh?.();
     } catch (err) {
-      toast.error(err?.message || `Failed to ${actionType} revision.`);
+      toast.error(err?.message || `Failed to ${actionType} ${isVariation ? 'variation order' : 'revision'}.`);
     } finally {
       setActionSubmitting(false);
     }
@@ -269,20 +271,26 @@ export function BudgetRevisionDetailModal({
         {/* Modal Header */}
         <div className="flex items-start justify-between px-6 py-4 border-b border-border bg-surface-muted/30 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-md bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
+            <div className={`w-10 h-10 rounded-md flex items-center justify-center shrink-0 ${isVariation ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-600'}`}>
               <Layers className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-text-primary">
-                  Budget Revision REV-{String(current.revision_no || '').padStart(2, '0')}
+                  {isVariation
+                    ? `Variation Order VO-${String(current.revision_no || '').padStart(3, '0')}`
+                    : `Budget Revision REV-${String(current.revision_no || '').padStart(2, '0')}`}
                 </h2>
-                <Badge variant={getVariant(status)} className="text-[10px] font-bold uppercase tracking-wide">
+                <Badge
+                  variant={getVariant(status)}
+                  className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center"
+                >
                   {current.status_name || status}
                 </Badge>
               </div>
               <p className="text-xs text-text-secondary mt-0.5">
-                Date: <span className="font-medium text-text-primary">{current.revision_date || '—'}</span>
+                {isVariation ? 'Order Date: ' : 'Effective Date: '}
+                <span className="font-medium text-text-primary">{current.revision_date || '—'}</span>
                 {current.requested_by_first_name ? ` · Requested by ${current.requested_by_first_name} ${current.requested_by_last_name || ''}` : ''}
               </p>
             </div>
@@ -296,9 +304,9 @@ export function BudgetRevisionDetailModal({
                 className="h-8 text-xs font-medium"
                 onClick={() => { setActionType('submit'); setActionComments(''); }}
                 disabled={revisionLines.length === 0}
-                title={revisionLines.length === 0 ? 'Add at least one revision line before submitting' : 'Submit for approval'}
+                title={revisionLines.length === 0 ? 'Add at least one line item before submitting' : 'Submit for approval'}
               >
-                Submit Revision
+                {isVariation ? 'Submit Variation Order' : 'Submit Revision'}
               </Button>
             )}
             {isSubmitted && hasPermission('budget.approve') && (
@@ -309,7 +317,7 @@ export function BudgetRevisionDetailModal({
                   className="h-8 text-xs font-medium bg-emerald-600 hover:bg-emerald-700"
                   onClick={() => { setActionType('approve'); setActionComments(''); }}
                 >
-                  Approve Revision
+                  {isVariation ? 'Approve Variation' : 'Approve Revision'}
                 </Button>
                 <Button
                   variant="outline"
@@ -331,28 +339,36 @@ export function BudgetRevisionDetailModal({
           </div>
         </div>
 
-        {/* Revision Impact Ribbon */}
+        {/* Revision / Variation Impact Ribbon */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-6 py-3 border-b border-border bg-surface-subtle/50 text-xs shrink-0">
           <div>
-            <div className="text-[10px] text-text-muted uppercase font-semibold">Previous Baseline</div>
+            <div className="text-[10px] text-text-muted uppercase font-semibold">
+              {isVariation ? 'Pre-Order Value' : 'Previous Baseline'}
+            </div>
             <div className="text-sm font-semibold font-mono text-text-secondary">
               ₹{Number(current.previous_total || 0).toLocaleString('en-IN')}
             </div>
           </div>
           <div>
-            <div className="text-[10px] text-text-muted uppercase font-semibold">Revision Variance</div>
+            <div className="text-[10px] text-text-muted uppercase font-semibold">
+              {isVariation ? 'Variation Quantum (+/-)' : 'Baseline Shift'}
+            </div>
             <div className={`text-base font-bold font-mono ${totalVariance > 0 ? 'text-emerald-600' : totalVariance < 0 ? 'text-rose-600' : 'text-text-primary'}`}>
               {totalVariance > 0 ? '+' : ''}₹{totalVariance.toLocaleString('en-IN')}
             </div>
           </div>
           <div>
-            <div className="text-[10px] text-text-muted uppercase font-semibold">New Revised Total</div>
+            <div className="text-[10px] text-text-muted uppercase font-semibold">
+              {isVariation ? 'Revised Commitment' : 'New Revised Baseline'}
+            </div>
             <div className="text-base font-bold font-mono text-primary">
               ₹{Number(current.revised_total || 0).toLocaleString('en-IN')}
             </div>
           </div>
           <div>
-            <div className="text-[10px] text-text-muted uppercase font-semibold">Reason for Revision</div>
+            <div className="text-[10px] text-text-muted uppercase font-semibold">
+              {isVariation ? 'Scope & Justification' : 'Revision Rationale'}
+            </div>
             <div className="text-xs text-text-primary truncate" title={current.reason}>
               {current.reason || '—'}
             </div>
@@ -364,7 +380,7 @@ export function BudgetRevisionDetailModal({
           <TabButton
             active={activeTab === 'lines'}
             onClick={() => setActiveTab('lines')}
-            label="Revision Line Items"
+            label={isVariation ? 'Scope Change Lines' : 'Baseline Line Items'}
             icon={FileSpreadsheet}
             count={revisionLines.length}
           />
@@ -383,8 +399,12 @@ export function BudgetRevisionDetailModal({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-text-primary">Revised Scope & Rate Adjustments</h3>
-                  <p className="text-xs text-text-muted">Lines modified, added, or de-scoped in this revision</p>
+                  <h3 className="text-sm font-semibold text-text-primary">
+                    {isVariation ? 'Scope Change Lines' : 'Revised Scope & Rate Adjustments'}
+                  </h3>
+                  <p className="text-xs text-text-muted">
+                    {isVariation ? 'Lines modified, added, or de-scoped in this variation order' : 'Lines modified, added, or de-scoped in this baseline revision'}
+                  </p>
                 </div>
                 {isDraft && hasPermission('budget.revise') && (
                   <Button
@@ -394,7 +414,7 @@ export function BudgetRevisionDetailModal({
                     leftIcon={<Plus className="w-3.5 h-3.5" />}
                     onClick={() => setIsAddLineOpen(true)}
                   >
-                    Add Revision Line
+                    {isVariation ? 'Add Scope Line' : 'Add Revision Line'}
                   </Button>
                 )}
               </div>

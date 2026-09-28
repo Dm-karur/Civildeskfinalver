@@ -757,7 +757,7 @@ export function BoqCreatePage() {
                   <h4 className="text-xs font-bold uppercase tracking-wider text-rose-900">
                     Review History: Rejected BOQ Correction
                   </h4>
-                  <Badge variant="error" className="text-[9px] font-bold uppercase">REJECTED</Badge>
+                  <Badge variant="error" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center">REJECTED</Badge>
                 </div>
                 <p className="text-xs text-rose-800 mt-1">
                   This BOQ was rejected during approval review. You can update the scope, sections, items, and unit rates below, save your progress, and re-submit it for approval using this same BOQ record.

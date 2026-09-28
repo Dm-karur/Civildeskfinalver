@@ -15,7 +15,46 @@ import { Textarea } from '../../../components/ui/Textarea';
 import { Checkbox } from '../../../components/ui/Checkbox';
 import { validators } from '../../../utils/validation';
 
-export function ClientFormModal({ client, isOpen, onClose, onSaveSuccess }) {
+export function generateClientCode(existingClients = []) {
+  if (!Array.isArray(existingClients) || existingClients.length === 0) {
+    return 'CLI-001';
+  }
+
+  let maxSeq = 0;
+  let prefix = 'CLI-';
+  let padLength = 3;
+
+  existingClients.forEach((c) => {
+    const code = String(c.client_code || c.code || '').trim();
+    if (!code) return;
+
+    const match = code.match(/^([A-Za-z]+[-_]?)(\d+)$/);
+    if (match) {
+      const pref = match[1];
+      const digits = match[2];
+      const num = parseInt(digits, 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+        prefix = pref;
+        padLength = Math.max(digits.length, 3);
+      }
+    } else {
+      const genericMatch = code.match(/(\d+)$/);
+      if (genericMatch) {
+        const num = parseInt(genericMatch[1], 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
+          padLength = Math.max(genericMatch[1].length, 3);
+        }
+      }
+    }
+  });
+
+  const nextSeq = maxSeq + 1;
+  return `${prefix.toUpperCase()}${String(nextSeq).padStart(padLength, '0')}`;
+}
+
+export function ClientFormModal({ client, existingClients = [], isOpen, onClose, onSaveSuccess }) {
   const isEditing = Boolean(client?.id);
   const [saving, setSaving] = useState(false);
   const [statuses, setStatuses] = useState([]);
@@ -51,17 +90,29 @@ export function ClientFormModal({ client, isOpen, onClose, onSaveSuccess }) {
   useEffect(() => {
     const fetchMasters = async () => {
       try {
-        const [statusRes, sourceRes, masterRes, branchRes] = await Promise.all([
+        const [statusRes, sourceRes, masterRes, branchRes, allClientsRes] = await Promise.all([
           clientStatusesApi.list(),
           clientSourcesApi.list(),
           mastersApi.all(),
           branchesApi.list(),
+          (!client && (!existingClients || existingClients.length === 0)) ? clientsApi.list().catch(() => []) : Promise.resolve(existingClients),
         ]);
         setStatuses(Array.isArray(statusRes) ? statusRes : []);
         setSources(Array.isArray(sourceRes) ? sourceRes : []);
         setClientTypes(masterRes?.data?.company_types ?? []);
         setGstTypes(masterRes?.data?.gst_registration_types ?? []);
         setBranches(branchRes?.data?.branches ?? []);
+
+        if (!client) {
+          const clientList = Array.isArray(allClientsRes)
+            ? allClientsRes
+            : (allClientsRes?.data?.clients ?? allClientsRes?.clients ?? allClientsRes?.data ?? existingClients ?? []);
+          const autoCode = generateClientCode(clientList);
+          setFormData(prev => ({
+            ...prev,
+            client_code: prev.client_code && prev.client_code !== 'CLI-001' ? prev.client_code : autoCode,
+          }));
+        }
       } catch (err) {
         console.error('Failed to load client masters:', err);
       }
@@ -70,7 +121,7 @@ export function ClientFormModal({ client, isOpen, onClose, onSaveSuccess }) {
       fetchMasters();
       setErrors({});
     }
-  }, [isOpen]);
+  }, [isOpen, client, existingClients]);
 
   useEffect(() => {
     if (client) {
@@ -97,8 +148,9 @@ export function ClientFormModal({ client, isOpen, onClose, onSaveSuccess }) {
         branch_id: String(client.branch_id ?? '')
       });
     } else {
+      const initialCode = generateClientCode(existingClients);
       setFormData({
-        client_code: '',
+        client_code: initialCode,
         client_name: '',
         legal_name: '',
         client_type_id: '',
@@ -120,7 +172,7 @@ export function ClientFormModal({ client, isOpen, onClose, onSaveSuccess }) {
         branch_id: ''
       });
     }
-  }, [client, isOpen]);
+  }, [client, isOpen, existingClients]);
 
   const validateField = (name, value) => {
     let error = null;
@@ -197,8 +249,10 @@ export function ClientFormModal({ client, isOpen, onClose, onSaveSuccess }) {
 
     setSaving(true);
     try {
+      const finalClientCode = formData.client_code || generateClientCode(existingClients);
       const payload = {
         ...formData,
+        client_code: finalClientCode,
         branch_id: formData.branch_id ? Number(formData.branch_id) : null,
         client_type_id: Number(formData.client_type_id),
         gst_registration_type_id: Number(formData.gst_registration_type_id),
@@ -240,13 +294,14 @@ export function ClientFormModal({ client, isOpen, onClose, onSaveSuccess }) {
         <EntityEditModal.Body>
           <EntityEditModal.Section title="General & Business Identifiers">
             <EntityEditModal.Grid>
-              <FormField label="Client Code" required error={errors.client_code}>
+              <FormField label="Client Code" required error={errors.client_code} helperText="Auto-generated code">
                 <Input 
                   name="client_code"
                   value={formData.client_code}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  placeholder="e.g. CLI-001"
+                  disabled
+                  readOnly
+                  placeholder="Auto-generated"
+                  className="bg-surface-muted cursor-not-allowed font-mono font-semibold text-text-secondary select-none"
                 />
               </FormField>
               <FormField label="Client Name" required error={errors.client_name}>

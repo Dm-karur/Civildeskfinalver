@@ -13,6 +13,7 @@ import {
   Trash2,
   Send,
   TrendingUp,
+  ShieldCheck,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -66,66 +67,78 @@ export function BudgetRevisionsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch Projects and Approved Budgets
+  // Unified, resilient data loader for Projects, Budgets, and Revisions
   useEffect(() => {
-    Promise.allSettled([
-      projectsApi.list(),
-      budgetsApi.list(),
-    ]).then(([projRes, budRes]) => {
-      if (projRes.status === 'fulfilled') {
-        const raw = projRes.value;
-        const list = Array.isArray(raw) ? raw : (raw?.data?.projects ?? raw?.projects ?? (Array.isArray(raw?.data) ? raw.data : []));
-        setProjects(Array.isArray(list) ? list : []);
-      }
-      if (budRes.status === 'fulfilled') {
-        const raw = budRes.value;
-        const list = raw?.data?.project_budgets ?? raw?.project_budgets ?? raw?.data?.data ?? (Array.isArray(raw) ? raw : []);
-        setBudgets(Array.isArray(list) ? list : []);
-      }
-    });
-  }, []);
-
-  // Fetch Revisions across budgets
-  useEffect(() => {
+    let isMounted = true;
     setLoading(true);
 
-    // Fetch revisions for all budgets or selected budget
-    budgetsApi.list()
-      .then(async (res) => {
-        const budgetList = res?.data?.project_budgets ?? res?.project_budgets ?? res?.data?.data ?? (Array.isArray(res) ? res : []);
-        const approvedBudgets = (Array.isArray(budgetList) ? budgetList : []).filter(
-          (b) => String(b.status_code || b.status_name || b.status || '').toUpperCase() === 'APPROVED' || (b.revision_count && Number(b.revision_count) > 0)
-        );
+    const loadData = async () => {
+      try {
+        const [projRes, budRes] = await Promise.allSettled([
+          projectsApi.list(),
+          budgetsApi.list(),
+        ]);
 
-        // Filter by selected budget if specific
-        const targetBudgets = filters.budget_id !== 'all'
-          ? approvedBudgets.filter((b) => String(b.id) === String(filters.budget_id))
-          : approvedBudgets;
+        const projList = projRes.status === 'fulfilled'
+          ? (Array.isArray(projRes.value) ? projRes.value : (projRes.value?.data?.projects ?? projRes.value?.projects ?? (Array.isArray(projRes.value?.data) ? projRes.value.data : [])))
+          : [];
 
-        // Fetch revisions for these target budgets in parallel
-        const revPromises = targetBudgets.map((b) =>
-          budgetsApi.revisions.list(b.id)
-            .then((r) => {
-              const list = r?.data?.budget_revisions ?? r?.budget_revisions ?? r?.data?.revisions ?? r?.revisions ?? (Array.isArray(r?.data) ? r.data : []);
-              return (Array.isArray(list) ? list : []).map((rev) => ({
-                ...rev,
-                budget_id: b.id,
-                budget_code: b.budget_code,
-                budget_name: b.budget_name,
-                project_id: b.project_id,
-                project_name: b.project_name || projects.find((p) => p.id === b.project_id)?.project_name || 'Project',
-              }));
-            })
-            .catch(() => [])
-        );
+        const rawBudgets = budRes.status === 'fulfilled'
+          ? (budRes.value?.data?.project_budgets ?? budRes.value?.project_budgets ?? budRes.value?.data?.data ?? (Array.isArray(budRes.value) ? budRes.value : []))
+          : [];
 
-        const results = await Promise.all(revPromises);
-        const flattened = results.flat().sort((a, b) => new Date(b.created_at || b.revision_date || 0) - new Date(a.created_at || a.revision_date || 0));
+        if (!isMounted) return;
+        setProjects(Array.isArray(projList) ? projList : []);
+        setBudgets(Array.isArray(rawBudgets) ? rawBudgets : []);
+
+        // Filter budgets eligible for baseline revisions (APPROVED or have revisions)
+        const eligibleBudgets = (Array.isArray(rawBudgets) ? rawBudgets : []).filter((b) => {
+          const s = String(b.status_code || b.status_name || b.status || '').toUpperCase();
+          return s === 'APPROVED' || (b.revision_count && Number(b.revision_count) > 0);
+        });
+
+        // Parallel fetch revisions for each eligible budget
+        const revPromises = eligibleBudgets.map(async (b) => {
+          try {
+            const r = await budgetsApi.revisions.list(b.id);
+            const list = r?.data?.budget_revisions ?? r?.budget_revisions ?? r?.data?.revisions ?? r?.revisions ?? (Array.isArray(r?.data) ? r.data : []);
+            return (Array.isArray(list) ? list : []).map((rev) => ({
+              ...rev,
+              budget_id: b.id,
+              budget_code: b.budget_code,
+              budget_name: b.budget_name,
+              project_id: b.project_id,
+              project_name: b.project_name || projList.find((p) => p.id === b.project_id)?.project_name || 'Project',
+              project_code: b.project_code || projList.find((p) => p.id === b.project_id)?.project_code || '',
+              original_budget_amount: Number(b.total_budget || 0),
+            }));
+          } catch {
+            return [];
+          }
+        });
+
+        const revResults = await Promise.all(revPromises);
+        if (!isMounted) return;
+
+        const flattened = revResults
+          .flat()
+          .sort((a, b) => new Date(b.created_at || b.revision_date || 0) - new Date(a.created_at || a.revision_date || 0));
+
         setRevisions(flattened);
-      })
-      .catch(() => setRevisions([]))
-      .finally(() => setLoading(false));
-  }, [refreshKey, filters.budget_id, projects]);
+      } catch (err) {
+        console.error('Error fetching baseline revisions:', err);
+        if (isMounted) setRevisions([]);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshKey]);
 
   const refresh = () => setRefreshKey((k) => k + 1);
 
@@ -133,6 +146,9 @@ export function BudgetRevisionsPage() {
   const filteredRevisions = useMemo(() => {
     return revisions.filter((rev) => {
       if (filters.project_id !== 'all' && String(rev.project_id) !== String(filters.project_id)) {
+        return false;
+      }
+      if (filters.budget_id !== 'all' && String(rev.budget_id) !== String(filters.budget_id)) {
         return false;
       }
       if (filters.status !== 'all') {
@@ -157,7 +173,7 @@ export function BudgetRevisionsPage() {
     });
   }, [revisions, filters, searchQuery]);
 
-  // KPIs
+  // Baseline KPIs
   const kpis = useMemo(() => {
     let draft = 0;
     let submitted = 0;
@@ -167,20 +183,30 @@ export function BudgetRevisionsPage() {
     revisions.forEach((rev) => {
       const s = String(rev.status_code || rev.status_name || rev.status || '').toLowerCase();
       const variance = Number(rev.variance_amount || 0);
-      totalVariance += variance;
-      if (s.includes('draft')) draft++;
-      else if (s.includes('submit') || s.includes('pending') || s.includes('review')) submitted++;
-      else if (s.includes('approv')) approved++;
+      if (s.includes('approv')) {
+        approved++;
+        totalVariance += variance;
+      } else if (s.includes('submit') || s.includes('pending') || s.includes('review')) {
+        submitted++;
+      } else if (s.includes('draft')) {
+        draft++;
+      }
     });
 
+    const activeBaselinesCount = budgets.filter((b) => {
+      const s = String(b.status_code || b.status_name || b.status || '').toUpperCase();
+      return s === 'APPROVED' || (b.revision_count && Number(b.revision_count) > 0);
+    }).length;
+
     return {
-      total: revisions.length,
-      draft,
-      submitted,
-      approved,
+      activeBaselinesCount,
+      totalRevisions: revisions.length,
+      approvedRevisions: approved,
+      pendingApproval: submitted,
+      draftCount: draft,
       totalVariance,
     };
-  }, [revisions]);
+  }, [revisions, budgets]);
 
   const hasActiveFilters = Boolean(
     (filters.project_id && filters.project_id !== 'all') ||
@@ -198,7 +224,7 @@ export function BudgetRevisionsPage() {
   const getVariant = (s) => {
     const v = String(s || '').toUpperCase();
     if (v.includes('APPROV')) return 'success';
-    if (v.includes('SUBMIT') || v.includes('PENDING')) return 'warning';
+    if (v.includes('SUBMIT') || v.includes('PENDING') || v.includes('REVIEW')) return 'warning';
     if (v.includes('REJECT')) return 'error';
     return 'neutral';
   };
@@ -211,10 +237,10 @@ export function BudgetRevisionsPage() {
     try {
       if (type === 'submit') {
         await budgetsApi.revisions.submit(item.budget_id, item.id, { comments: actionComments || undefined });
-        toast.success('Budget revision submitted for approval.');
+        toast.success('Budget baseline revision submitted for approval.');
       } else if (type === 'approve') {
         await budgetsApi.revisions.approve(item.budget_id, item.id, { comments: actionComments || undefined });
-        toast.success('Budget revision approved. Master baseline updated.');
+        toast.success('Budget baseline revision approved. Active project cost baseline updated.');
       } else if (type === 'reject') {
         if (!actionComments.trim()) {
           toast.error('Rejection comments are required.');
@@ -222,10 +248,10 @@ export function BudgetRevisionsPage() {
           return;
         }
         await budgetsApi.revisions.reject(item.budget_id, item.id, { comments: actionComments });
-        toast.success('Budget revision rejected.');
+        toast.success('Budget baseline revision rejected.');
       } else if (type === 'delete') {
         await budgetsApi.revisions.remove(item.budget_id, item.id);
-        toast.success('Budget revision deleted.');
+        toast.success('Draft baseline revision deleted.');
       }
       setConfirmAction(null);
       setActionComments('');
@@ -246,34 +272,34 @@ export function BudgetRevisionsPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Budget Revisions"
+        title="Project Budget Revisions & Baseline Versions"
         breadcrumbs={breadcrumbs}
-        description="Track, review, and control project budget revisions, baseline adjustments, and variance impact."
+        description="Govern project cost baseline revisions, track version evolution (V0 -> Rev 1 -> Rev 2), and audit baseline adjustments across cost heads."
       />
 
       <div className="flex flex-col gap-3 sm:gap-4 w-full">
         {/* KPI Summary Ribbon */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <KpiCard
-            label="Total Revisions"
-            value={kpis.total}
+            label="Active Project Baselines"
+            value={kpis.activeBaselinesCount}
             status="primary"
-            icon={<Layers className="w-4 h-4" />}
+            icon={<ShieldCheck className="w-4 h-4 text-primary" />}
           />
           <KpiCard
-            label="Approved Revisions"
-            value={kpis.approved}
+            label="Approved Baseline Versions"
+            value={kpis.approvedRevisions}
             status="success"
             icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
-            label="Pending Approval"
-            value={kpis.submitted}
+            label="Pending Baseline Locks"
+            value={kpis.pendingApproval}
             status="warning"
             icon={<Clock className="w-4 h-4 text-amber-500" />}
           />
           <KpiCard
-            label="Net Variance Impact"
+            label="Cumulative Baseline Shift"
             value={`${kpis.totalVariance >= 0 ? '+' : ''}₹${(kpis.totalVariance / 100000).toFixed(1)} L`}
             status={kpis.totalVariance >= 0 ? 'success' : 'neutral'}
             icon={<TrendingUp className="w-4 h-4 text-sky-500" />}
@@ -294,7 +320,7 @@ export function BudgetRevisionsPage() {
                   })),
                 ]}
                 value={filters.project_id}
-                onChange={(value) => setFilters((c) => ({ ...c, project_id: value }))}
+                onChange={(value) => setFilters((c) => ({ ...c, project_id: value, budget_id: 'all' }))}
               />
             </div>
 
@@ -303,10 +329,12 @@ export function BudgetRevisionsPage() {
                 className="text-xs h-8"
                 options={[
                   { value: 'all', label: 'All Budgets' },
-                  ...budgets.map((b) => ({
-                    value: String(b.id),
-                    label: `${b.budget_code} - ${b.budget_name || 'Budget'}`,
-                  })),
+                  ...budgets
+                    .filter((b) => filters.project_id === 'all' || String(b.project_id) === String(filters.project_id))
+                    .map((b) => ({
+                      value: String(b.id),
+                      label: `${b.budget_code} - ${b.budget_name || 'Budget'}`,
+                    })),
                 ]}
                 value={filters.budget_id}
                 onChange={(value) => setFilters((c) => ({ ...c, budget_id: value }))}
@@ -318,10 +346,10 @@ export function BudgetRevisionsPage() {
                 className="text-xs h-8"
                 options={[
                   { value: 'all', label: 'All Statuses' },
-                  { value: 'draft', label: 'Draft' },
-                  { value: 'submitted', label: 'Pending Approval' },
-                  { value: 'approved', label: 'Approved' },
-                  { value: 'rejected', label: 'Rejected' },
+                  { value: 'draft', label: 'Draft Versions' },
+                  { value: 'submitted', label: 'Pending Baseline Lock' },
+                  { value: 'approved', label: 'Approved Baselines' },
+                  { value: 'rejected', label: 'Rejected Versions' },
                 ]}
                 value={filters.status}
                 onChange={(value) => setFilters((c) => ({ ...c, status: value }))}
@@ -330,7 +358,7 @@ export function BudgetRevisionsPage() {
 
             <div className="w-full sm:w-56">
               <SearchField
-                placeholder="Search rev no, budget, reason..."
+                placeholder="Search rev no, budget, rationale..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -365,29 +393,28 @@ export function BudgetRevisionsPage() {
           </div>
         </div>
 
-        {/* Fluid Zero-Scroll Table - Desktop View */}
-        <div className="hidden sm:block border border-border rounded-lg overflow-hidden bg-surface shadow-xs">
+        {/* Revisions Version Register - Desktop View */}
+        <div className="hidden sm:block border border-border rounded-lg bg-surface shadow-xs">
           {loading ? (
-            <div className="py-16 text-center text-text-muted text-xs">Loading budget revisions...</div>
+            <div className="py-16 text-center text-text-muted text-xs">Loading project budget revisions...</div>
           ) : filteredRevisions.length === 0 ? (
             <div className="py-16 text-center text-text-muted text-xs">
-              No budget revisions found matching the selected criteria.
+              No budget baseline revisions found matching the selected criteria.
             </div>
           ) : (
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
-                  <th className="px-3 py-2 w-10 text-center">#</th>
-                  <th className="px-3 py-2">Revision</th>
-                  <th className="px-3 py-2">Parent Budget</th>
-                  <th className="px-3 py-2">Project</th>
-                  <th className="px-3 py-2">Date</th>
-                  <th className="px-3 py-2">Reason / Scope</th>
+                  <th className="px-3 py-2 w-10 text-center rounded-tl-lg">#</th>
+                  <th className="px-3 py-2">Baseline Version</th>
+                  <th className="px-3 py-2">Parent Budget & Project</th>
+                  <th className="px-3 py-2">Effective Date</th>
+                  <th className="px-3 py-2">Baseline Revision Rationale</th>
                   <th className="px-3 py-2 text-right">Previous Baseline</th>
-                  <th className="px-3 py-2 text-right">Net Variance</th>
+                  <th className="px-3 py-2 text-right">Net Baseline Shift</th>
                   <th className="px-3 py-2 text-right">Revised Baseline</th>
-                  <th className="px-3 py-2 text-center w-28">Status</th>
-                  <th className="px-3 py-2 w-28 text-center">Actions</th>
+                  <th className="px-3 py-2 text-center w-28">Baseline Status</th>
+                  <th className="px-3 py-2 w-28 text-center rounded-tr-lg">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -396,133 +423,166 @@ export function BudgetRevisionsPage() {
                   const statusStr = String(rev.status_code || rev.status_name || rev.status || 'DRAFT').toUpperCase();
                   const isDraft = statusStr.includes('DRAFT');
                   const isPending = statusStr.includes('SUBMIT') || statusStr.includes('PENDING') || statusStr.includes('REVIEW');
+                  const isApproved = statusStr.includes('APPROV');
+
+                  const prevTotal = Number(rev.previous_total || 0);
+                  const pct = prevTotal > 0 ? (variance / prevTotal) * 100 : 0;
+                  const isDropup = idx > 0 && idx >= filteredRevisions.length - 2;
 
                   return (
                     <tr key={rev.id || idx} className="hover:bg-surface-muted/30 transition-colors">
                       <td className="px-3 py-2 text-center text-text-muted text-[11px]">{idx + 1}</td>
-                      <td className="px-3 py-2 font-mono font-bold text-text-primary">
-                        REV-{String(rev.revision_no || idx + 1).padStart(2, '0')}
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-text-primary text-[12px]">
+                            REV-{String(rev.revision_no || idx + 1).padStart(2, '0')}
+                          </span>
+                          {isApproved && (
+                            <span className="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 py-0.2 rounded font-semibold">
+                              v{rev.revision_no}.0 Active
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-2">
                         <div className="font-mono font-semibold text-text-primary text-[11px]">{rev.budget_code}</div>
-                        <div className="text-[11px] text-text-secondary truncate max-w-[140px]" title={rev.budget_name}>
-                          {rev.budget_name || '—'}
+                        <div className="text-[11px] text-text-secondary truncate max-w-[150px]" title={rev.project_name}>
+                          {rev.project_name || '—'}
                         </div>
-                      </td>
-                      <td className="px-3 py-2 text-text-secondary max-w-[130px] truncate" title={rev.project_name}>
-                        {rev.project_name || '—'}
                       </td>
                       <td className="px-3 py-2 text-text-secondary font-mono text-[11px]">
                         {rev.revision_date ? rev.revision_date.split('T')[0] : '—'}
                       </td>
-                      <td className="px-3 py-2 text-text-primary max-w-xs truncate" title={rev.reason}>
-                        {rev.reason || '—'}
+                      <td className="px-3 py-2 text-text-primary max-w-xs">
+                        <p className="truncate text-[11px]" title={rev.reason}>
+                          {rev.reason || '—'}
+                        </p>
                       </td>
                       <td className="px-3 py-2 text-right font-mono text-text-secondary">
-                        ₹{Number(rev.previous_total || 0).toLocaleString('en-IN')}
+                        ₹{prevTotal.toLocaleString('en-IN')}
                       </td>
                       <td className={`px-3 py-2 text-right font-mono font-bold ${variance > 0 ? 'text-emerald-600' : variance < 0 ? 'text-rose-600' : 'text-text-muted'}`}>
-                        {variance > 0 ? '+' : ''}₹{variance.toLocaleString('en-IN')}
+                        <div>
+                          {variance > 0 ? '+' : ''}₹{variance.toLocaleString('en-IN')}
+                        </div>
+                        <div className="text-[10px] font-normal text-text-muted">
+                          {variance > 0 ? '+' : ''}{pct.toFixed(1)}%
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-text-primary">
                         ₹{Number(rev.revised_total || 0).toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-center">
-                        <Badge variant={getVariant(statusStr)} className="text-[9px] font-bold uppercase tracking-wide">
+                        <Badge
+                          variant={getVariant(statusStr)}
+                          className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center"
+                        >
                           {rev.status_name || statusStr}
                         </Badge>
                       </td>
-
-                      {/* Action Menu: View and Menu dropdown */}
-                      <td className="px-3 py-2 text-center relative">
+                      <td className="px-3 py-2 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[11px] text-primary hover:text-primary-dark font-medium"
+                            leftIcon={<Eye className="w-3.5 h-3.5" />}
                             onClick={() => setViewingRevision({ budgetId: rev.budget_id, revisionId: rev.id })}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors font-medium"
-                            title="View Revision Details"
+                            title="View baseline details"
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>View</span>
-                          </button>
+                            View
+                          </Button>
 
-                          {(isDraft || isPending) && (
+                          {/* Action context menu */}
+                          <div className={`relative ${activeMenuId === rev.id ? 'z-40' : ''}`}>
                             <button
                               type="button"
+                              className="p-1 rounded hover:bg-surface-muted text-text-muted hover:text-text-primary transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveMenuId(activeMenuId === rev.id ? null : rev.id);
                               }}
-                              className="p-1 text-text-secondary hover:text-text-primary hover:bg-surface-muted rounded transition-colors"
-                              title="Actions"
                             >
                               <MoreVertical className="w-3.5 h-3.5" />
                             </button>
-                          )}
-                        </div>
 
-                        {/* Dropdown Menu */}
-                        {activeMenuId === rev.id && (
-                          <div
-                            ref={menuRef}
-                            className="absolute right-3 top-8 z-30 w-44 rounded-md border border-border bg-surface shadow-lg py-1 text-left animate-in fade-in zoom-in-95 duration-100"
-                          >
-                            {isDraft && hasPermission('budget.revise') && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveMenuId(null);
-                                  setConfirmAction({ type: 'submit', item: rev });
-                                }}
-                                className="w-full px-3 py-1.5 text-xs text-text-primary hover:bg-surface-muted flex items-center gap-2"
+                            {activeMenuId === rev.id && (
+                              <div
+                                ref={menuRef}
+                                className={`absolute right-0 ${
+                                  isDropup ? 'bottom-full mb-1' : 'top-full mt-1'
+                                } w-44 bg-surface border border-border rounded-md shadow-lg z-50 py-1 text-left animate-in fade-in zoom-in-95 duration-100`}
                               >
-                                <Send className="w-3.5 h-3.5 text-sky-600" />
-                                Submit Revision
-                              </button>
-                            )}
-
-                            {isPending && hasPermission('budget.approve') && (
-                              <>
                                 <button
                                   type="button"
+                                  className="w-full px-3 py-1.5 text-xs text-text-primary hover:bg-surface-muted flex items-center gap-2"
                                   onClick={() => {
                                     setActiveMenuId(null);
-                                    setConfirmAction({ type: 'approve', item: rev });
+                                    setViewingRevision({ budgetId: rev.budget_id, revisionId: rev.id });
                                   }}
-                                  className="w-full px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
                                 >
-                                  <Check className="w-3.5 h-3.5" />
-                                  Approve Revision
+                                  <Eye className="w-3.5 h-3.5 text-primary" />
+                                  <span>View Details</span>
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveMenuId(null);
-                                    setConfirmAction({ type: 'reject', item: rev });
-                                  }}
-                                  className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2"
-                                >
-                                  <XCircle className="w-3.5 h-3.5" />
-                                  Reject Revision
-                                </button>
-                              </>
-                            )}
 
-                            {isDraft && hasPermission('budget.revise') && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveMenuId(null);
-                                  setConfirmAction({ type: 'delete', item: rev });
-                                }}
-                                className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 border-t border-border mt-1"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                Delete Revision
-                              </button>
+                                {isDraft && hasPermission('budget.revise') && (
+                                  <button
+                                    type="button"
+                                    className="w-full px-3 py-1.5 text-xs text-primary hover:bg-primary/10 flex items-center gap-2 font-medium"
+                                    onClick={() => {
+                                      setActiveMenuId(null);
+                                      setConfirmAction({ type: 'submit', item: rev });
+                                    }}
+                                  >
+                                    <Send className="w-3.5 h-3.5" />
+                                    <span>Submit for Lock</span>
+                                  </button>
+                                )}
+
+                                {isPending && hasPermission('budget.approve') && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="w-full px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 font-medium"
+                                      onClick={() => {
+                                        setActiveMenuId(null);
+                                        setConfirmAction({ type: 'approve', item: rev });
+                                      }}
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Approve Baseline</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium"
+                                      onClick={() => {
+                                        setActiveMenuId(null);
+                                        setConfirmAction({ type: 'reject', item: rev });
+                                      }}
+                                    >
+                                      <XCircle className="w-3.5 h-3.5" />
+                                      <span>Reject Revision</span>
+                                    </button>
+                                  </>
+                                )}
+
+                                {isDraft && hasPermission('budget.revise') && (
+                                  <button
+                                    type="button"
+                                    className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 border-t border-border mt-1"
+                                    onClick={() => {
+                                      setActiveMenuId(null);
+                                      setConfirmAction({ type: 'delete', item: rev });
+                                    }}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Delete Draft</span>
+                                  </button>
+                                )}
+                              </div>
                             )}
                           </div>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -532,130 +592,65 @@ export function BudgetRevisionsPage() {
           )}
         </div>
 
-        {/* Mobile View - Cards List for Phones (< sm) */}
-        <div className="block sm:hidden space-y-3">
+        {/* Mobile View: Cards */}
+        <div className="sm:hidden flex flex-col gap-2.5">
           {loading ? (
             <div className="py-12 text-center text-text-muted text-xs bg-surface border border-border rounded-lg">
               Loading budget revisions...
             </div>
           ) : filteredRevisions.length === 0 ? (
             <div className="py-12 text-center text-text-muted text-xs bg-surface border border-border rounded-lg">
-              No budget revisions found matching the selected criteria.
+              No budget baseline revisions found.
             </div>
           ) : (
-            filteredRevisions.map((rev, idx) => {
+            filteredRevisions.map((rev) => {
               const variance = Number(rev.variance_amount || 0);
               const statusStr = String(rev.status_code || rev.status_name || rev.status || 'DRAFT').toUpperCase();
-              const isDraft = statusStr.includes('DRAFT');
-              const isPending = statusStr.includes('SUBMIT') || statusStr.includes('PENDING') || statusStr.includes('REVIEW');
-
               return (
-                <div key={rev.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
-                  {/* Top Bar: Rev Code, Parent Budget & Status */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-xs font-bold text-primary">
-                          REV-{String(rev.revision_no || idx + 1).padStart(2, '0')}
-                        </span>
-                        <span className="text-[10px] text-text-muted font-mono">({rev.budget_code})</span>
-                      </div>
-                      <h4 className="font-semibold text-text-primary text-[13px] leading-snug truncate" title={rev.budget_name}>
-                        {rev.budget_name || 'Untitled Budget'}
-                      </h4>
-                      <span className="text-[11px] text-text-muted block truncate">{rev.project_name || 'No Project'}</span>
-                    </div>
-                    <Badge variant={getVariant(statusStr)} className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0">
+                <div key={rev.id} className="border border-border rounded-lg bg-surface p-3 space-y-2 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-text-primary text-xs">
+                      REV-{String(rev.revision_no || '').padStart(2, '0')}
+                    </span>
+                    <Badge
+                      variant={getVariant(statusStr)}
+                      className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
+                    >
                       {rev.status_name || statusStr}
                     </Badge>
                   </div>
-
-                  {/* Reason if available */}
-                  {rev.reason && (
-                    <p className="text-xs text-text-secondary bg-surface-muted/50 rounded p-2 text-[11px] italic">
-                      "{rev.reason}"
-                    </p>
-                  )}
-
-                  {/* Key Metrics Grid */}
-                  <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-border/60">
+                  <div className="text-xs">
+                    <div className="font-mono font-medium text-text-primary">{rev.budget_code}</div>
+                    <div className="text-text-secondary text-[11px]">{rev.project_name}</div>
+                  </div>
+                  <div className="text-[11px] text-text-primary bg-surface-muted/50 p-2 rounded">
+                    {rev.reason || 'No description provided'}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-[10px] border-t border-border pt-2">
                     <div>
-                      <span className="text-[10px] text-text-muted block">Previous</span>
-                      <span className="font-mono font-medium text-text-secondary text-[11px]">
-                        ₹{Number(rev.previous_total || 0).toLocaleString('en-IN')}
-                      </span>
+                      <div className="text-text-muted">Prev Baseline</div>
+                      <div className="font-mono font-semibold">₹{Number(rev.previous_total || 0).toLocaleString('en-IN')}</div>
                     </div>
-                    <div className="text-center">
-                      <span className="text-[10px] text-text-muted block">Variance</span>
-                      <span className={`font-mono font-bold text-[11px] ${variance > 0 ? 'text-emerald-600' : variance < 0 ? 'text-rose-600' : 'text-text-muted'}`}>
+                    <div>
+                      <div className="text-text-muted">Net Shift</div>
+                      <div className={`font-mono font-bold ${variance > 0 ? 'text-emerald-600' : variance < 0 ? 'text-rose-600' : 'text-text-muted'}`}>
                         {variance > 0 ? '+' : ''}₹{variance.toLocaleString('en-IN')}
-                      </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-text-muted block">Revised</span>
-                      <span className="font-mono font-bold text-text-primary text-[11px]">
-                        ₹{Number(rev.revised_total || 0).toLocaleString('en-IN')}
-                      </span>
+                    <div>
+                      <div className="text-text-muted">New Baseline</div>
+                      <div className="font-mono font-bold text-primary">₹{Number(rev.revised_total || 0).toLocaleString('en-IN')}</div>
                     </div>
                   </div>
-
-                  {/* Footer with Date & Actions */}
-                  <div className="flex flex-wrap items-center justify-between pt-2 border-t border-border/60 text-xs gap-2">
-                    <span className="text-[10px] text-text-muted font-mono">
-                      {rev.revision_date ? rev.revision_date.split('T')[0] : '—'}
-                    </span>
-                    <div className="flex items-center gap-1.5 ml-auto flex-wrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-[11px] px-2"
-                        onClick={() => setViewingRevision({ budgetId: rev.budget_id, revisionId: rev.id })}
-                      >
-                        <Eye className="w-3 h-3 mr-1" /> View
-                      </Button>
-
-                      {isDraft && hasPermission('budget.revise') && (
-                        <>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-7 text-[11px] px-2 text-sky-600"
-                            onClick={() => setConfirmAction({ type: 'submit', item: rev })}
-                          >
-                            <Send className="w-3 h-3 mr-1" /> Submit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-[11px] px-1.5 text-rose-500 hover:text-rose-700"
-                            onClick={() => setConfirmAction({ type: 'delete', item: rev })}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </>
-                      )}
-
-                      {isPending && hasPermission('budget.approve') && (
-                        <>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-7 text-[11px] px-2 text-emerald-600"
-                            onClick={() => setConfirmAction({ type: 'approve', item: rev })}
-                          >
-                            <Check className="w-3 h-3 mr-1" /> Approve
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-[11px] px-2 text-rose-600"
-                            onClick={() => setConfirmAction({ type: 'reject', item: rev })}
-                          >
-                            <XCircle className="w-3 h-3 mr-1" /> Reject
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                  <div className="pt-2 border-t border-border flex items-center justify-end">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="text-xs h-7 w-full"
+                      onClick={() => setViewingRevision({ budgetId: rev.budget_id, revisionId: rev.id })}
+                    >
+                      View
+                    </Button>
                   </div>
                 </div>
               );
@@ -667,37 +662,40 @@ export function BudgetRevisionsPage() {
       {/* Create Revision Modal */}
       <BudgetRevisionFormModal
         isOpen={isCreateOpen}
+        mode="revision"
         onClose={() => setIsCreateOpen(false)}
-        onSaveSuccess={(bId) => {
+        onSaveSuccess={() => {
+          setIsCreateOpen(false);
           refresh();
         }}
       />
 
-      {/* Revision Detail Modal */}
+      {/* Baseline Revision Comparison Modal */}
       {viewingRevision && (
         <BudgetRevisionDetailModal
           isOpen={Boolean(viewingRevision)}
           budgetId={viewingRevision.budgetId}
           revisionId={viewingRevision.revisionId}
+          mode="revision"
           onClose={() => setViewingRevision(null)}
           onRefresh={refresh}
         />
       )}
 
-      {/* Confirmation & Workflow Action Modal */}
+      {/* Workflow Confirmation Modal */}
       {confirmAction && (
         <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-lg shadow-2xl w-full max-w-md p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <h3 className="text-sm font-bold text-text-primary capitalize">
-              {confirmAction.type === 'submit' && 'Submit Revision for Approval'}
-              {confirmAction.type === 'approve' && 'Approve Budget Revision'}
-              {confirmAction.type === 'reject' && 'Reject Budget Revision'}
-              {confirmAction.type === 'delete' && 'Delete Draft Revision'}
+              {confirmAction.type === 'submit' && 'Submit Baseline Revision for Approval'}
+              {confirmAction.type === 'approve' && 'Approve Baseline Revision'}
+              {confirmAction.type === 'reject' && 'Reject Baseline Revision'}
+              {confirmAction.type === 'delete' && 'Delete Draft Baseline Revision'}
             </h3>
             <p className="text-xs text-text-secondary">
-              {confirmAction.type === 'submit' && 'Submit this revision for management review. Baseline changes will become locked until approved.'}
-              {confirmAction.type === 'approve' && 'Approving this revision will immediately recalculate and replace the active project budget baseline.'}
-              {confirmAction.type === 'reject' && 'Provide a reason for rejecting this proposed budget revision.'}
+              {confirmAction.type === 'submit' && 'Submit this baseline revision for management review. Previous baseline will remain active until approved.'}
+              {confirmAction.type === 'approve' && 'Approving this revision will replace the project budget active cost baseline with this revised baseline.'}
+              {confirmAction.type === 'reject' && 'Provide a reason for rejecting this proposed baseline revision.'}
               {confirmAction.type === 'delete' && 'Are you sure you want to delete this draft revision? This action cannot be undone.'}
             </p>
 

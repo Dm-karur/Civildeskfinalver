@@ -287,7 +287,7 @@ export function BudgetTable({ searchQuery = '', refreshKey = 0, onEdit, onView, 
                           </Button>
 
                           {/* Action Pattern: [⋮] Three-dot menu */}
-                          <div className="relative">
+                          <div className={`relative ${isMenuOpen ? 'z-40' : ''}`}>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -306,7 +306,9 @@ export function BudgetTable({ searchQuery = '', refreshKey = 0, onEdit, onView, 
                             {isMenuOpen && (
                               <div
                                 ref={menuRef}
-                                className="absolute right-0 top-8 z-50 w-44 bg-surface border border-border rounded-sm shadow-xl p-1 text-[11px] animate-in fade-in zoom-in-95 duration-100"
+                                className={`absolute right-0 ${
+                                  index > 0 && index >= paged.length - 2 ? 'bottom-8' : 'top-8'
+                                } z-50 w-44 bg-surface border border-border rounded-sm shadow-xl p-1 text-[11px] animate-in fade-in zoom-in-95 duration-100`}
                               >
                                 {/* Edit: DRAFT only */}
                                 {isDraft && canUpdate && (

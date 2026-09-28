@@ -205,10 +205,10 @@ export function BudgetDetailModal({ isOpen, budget, onClose, onRefresh }) {
   const isApproved = status === 'APPROVED';
 
   const getVariant = (s) => {
-    const v = String(s).toUpperCase();
-    if (v === 'APPROVED') return 'success';
-    if (v === 'SUBMITTED' || v === 'PENDING') return 'warning';
-    if (v === 'REJECTED') return 'error';
+    const v = String(s || '').toUpperCase();
+    if (v.includes('APPROVED')) return 'success';
+    if (v.includes('SUBMITTED') || v.includes('PENDING') || v.includes('REVIEW')) return 'warning';
+    if (v.includes('REJECTED')) return 'error';
     return 'neutral';
   };
 
@@ -454,7 +454,10 @@ export function BudgetDetailModal({ isOpen, budget, onClose, onRefresh }) {
                 <h2 className="text-base font-bold text-text-primary">
                   {current.budget_name || 'Project Budget'}
                 </h2>
-                <Badge variant={getVariant(status)} className="text-[10px] font-bold uppercase tracking-wide">
+                <Badge
+                  variant={getVariant(status)}
+                  className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center"
+                >
                   {current.status_name || status}
                 </Badge>
               </div>
@@ -1034,7 +1037,10 @@ export function BudgetDetailModal({ isOpen, budget, onClose, onRefresh }) {
                               ₹{Number(rev.revised_total || 0).toLocaleString('en-IN')}
                             </td>
                             <td className="px-3 py-2 text-center">
-                              <Badge variant={getVariant(rev.status_code || rev.status_name || rev.status)} className="text-[9px] font-bold uppercase">
+                              <Badge
+                                variant={getVariant(rev.status_code || rev.status_name || rev.status)}
+                                className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center"
+                              >
                                 {rev.status_name || rev.status_code || 'Draft'}
                               </Badge>
                             </td>

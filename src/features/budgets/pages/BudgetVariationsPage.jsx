@@ -17,6 +17,7 @@ import {
   ArrowDownRight,
   Activity,
   BarChart3,
+  FileText,
 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -77,81 +78,87 @@ export function BudgetVariationsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch Projects and Budgets
+  // Resilient, synchronized fetch for Projects, Budgets, and Variations
   useEffect(() => {
-    Promise.allSettled([
-      projectsApi.list(),
-      budgetsApi.list(),
-    ]).then(([projRes, budRes]) => {
-      if (projRes.status === 'fulfilled') {
-        const raw = projRes.value;
-        const list = Array.isArray(raw) ? raw : (raw?.data?.projects ?? raw?.projects ?? (Array.isArray(raw?.data) ? raw.data : []));
-        setProjects(Array.isArray(list) ? list : []);
-      }
-      if (budRes.status === 'fulfilled') {
-        const raw = budRes.value;
-        const list = raw?.data?.project_budgets ?? raw?.project_budgets ?? raw?.data?.data ?? (Array.isArray(raw) ? raw : []);
-        setBudgets(Array.isArray(list) ? list : []);
-      }
-    });
-  }, []);
-
-  // Fetch Variations (Revisions) across budgets
-  useEffect(() => {
+    let isMounted = true;
     setLoading(true);
 
-    budgetsApi.list()
-      .then(async (res) => {
-        const budgetList = res?.data?.project_budgets ?? res?.project_budgets ?? res?.data?.data ?? (Array.isArray(res) ? res : []);
-        // Include budgets that are APPROVED or have had revisions
-        const eligibleBudgets = (Array.isArray(budgetList) ? budgetList : []).filter(
-          (b) => {
-            const status = String(b.status_code || b.status_name || b.status || '').toUpperCase();
-            return status === 'APPROVED' || (b.revision_count && Number(b.revision_count) > 0);
+    const loadData = async () => {
+      try {
+        const [projRes, budRes] = await Promise.allSettled([
+          projectsApi.list(),
+          budgetsApi.list(),
+        ]);
+
+        const projList = projRes.status === 'fulfilled'
+          ? (Array.isArray(projRes.value) ? projRes.value : (projRes.value?.data?.projects ?? projRes.value?.projects ?? (Array.isArray(projRes.value?.data) ? projRes.value.data : [])))
+          : [];
+
+        const rawBudgets = budRes.status === 'fulfilled'
+          ? (budRes.value?.data?.project_budgets ?? budRes.value?.project_budgets ?? budRes.value?.data?.data ?? (Array.isArray(budRes.value) ? budRes.value : []))
+          : [];
+
+        if (!isMounted) return;
+        setProjects(Array.isArray(projList) ? projList : []);
+        setBudgets(Array.isArray(rawBudgets) ? rawBudgets : []);
+
+        const eligibleBudgets = (Array.isArray(rawBudgets) ? rawBudgets : []).filter((b) => {
+          const s = String(b.status_code || b.status_name || b.status || '').toUpperCase();
+          return s === 'APPROVED' || (b.revision_count && Number(b.revision_count) > 0);
+        });
+
+        const revPromises = eligibleBudgets.map(async (b) => {
+          try {
+            const r = await budgetsApi.revisions.list(b.id);
+            const list = r?.data?.budget_revisions ?? r?.budget_revisions ?? r?.data?.revisions ?? r?.revisions ?? (Array.isArray(r?.data) ? r.data : []);
+            return (Array.isArray(list) ? list : []).map((rev) => ({
+              ...rev,
+              budget_id: b.id,
+              budget_code: b.budget_code,
+              budget_name: b.budget_name,
+              project_id: b.project_id,
+              project_name: b.project_name || projList.find((p) => p.id === b.project_id)?.project_name || 'Project',
+              project_code: b.project_code || projList.find((p) => p.id === b.project_id)?.project_code || '',
+            }));
+          } catch {
+            return [];
           }
-        );
+        });
 
-        // Filter by selected project
-        let targetBudgets = eligibleBudgets;
-        if (filters.project_id !== 'all') {
-          targetBudgets = targetBudgets.filter(b => String(b.project_id) === String(filters.project_id));
-        }
-        // Filter by selected budget
-        if (filters.budget_id !== 'all') {
-          targetBudgets = targetBudgets.filter((b) => String(b.id) === String(filters.budget_id));
-        }
+        const revResults = await Promise.all(revPromises);
+        if (!isMounted) return;
 
-        // Fetch revisions for these target budgets in parallel
-        const revPromises = targetBudgets.map((b) =>
-          budgetsApi.revisions.list(b.id)
-            .then((r) => {
-              const list = r?.data?.budget_revisions ?? r?.budget_revisions ?? r?.data?.revisions ?? r?.revisions ?? (Array.isArray(r?.data) ? r.data : []);
-              return (Array.isArray(list) ? list : []).map((rev) => ({
-                ...rev,
-                budget_id: b.id,
-                budget_code: b.budget_code,
-                budget_name: b.budget_name,
-                project_id: b.project_id,
-                project_name: b.project_name || projects.find((p) => p.id === b.project_id)?.project_name || 'Project',
-                project_code: b.project_code || projects.find((p) => p.id === b.project_id)?.project_code || '',
-              }));
-            })
-            .catch(() => [])
-        );
+        const flattened = revResults
+          .flat()
+          .sort((a, b) => new Date(b.created_at || b.revision_date || 0) - new Date(a.created_at || a.revision_date || 0));
 
-        const results = await Promise.all(revPromises);
-        const flattened = results.flat().sort((a, b) => new Date(b.created_at || b.revision_date || 0) - new Date(a.created_at || a.revision_date || 0));
         setVariations(flattened);
-      })
-      .catch(() => setVariations([]))
-      .finally(() => setLoading(false));
-  }, [refreshKey, filters.budget_id, filters.project_id, projects]);
+      } catch (err) {
+        console.error('Error fetching variation orders:', err);
+        if (isMounted) setVariations([]);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshKey]);
 
   const refresh = () => setRefreshKey((k) => k + 1);
 
   // Filter and search
   const filteredVariations = useMemo(() => {
     return variations.filter((rev) => {
+      if (filters.project_id !== 'all' && String(rev.project_id) !== String(filters.project_id)) {
+        return false;
+      }
+      if (filters.budget_id !== 'all' && String(rev.budget_id) !== String(filters.budget_id)) {
+        return false;
+      }
       if (filters.status !== 'all') {
         const s = String(rev.status_code || rev.status_name || rev.status || '').toLowerCase();
         if (filters.status === 'draft' && !s.includes('draft')) return false;
@@ -207,24 +214,38 @@ export function BudgetVariationsPage() {
     setSearchQuery('');
   };
 
-  // Status badge variant
   const getVariant = (s) => {
     const v = String(s || '').toUpperCase();
     if (v.includes('APPROV')) return 'success';
-    if (v.includes('SUBMIT') || v.includes('PENDING')) return 'warning';
+    if (v.includes('SUBMIT') || v.includes('PENDING') || v.includes('REVIEW')) return 'warning';
     if (v.includes('REJECT')) return 'error';
     return 'neutral';
   };
 
-  // Variance % calculation
   const variancePct = (rev) => {
     const prev = Number(rev.previous_total || 0);
-    if (prev === 0) return '—';
-    const pct = (Number(rev.variance_amount || 0) / prev) * 100;
-    return `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
+    const variance = Number(rev.variance_amount || 0);
+    if (!prev || prev === 0) return 0;
+    return ((variance / prev) * 100).toFixed(1);
   };
 
-  // Workflow confirmation execution
+  // Determine Change Nature badge
+  const getChangeNature = (rev) => {
+    const variance = Number(rev.variance_amount || 0);
+    const reason = String(rev.reason || '').toLowerCase();
+    if (reason.includes('rate') || reason.includes('escalat')) {
+      return { label: 'Rate Escalation', color: 'bg-sky-50 text-sky-700 border-sky-200' };
+    }
+    if (variance > 0) {
+      return { label: 'Scope Addition (+)', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    }
+    if (variance < 0) {
+      return { label: 'Deductive Scope (-)', color: 'bg-rose-50 text-rose-700 border-rose-200' };
+    }
+    return { label: 'Rate Neutral', color: 'bg-slate-50 text-slate-700 border-slate-200' };
+  };
+
+  // Workflow actions
   const handleConfirmAction = async () => {
     if (!confirmAction) return;
     const { type, item } = confirmAction;
@@ -235,10 +256,10 @@ export function BudgetVariationsPage() {
         toast.success('Variation order submitted for approval.');
       } else if (type === 'approve') {
         await budgetsApi.revisions.approve(item.budget_id, item.id, { comments: actionComments || undefined });
-        toast.success('Variation order approved. Budget baseline updated.');
+        toast.success('Variation order approved. Project baseline updated.');
       } else if (type === 'reject') {
         if (!actionComments.trim()) {
-          toast.error('Rejection comments are required.');
+          toast.error('Rejection remarks are required.');
           setActionSubmitting(false);
           return;
         }
@@ -246,7 +267,7 @@ export function BudgetVariationsPage() {
         toast.success('Variation order rejected.');
       } else if (type === 'delete') {
         await budgetsApi.revisions.remove(item.budget_id, item.id);
-        toast.success('Variation order deleted.');
+        toast.success('Draft variation order deleted.');
       }
       setConfirmAction(null);
       setActionComments('');
@@ -258,12 +279,6 @@ export function BudgetVariationsPage() {
     }
   };
 
-  // Filtered budgets by selected project
-  const filteredBudgets = useMemo(() => {
-    if (filters.project_id === 'all') return budgets;
-    return budgets.filter(b => String(b.project_id) === String(filters.project_id));
-  }, [budgets, filters.project_id]);
-
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'BOQ & Project Budget', href: '/budgets' },
@@ -273,9 +288,9 @@ export function BudgetVariationsPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Budget Variation Orders"
+        title="Budget Variation Orders (VO Register)"
         breadcrumbs={breadcrumbs}
-        description="Track scope changes, cost variations, and budget baseline adjustments with full audit trail."
+        description="Register, assess, and authorise client-driven and site scope variations with commercial and margin impact."
       />
 
       <div className="flex flex-col gap-3 sm:gap-4 w-full">
@@ -285,10 +300,10 @@ export function BudgetVariationsPage() {
             label="Total Variation Orders"
             value={kpis.total}
             status="primary"
-            icon={<Activity className="w-4 h-4" />}
+            icon={<FileText className="w-4 h-4 text-primary" />}
           />
           <KpiCard
-            label="Pending Approval"
+            label="Pending Commercial Review"
             value={kpis.submitted}
             status="warning"
             icon={<Clock className="w-4 h-4 text-amber-500" />}
@@ -300,10 +315,10 @@ export function BudgetVariationsPage() {
             icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
           />
           <KpiCard
-            label="Net Budget Impact"
+            label="Net Variation Impact"
             value={`${kpis.totalVariance >= 0 ? '+' : ''}${INR_L(kpis.totalVariance)}`}
             status={kpis.totalVariance >= 0 ? 'success' : 'neutral'}
-            icon={<BarChart3 className="w-4 h-4 text-sky-500" />}
+            icon={<BarChart3 className="w-4 h-4 text-emerald-600" />}
           />
         </div>
 
@@ -330,10 +345,12 @@ export function BudgetVariationsPage() {
                 className="text-xs h-8"
                 options={[
                   { value: 'all', label: 'All Budgets' },
-                  ...filteredBudgets.map((b) => ({
-                    value: String(b.id),
-                    label: `${b.budget_code} - ${b.budget_name || 'Budget'}`,
-                  })),
+                  ...budgets
+                    .filter((b) => filters.project_id === 'all' || String(b.project_id) === String(filters.project_id))
+                    .map((b) => ({
+                      value: String(b.id),
+                      label: `${b.budget_code} - ${b.budget_name || 'Budget'}`,
+                    })),
                 ]}
                 value={filters.budget_id}
                 onChange={(value) => setFilters((c) => ({ ...c, budget_id: value }))}
@@ -345,9 +362,9 @@ export function BudgetVariationsPage() {
                 className="text-xs h-8"
                 options={[
                   { value: 'all', label: 'All Statuses' },
-                  { value: 'draft', label: 'Draft' },
-                  { value: 'submitted', label: 'Pending Approval' },
-                  { value: 'approved', label: 'Approved' },
+                  { value: 'draft', label: 'Draft Notices' },
+                  { value: 'submitted', label: 'Under Review' },
+                  { value: 'approved', label: 'Approved Orders' },
                   { value: 'rejected', label: 'Rejected' },
                 ]}
                 value={filters.status}
@@ -393,7 +410,7 @@ export function BudgetVariationsPage() {
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden sm:block border border-border rounded-lg overflow-hidden bg-surface shadow-xs">
+        <div className="hidden sm:block border border-border rounded-lg bg-surface shadow-xs">
           {loading ? (
             <div className="py-16 text-center text-text-muted text-xs">Loading variation orders...</div>
           ) : filteredVariations.length === 0 ? (
@@ -404,16 +421,17 @@ export function BudgetVariationsPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
                 <tr>
-                  <th className="px-3 py-2 w-10 text-center">#</th>
+                  <th className="px-3 py-2 w-10 text-center rounded-tl-lg">#</th>
                   <th className="px-3 py-2">VO Reference</th>
                   <th className="px-3 py-2">Budget & Project</th>
-                  <th className="px-3 py-2">Change Scope / Reason</th>
-                  <th className="px-3 py-2 text-right">Previous Total</th>
+                  <th className="px-3 py-2">Change Classification</th>
+                  <th className="px-3 py-2">Scope Justification</th>
+                  <th className="px-3 py-2 text-right">Pre-Order Total</th>
                   <th className="px-3 py-2 text-right">Revised Total</th>
-                  <th className="px-3 py-2 text-right">Variance (+/-)</th>
+                  <th className="px-3 py-2 text-right">Variation Quantum</th>
                   <th className="px-3 py-2 text-center">% Impact</th>
                   <th className="px-3 py-2 text-center w-24">Status</th>
-                  <th className="px-3 py-2 w-28 text-center">Actions</th>
+                  <th className="px-3 py-2 w-28 text-center rounded-tr-lg">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -423,6 +441,8 @@ export function BudgetVariationsPage() {
                   const isDraft = statusStr.includes('DRAFT');
                   const isPending = statusStr.includes('SUBMIT') || statusStr.includes('PENDING') || statusStr.includes('REVIEW');
                   const pct = variancePct(rev);
+                  const nature = getChangeNature(rev);
+                  const isDropup = idx > 0 && idx >= filteredVariations.length - 2;
 
                   return (
                     <tr key={rev.id || idx} className="hover:bg-surface-muted/30 transition-colors">
@@ -453,6 +473,13 @@ export function BudgetVariationsPage() {
                         </div>
                       </td>
 
+                      {/* Change Classification */}
+                      <td className="px-3 py-2">
+                        <span className={`inline-block px-2 py-0.5 rounded border text-[10px] font-semibold ${nature.color}`}>
+                          {nature.label}
+                        </span>
+                      </td>
+
                       {/* Reason */}
                       <td className="px-3 py-2 text-text-primary max-w-xs">
                         <p className="truncate text-[11px]" title={rev.reason}>{rev.reason || '—'}</p>
@@ -468,7 +495,7 @@ export function BudgetVariationsPage() {
                         {INR(rev.revised_total)}
                       </td>
 
-                      {/* Variance */}
+                      {/* Variance Quantum */}
                       <td className={`px-3 py-2 text-right font-mono font-bold text-[11px] ${variance > 0 ? 'text-emerald-600' : variance < 0 ? 'text-rose-600' : 'text-text-muted'}`}>
                         {variance > 0 ? '+' : ''}{INR(variance)}
                       </td>
@@ -478,107 +505,124 @@ export function BudgetVariationsPage() {
                         <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded ${
                           variance > 0 ? 'bg-emerald-50 text-emerald-700' : variance < 0 ? 'bg-rose-50 text-rose-700' : 'bg-surface-muted text-text-muted'
                         }`}>
-                          {pct}
+                          {variance > 0 ? '+' : ''}{pct}%
                         </span>
                       </td>
 
                       {/* Status */}
                       <td className="px-3 py-2 text-center">
-                        <Badge variant={getVariant(statusStr)} className="text-[9px] font-bold uppercase tracking-wide">
+                        <Badge
+                          variant={getVariant(statusStr)}
+                          className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 inline-flex items-center"
+                        >
                           {rev.status_name || statusStr}
                         </Badge>
                       </td>
 
                       {/* Actions */}
-                      <td className="px-3 py-2 text-center relative">
+                      <td className="px-3 py-2 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[11px] text-primary hover:text-primary-dark font-medium"
+                            leftIcon={<Eye className="w-3.5 h-3.5" />}
                             onClick={() => setViewingRevision({ budgetId: rev.budget_id, revisionId: rev.id })}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors font-medium"
-                            title="View Variation Details"
+                            title="View VO Details"
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>View</span>
-                          </button>
+                            View
+                          </Button>
 
-                          {(isDraft || isPending) && (
+                          {/* Context menu for submit/approve/reject/delete */}
+                          <div className={`relative ${activeMenuId === rev.id ? 'z-40' : ''}`}>
                             <button
                               type="button"
+                              className="p-1 rounded hover:bg-surface-muted text-text-muted hover:text-text-primary transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveMenuId(activeMenuId === rev.id ? null : rev.id);
                               }}
-                              className="p-1 text-text-secondary hover:text-text-primary hover:bg-surface-muted rounded transition-colors"
-                              title="Actions"
                             >
                               <MoreVertical className="w-3.5 h-3.5" />
                             </button>
-                          )}
-                        </div>
 
-                        {/* Dropdown Menu */}
-                        {activeMenuId === rev.id && (
-                          <div
-                            ref={menuRef}
-                            className="absolute right-3 top-8 z-30 w-48 rounded-md border border-border bg-surface shadow-lg py-1 text-left animate-in fade-in zoom-in-95 duration-100"
-                          >
-                            {isDraft && hasPermission('budget.revise') && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveMenuId(null);
-                                  setConfirmAction({ type: 'submit', item: rev });
-                                }}
-                                className="w-full px-3 py-1.5 text-xs text-text-primary hover:bg-surface-muted flex items-center gap-2"
+                            {activeMenuId === rev.id && (
+                              <div
+                                ref={menuRef}
+                                className={`absolute right-0 ${
+                                  isDropup ? 'bottom-full mb-1' : 'top-full mt-1'
+                                } w-44 bg-surface border border-border rounded-md shadow-lg z-50 py-1 text-left animate-in fade-in zoom-in-95 duration-100`}
                               >
-                                <Send className="w-3.5 h-3.5 text-sky-600" />
-                                Submit for Approval
-                              </button>
-                            )}
-
-                            {isPending && hasPermission('budget.approve') && (
-                              <>
                                 <button
                                   type="button"
+                                  className="w-full px-3 py-1.5 text-xs text-text-primary hover:bg-surface-muted flex items-center gap-2"
                                   onClick={() => {
                                     setActiveMenuId(null);
-                                    setConfirmAction({ type: 'approve', item: rev });
+                                    setViewingRevision({ budgetId: rev.budget_id, revisionId: rev.id });
                                   }}
-                                  className="w-full px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
                                 >
-                                  <Check className="w-3.5 h-3.5" />
-                                  Approve Variation
+                                  <Eye className="w-3.5 h-3.5 text-primary" />
+                                  <span>View Details</span>
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveMenuId(null);
-                                    setConfirmAction({ type: 'reject', item: rev });
-                                  }}
-                                  className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2"
-                                >
-                                  <XCircle className="w-3.5 h-3.5" />
-                                  Reject Variation
-                                </button>
-                              </>
-                            )}
 
-                            {isDraft && hasPermission('budget.revise') && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveMenuId(null);
-                                  setConfirmAction({ type: 'delete', item: rev });
-                                }}
-                                className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 border-t border-border mt-1"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                Delete Variation
-                              </button>
+                                {isDraft && hasPermission('budget.revise') && (
+                                  <button
+                                    type="button"
+                                    className="w-full px-3 py-1.5 text-xs text-primary hover:bg-primary/10 flex items-center gap-2 font-medium"
+                                    onClick={() => {
+                                      setActiveMenuId(null);
+                                      setConfirmAction({ type: 'submit', item: rev });
+                                    }}
+                                  >
+                                    <Send className="w-3.5 h-3.5" />
+                                    <span>Submit for Review</span>
+                                  </button>
+                                )}
+
+                                {isPending && hasPermission('budget.approve') && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="w-full px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 font-medium"
+                                      onClick={() => {
+                                        setActiveMenuId(null);
+                                        setConfirmAction({ type: 'approve', item: rev });
+                                      }}
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Approve Variation</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium"
+                                      onClick={() => {
+                                        setActiveMenuId(null);
+                                        setConfirmAction({ type: 'reject', item: rev });
+                                      }}
+                                    >
+                                      <XCircle className="w-3.5 h-3.5" />
+                                      <span>Reject Variation</span>
+                                    </button>
+                                  </>
+                                )}
+
+                                {isDraft && hasPermission('budget.revise') && (
+                                  <button
+                                    type="button"
+                                    className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 border-t border-border mt-1"
+                                    onClick={() => {
+                                      setActiveMenuId(null);
+                                      setConfirmAction({ type: 'delete', item: rev });
+                                    }}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Delete Draft</span>
+                                  </button>
+                                )}
+                              </div>
                             )}
                           </div>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -588,144 +632,75 @@ export function BudgetVariationsPage() {
           )}
         </div>
 
-        {/* Mobile View - Cards */}
-        <div className="block sm:hidden space-y-3">
+        {/* Mobile View: Cards */}
+        <div className="sm:hidden flex flex-col gap-2.5">
           {loading ? (
             <div className="py-12 text-center text-text-muted text-xs bg-surface border border-border rounded-lg">
               Loading variation orders...
             </div>
           ) : filteredVariations.length === 0 ? (
             <div className="py-12 text-center text-text-muted text-xs bg-surface border border-border rounded-lg">
-              No variation orders found matching the selected criteria.
+              No variation orders found.
             </div>
           ) : (
-            filteredVariations.map((rev, idx) => {
+            filteredVariations.map((rev) => {
               const variance = Number(rev.variance_amount || 0);
               const statusStr = String(rev.status_code || rev.status_name || rev.status || 'DRAFT').toUpperCase();
               const isDraft = statusStr.includes('DRAFT');
               const isPending = statusStr.includes('SUBMIT') || statusStr.includes('PENDING') || statusStr.includes('REVIEW');
               const pct = variancePct(rev);
+              const nature = getChangeNature(rev);
 
               return (
-                <div key={rev.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
-                  {/* Header: VO Code, Budget & Status */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2.5 min-w-0">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${variance > 0 ? 'bg-emerald-100 text-emerald-600' : variance < 0 ? 'bg-rose-100 text-rose-600' : 'bg-surface-muted text-text-muted'}`}>
-                        {variance > 0 ? <ArrowUpRight className="w-4 h-4" /> : variance < 0 ? <ArrowDownRight className="w-4 h-4" /> : <Activity className="w-4 h-4" />}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-xs font-bold text-primary">
-                            VO-{String(rev.revision_no || idx + 1).padStart(3, '0')}
-                          </span>
-                          <span className="text-[10px] text-text-muted font-mono">({rev.budget_code})</span>
-                        </div>
-                        <h4 className="font-semibold text-text-primary text-[13px] leading-snug truncate" title={rev.budget_name}>
-                          {rev.budget_name || 'Untitled Budget'}
-                        </h4>
-                        <span className="text-[11px] text-text-muted block truncate">{rev.project_name || 'No Project'}</span>
-                      </div>
+                <div key={rev.id} className="border border-border rounded-lg bg-surface p-3 space-y-2 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-primary text-xs">
+                        VO-{String(rev.revision_no || '').padStart(3, '0')}
+                      </span>
+                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-semibold border ${nature.color}`}>
+                        {nature.label}
+                      </span>
                     </div>
-                    <Badge variant={getVariant(statusStr)} className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0">
+                    <Badge
+                      variant={getVariant(statusStr)}
+                      className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
+                    >
                       {rev.status_name || statusStr}
                     </Badge>
                   </div>
-
-                  {/* Reason */}
-                  {rev.reason && (
-                    <p className="text-xs text-text-secondary bg-surface-muted/50 rounded p-2 text-[11px] italic">
-                      "{rev.reason}"
-                    </p>
-                  )}
-
-                  {/* Key Metrics Grid */}
-                  <div className="grid grid-cols-4 gap-2 text-xs pt-2 border-t border-border/60">
+                  <div className="text-xs">
+                    <div className="font-mono font-medium text-text-primary">{rev.budget_code}</div>
+                    <div className="text-text-secondary text-[11px]">{rev.project_name}</div>
+                  </div>
+                  <div className="text-[11px] text-text-primary bg-surface-muted/50 p-2 rounded">
+                    {rev.reason || 'No description provided'}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-[10px] border-t border-border pt-2">
                     <div>
-                      <span className="text-[10px] text-text-muted block">Previous</span>
-                      <span className="font-mono font-medium text-text-secondary text-[11px]">
-                        {INR(rev.previous_total)}
-                      </span>
+                      <div className="text-text-muted">Pre-Order</div>
+                      <div className="font-mono font-semibold">{INR(rev.previous_total)}</div>
                     </div>
-                    <div className="text-center">
-                      <span className="text-[10px] text-text-muted block">Variance</span>
-                      <span className={`font-mono font-bold text-[11px] ${variance > 0 ? 'text-emerald-600' : variance < 0 ? 'text-rose-600' : 'text-text-muted'}`}>
+                    <div>
+                      <div className="text-text-muted">Quantum</div>
+                      <div className={`font-mono font-bold ${variance > 0 ? 'text-emerald-600' : variance < 0 ? 'text-rose-600' : 'text-text-muted'}`}>
                         {variance > 0 ? '+' : ''}{INR(variance)}
-                      </span>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <span className="text-[10px] text-text-muted block">Impact</span>
-                      <span className={`font-mono font-bold text-[10px] px-1 py-0.5 rounded ${
-                        variance > 0 ? 'bg-emerald-50 text-emerald-700' : variance < 0 ? 'bg-rose-50 text-rose-700' : 'text-text-muted'
-                      }`}>
-                        {pct}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-text-muted block">Revised</span>
-                      <span className="font-mono font-bold text-text-primary text-[11px]">
-                        {INR(rev.revised_total)}
-                      </span>
+                    <div>
+                      <div className="text-text-muted">Revised</div>
+                      <div className="font-mono font-bold text-primary">{INR(rev.revised_total)}</div>
                     </div>
                   </div>
-
-                  {/* Footer with Date & Actions */}
-                  <div className="flex flex-wrap items-center justify-between pt-2 border-t border-border/60 text-xs gap-2">
-                    <span className="text-[10px] text-text-muted font-mono">
-                      {rev.revision_date ? rev.revision_date.split('T')[0] : '—'}
-                    </span>
-                    <div className="flex items-center gap-1.5 ml-auto flex-wrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-[11px] px-2"
-                        onClick={() => setViewingRevision({ budgetId: rev.budget_id, revisionId: rev.id })}
-                      >
-                        <Eye className="w-3 h-3 mr-1" /> View
-                      </Button>
-
-                      {isDraft && hasPermission('budget.revise') && (
-                        <>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-7 text-[11px] px-2 text-sky-600"
-                            onClick={() => setConfirmAction({ type: 'submit', item: rev })}
-                          >
-                            <Send className="w-3 h-3 mr-1" /> Submit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-[11px] px-1.5 text-rose-500 hover:text-rose-700"
-                            onClick={() => setConfirmAction({ type: 'delete', item: rev })}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </>
-                      )}
-
-                      {isPending && hasPermission('budget.approve') && (
-                        <>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-7 text-[11px] px-2 text-emerald-600"
-                            onClick={() => setConfirmAction({ type: 'approve', item: rev })}
-                          >
-                            <Check className="w-3 h-3 mr-1" /> Approve
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-[11px] px-2 text-rose-600"
-                            onClick={() => setConfirmAction({ type: 'reject', item: rev })}
-                          >
-                            <XCircle className="w-3 h-3 mr-1" /> Reject
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                  <div className="pt-2 border-t border-border flex items-center justify-end">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="text-xs h-7 w-full"
+                      onClick={() => setViewingRevision({ budgetId: rev.budget_id, revisionId: rev.id })}
+                    >
+                      View
+                    </Button>
                   </div>
                 </div>
               );
@@ -734,21 +709,24 @@ export function BudgetVariationsPage() {
         </div>
       </div>
 
-      {/* Create Variation Order Modal (reuse BudgetRevisionFormModal) */}
+      {/* Create Variation Order Modal */}
       <BudgetRevisionFormModal
         isOpen={isCreateOpen}
+        mode="variation"
         onClose={() => setIsCreateOpen(false)}
-        onSaveSuccess={(bId) => {
+        onSaveSuccess={() => {
+          setIsCreateOpen(false);
           refresh();
         }}
       />
 
-      {/* Variation Detail Modal (reuse BudgetRevisionDetailModal) */}
+      {/* Variation Detail Modal */}
       {viewingRevision && (
         <BudgetRevisionDetailModal
           isOpen={Boolean(viewingRevision)}
           budgetId={viewingRevision.budgetId}
           revisionId={viewingRevision.revisionId}
+          mode="variation"
           onClose={() => setViewingRevision(null)}
           onRefresh={refresh}
         />
