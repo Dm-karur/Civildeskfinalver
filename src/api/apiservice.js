@@ -69,6 +69,11 @@ const crud = (base) => ({
 const action = (base, id, name, payload = {}) =>
     request.post(`${base}/${enc(id)}/${enc(name)}`, payload);
 
+const workflowCrud = (base) => ({
+    ...crud(base),
+    action: (id, name, payload = {}) => action(base, id, name, payload),
+});
+
 const nestedCrud = (baseForParent) => ({
     list: (parentId, params) => request.get(baseForParent(parentId), params),
     get: (parentId, id, params) => request.get(`${baseForParent(parentId)}/${enc(id)}`, params),
@@ -190,6 +195,10 @@ export const projectMilestonesApi = {
     ...crud('/project-milestones'),
 };
 
+// Frontend compatibility masters backed by the new CI4 master endpoints.
+export const progressMethodsApi = { ...crud('/progress-methods') };
+export const workStagesApi = { ...crud('/work-stages') };
+
 export const boqApi = {
     ...crud('/project-boqs'),
     submit: (id, payload) => action('/project-boqs', id, 'submit', payload),
@@ -240,6 +249,7 @@ export const labourApi = {
         },
     },
     assignments: crud('/labour/assignments'),
+    leave: crud('/labour/leave'),
 };
 
 export const attendanceApi = {
@@ -259,6 +269,8 @@ export const attendanceApi = {
         approve: (id, payload) => action('/labour-attendance/exceptions', id, 'approve', payload),
         reject: (id, payload) => action('/labour-attendance/exceptions', id, 'reject', payload),
     },
+    timesheets: crud('/labour-attendance/timesheets'),
+    overtime: crud('/labour-attendance/overtime'),
 };
 
 export const wagesApi = {
@@ -364,6 +376,21 @@ export const materialManagementApi = {
     ledger: (params) => request.get('/material-management/ledger', params),
 };
 
+// Advanced procurement added on top of the existing material-management APIs.
+export const procurementApi = {
+    rfqs: {
+        ...workflowCrud('/procurement/rfqs'),
+        buildComparison: (id, payload = {}) => request.post(`/procurement/rfqs/${enc(id)}/build-comparison`, payload),
+    },
+    vendorQuotations: workflowCrud('/procurement/vendor-quotations'),
+    comparisons: workflowCrud('/procurement/comparisons'),
+    vendorInvoices: {
+        ...workflowCrud('/procurement/vendor-invoices'),
+        threeWayMatch: (id, payload = {}) => request.post(`/procurement/vendor-invoices/${enc(id)}/three-way-match`, payload),
+    },
+    returns: workflowCrud('/procurement/returns'),
+};
+
 const dailyEntry = (type) => ({
     list: (reportId, params) => request.get(`/daily-site-reports/${enc(reportId)}/${type}`, params),
     get: (reportId, id) => request.get(`/daily-site-reports/${enc(reportId)}/${type}/${enc(id)}`),
@@ -410,9 +437,25 @@ const subcontractDocument = (type, hasItems = true) => ({
 
 export const subcontractsApi = {
     masters: (params) => request.get('/subcontracts/masters', params),
+
+    // Existing contractor type API.
     contractorTypes: {
         ...crud('/subcontracts/contractor-types'),
     },
+
+    // Frontend compatibility alias + reusable templates under each type.
+    types: {
+        ...crud('/subcontracts/types'),
+        templates: {
+            list: (typeId, params) => request.get(`/subcontracts/types/${enc(typeId)}/templates`, params),
+            create: (typeId, payload) => request.post(`/subcontracts/types/${enc(typeId)}/templates`, payload),
+            update: (typeId, templateId, payload) => request.patch(`/subcontracts/types/${enc(typeId)}/templates/${enc(templateId)}`, payload),
+            replace: (typeId, templateId, payload) => request.put(`/subcontracts/types/${enc(typeId)}/templates/${enc(templateId)}`, payload),
+            remove: (typeId, templateId) => request.delete(`/subcontracts/types/${enc(typeId)}/templates/${enc(templateId)}`),
+            reorder: (typeId, payload) => request.post(`/subcontracts/types/${enc(typeId)}/templates/reorder`, payload),
+        },
+    },
+
     contractors: {
         ...crud('/subcontracts/contractors'),
         uploadDocument: (id, payload) => request.upload(`/subcontracts/contractors/${enc(id)}/documents`, payload),
@@ -429,7 +472,14 @@ export const subcontractsApi = {
         returnForRevision: (id, payload = {}) => request.post(`/subcontracts/ra-bills/${enc(id)}/return`, payload),
     },
     payments: subcontractDocument('payments', false),
-    weeklyPayments: subcontractDocument('weekly-payments', false),
+
+    // New subcontract extensions.
+    packageCompletions: workflowCrud('/subcontracts/package-completions'),
+    paymentCertificates: workflowCrud('/subcontracts/payment-certificates'),
+    weeklyPayments: workflowCrud('/subcontracts/weekly-payments'),
+    retentionReleases: workflowCrud('/subcontracts/retention-releases'),
+    maistrySlips: workflowCrud('/subcontracts/maistry-slips'),
+    retentionLedger: (workOrderId, params) => request.get(`/subcontracts/retention-ledger/work-order/${enc(workOrderId)}`, params),
 };
 
 export const expensesApi = {
@@ -466,6 +516,67 @@ export const expensesApi = {
     },
 };
 
+
+// Client Billing & Receivables
+export const receivablesApi = {
+    contracts: workflowCrud('/receivables/contracts'),
+    contractValues: workflowCrud('/receivables/contract-values'),
+    advances: workflowCrud('/receivables/advances'),
+    progressBilling: workflowCrud('/receivables/progress-billing'),
+    invoices: workflowCrud('/receivables/invoices'),
+    receipts: workflowCrud('/receivables/receipts'),
+    allocations: workflowCrud('/receivables/allocations'),
+    retentions: workflowCrud('/receivables/retentions'),
+    outstanding: (params) => request.get('/receivables/outstanding', params),
+    projectStatement: (projectId, params) => request.get(`/receivables/statements/project/${enc(projectId)}`, params),
+};
+
+// Project Planning & Material Forecasting
+export const planningApi = {
+    workProgramme: workflowCrud('/planning/work-programme'),
+    activities: workflowCrud('/planning/activities'),
+    boqMappings: workflowCrud('/planning/boq-mappings'),
+    lookAhead: workflowCrud('/planning/look-ahead'),
+    materialRequirements: {
+        ...workflowCrud('/planning/material-requirements'),
+        recalculate: (id, payload = {}) => request.post(`/planning/material-requirements/${enc(id)}/recalculate`, payload),
+    },
+    materialForecasts: workflowCrud('/planning/material-forecasts'),
+    materialShortages: workflowCrud('/planning/material-shortages'),
+    alerts: workflowCrud('/planning/alerts'),
+    plannedVsCompleted: (projectId, params) => request.get(`/planning/planned-vs-completed/project/${enc(projectId)}`, params),
+};
+
+// Project communication and communication logs.
+export const communicationApi = {
+    messages: {
+        ...workflowCrud('/communication/messages'),
+        thread: (id, params) => request.get(`/communication/messages/${enc(id)}/thread`, params),
+        reply: (id, payload) => request.post(`/communication/messages/${enc(id)}/replies`, payload),
+    },
+    projectMessages: {
+        ...crud('/communication/project-messages'),
+        thread: (id, params) => request.get(`/communication/project-messages/${enc(id)}/thread`, params),
+        reply: (id, payload) => request.post(`/communication/project-messages/${enc(id)}/replies`, payload),
+    },
+    clientUpdates: workflowCrud('/communication/client-updates'),
+    documents: workflowCrud('/communication/documents'),
+    emailLogs: workflowCrud('/communication/email-logs'),
+    whatsappLogs: workflowCrud('/communication/whatsapp-logs'),
+    approvals: workflowCrud('/communication/approvals'),
+};
+
+// Finance extensions.
+export const financeApi = {
+    projectIncome: crud('/finance/project-income'),
+    equipmentCosts: crud('/finance/equipment-costs'),
+};
+
+// Convenient page-level aliases for newly added labour screens.
+export const labourLeaveApi = labourApi.leave;
+export const labourTimesheetsApi = attendanceApi.timesheets;
+export const labourOvertimeApi = attendanceApi.overtime;
+
 export const projectCostingApi = {
     summary: (projectId, params) => request.get(`/project-costing/projects/${enc(projectId)}/summary`, params),
     snapshots: (params) => request.get('/project-costing/snapshots', params),
@@ -479,6 +590,8 @@ export const approvalsApi = {
     get: (type, id, params) => request.get(`/approvals/${enc(type)}/${enc(id)}`, params),
     action: (type, id, name, payload) => request.post(`/approvals/${enc(type)}/${enc(id)}/${enc(name)}`, payload),
 };
+
+export const approvalWorkflowsApi = { ...crud('/approval-workflows') };
 
 export const notificationsApi = {
     list: (params) => request.get('/notifications', params),
@@ -519,6 +632,73 @@ export const systemAdminApi = {
     recordAudit: (payload) => request.post('/system-admin/audit-logs', payload),
     auditDetail: (id) => request.get(`/system-admin/audit-logs/${enc(id)}`),
     loginHistory: (params) => request.get('/system-admin/login-history', params),
+};
+
+
+// Advanced master screens added by the new backend.
+const advancedMasterCrud = (entity) => crud(`/advanced-masters/${entity}`);
+export const advancedMastersApi = {
+    equipment: advancedMasterCrud('equipment'),
+    trades: advancedMasterCrud('trades'),
+    labourTypes: advancedMasterCrud('labour-types'),
+    crews: advancedMasterCrud('crews'),
+    warehouses: advancedMasterCrud('warehouses'),
+    paymentTerms: advancedMasterCrud('payment-terms'),
+    accounts: advancedMasterCrud('accounts'),
+    banks: advancedMasterCrud('banks'),
+    costHeads: advancedMasterCrud('cost-heads'),
+    incomeCategories: advancedMasterCrud('income-categories'),
+    taxRates: advancedMasterCrud('tax-rates'),
+    numbering: advancedMasterCrud('numbering'),
+};
+
+// Optional named aliases make page imports clear for the frontend developer.
+export const equipmentMastersApi = advancedMastersApi.equipment;
+export const tradesApi = advancedMastersApi.trades;
+export const labourTypesApi = advancedMastersApi.labourTypes;
+export const crewsApi = advancedMastersApi.crews;
+export const warehousesApi = advancedMastersApi.warehouses;
+export const paymentTermsApi = advancedMastersApi.paymentTerms;
+export const accountsApi = advancedMastersApi.accounts;
+export const banksApi = advancedMastersApi.banks;
+export const costHeadsApi = advancedMastersApi.costHeads;
+export const incomeCategoriesApi = advancedMastersApi.incomeCategories;
+export const taxRatesApi = advancedMastersApi.taxRates;
+export const numberingApi = advancedMastersApi.numbering;
+
+// Human-reviewed drawing quantity takeoff workflow.
+export const drawingTakeoffApi = {
+    jobs: crud('/drawing-takeoff/jobs'),
+    items: {
+        list: (jobId, params) => request.get(`/drawing-takeoff/jobs/${enc(jobId)}/items`, params),
+        create: (jobId, payload) => request.post(`/drawing-takeoff/jobs/${enc(jobId)}/items`, payload),
+        approve: (jobId, itemId, payload = {}) => request.patch(`/drawing-takeoff/jobs/${enc(jobId)}/items/${enc(itemId)}/approve`, payload),
+        reject: (jobId, itemId, payload = {}) => request.patch(`/drawing-takeoff/jobs/${enc(jobId)}/items/${enc(itemId)}/reject`, payload),
+        map: (jobId, itemId, payload) => request.patch(`/drawing-takeoff/jobs/${enc(jobId)}/items/${enc(itemId)}/map`, payload),
+    },
+    convertToBoq: (jobId, boqIdOrPayload) => {
+        const payload = typeof boqIdOrPayload === 'object' ? boqIdOrPayload : { boq_id: boqIdOrPayload };
+        return request.post(`/drawing-takeoff/jobs/${enc(jobId)}/convert-to-boq`, payload);
+    },
+};
+
+// General / email / WhatsApp settings reuse the backend system_settings table.
+export const systemSettingsApi = {
+    get: (group) => request.get(`/system-settings/${enc(group)}`),
+    update: (group, payload) => request.patch(`/system-settings/${enc(group)}`, payload),
+    replace: (group, payload) => request.put(`/system-settings/${enc(group)}`, payload),
+    general: {
+        get: () => request.get('/system-settings/general'),
+        update: (payload) => request.patch('/system-settings/general', payload),
+    },
+    email: {
+        get: () => request.get('/system-settings/email'),
+        update: (payload) => request.patch('/system-settings/email', payload),
+    },
+    whatsapp: {
+        get: () => request.get('/system-settings/whatsapp'),
+        update: (payload) => request.patch('/system-settings/whatsapp', payload),
+    },
 };
 
 export default api;
