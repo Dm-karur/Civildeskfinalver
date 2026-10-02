@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   FastForward, CheckCircle2, Clock, AlertTriangle, ShieldCheck,
   Search, Filter, Eye, Edit, Trash2, Plus, Calendar,
@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi , planningApi } from '../../../api/apiservice';
 
 const WINDOW_OPTIONS = [
   { id: '2w', name: '2-Week Lookahead' },
@@ -52,7 +52,7 @@ const EMPTY_FORM = {
 export function LookAheadSchedulePage() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -71,34 +71,34 @@ export function LookAheadSchedulePage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  const fetchTasks = async () => {
+    setLoading(true);
+    try {
+      const res = await planningApi.lookAhead.list();
+      const list = res?.data?.look_ahead ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setTasks(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load data.');
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+    // Load Projects
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
-  }, []);
-
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_planning_LookAheadSchedulePage');
-      if (saved) {
-        setTasks(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
+    fetchTasks();
   }, []);
 
   useEffect(() => {
     // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
     // but for purely mock pages, saving the current state on every change is correct).
     // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_planning_LookAheadSchedulePage');
     if (tasks.length > 0 || saved) {
-       localStorage.setItem('mock_planning_LookAheadSchedulePage', JSON.stringify(tasks));
     }
   }, [tasks]);
   // ---------------------------------
@@ -718,3 +718,6 @@ export function LookAheadSchedulePage() {
     </PageContainer>
   );
 }
+
+
+

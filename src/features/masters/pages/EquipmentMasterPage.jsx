@@ -13,41 +13,42 @@ import { Badge } from '../../../components/ui/Badge';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
+import { advancedMastersApi } from '../../../api/apiservice';
+
+const EMPTY_FORM = {
+  name: '',
+  equipment_type: 'Rental',
+  description: '',
+  is_active: true,
+};
 
 export function EquipmentMasterPage() {
   const [equipments, setEquipments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-  
+
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [deletingItem, setDeletingItem] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  const [form, setForm] = useState({
-    name: '',
-    equipment_type: 'Rental',
-    description: '',
-    is_active: true
-  });
-
-  // Load from local storage
-  useEffect(() => {
-    const stored = localStorage.getItem('mock_equipment_master');
-    if (stored) {
-      try {
-        setEquipments(JSON.parse(stored));
-      } catch (e) {
-        setEquipments([]);
-      }
-    } else {
-      // Default mock data
-      const defaultData = [
-        { id: 1, name: 'Concrete Mixer', equipment_type: 'Rental', description: '200L Mixer', is_active: true },
-        { id: 2, name: 'Scaffolding Pipe Set', equipment_type: 'Own', description: 'Standard Set', is_active: true },
-        { id: 3, name: 'JCB', equipment_type: 'Rental', description: 'Earthmover', is_active: true },
-      ];
-      setEquipments(defaultData);
-      localStorage.setItem('mock_equipment_master', JSON.stringify(defaultData));
+  const fetchEquipments = async () => {
+    setLoading(true);
+    try {
+      const res = await advancedMastersApi.equipment.list();
+      const list = res?.data?.equipment ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setEquipments(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load equipment list.');
+      setEquipments([]);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchEquipments();
   }, []);
 
   const handleFormChange = (field, value) => {
@@ -55,57 +56,79 @@ export function EquipmentMasterPage() {
   };
 
   const handleOpenAdd = () => {
-    setForm({
-      name: '',
-      equipment_type: 'Rental',
-      description: '',
-      is_active: true
-    });
+    setForm(EMPTY_FORM);
     setEditingItem(null);
     setIsAddOpen(true);
   };
 
   const handleOpenEdit = (item) => {
-    setForm({ ...item });
+    setForm({
+      name: item.name || '',
+      equipment_type: item.equipment_type || 'Rental',
+      description: item.description || '',
+      is_active: item.is_active === 1 || item.is_active === true,
+    });
     setEditingItem(item);
     setIsAddOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleClose = () => {
+    setIsAddOpen(false);
+    setEditingItem(null);
+    setForm(EMPTY_FORM);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) {
       toast.error('Equipment Name is required');
       return;
     }
 
-    let updatedList;
-    if (editingItem) {
-      updatedList = equipments.map(e => e.id === editingItem.id ? { ...form, id: editingItem.id } : e);
-      toast.success('Equipment updated successfully');
-    } else {
-      const newId = equipments.length > 0 ? Math.max(...equipments.map(e => e.id)) + 1 : 1;
-      updatedList = [...equipments, { ...form, id: newId }];
-      toast.success('Equipment added successfully');
+    setSaving(true);
+    try {
+      const payload = {
+        name: form.name.trim(),
+        equipment_type: form.equipment_type,
+        description: form.description.trim(),
+        is_active: form.is_active ? 1 : 0,
+      };
+
+      if (editingItem?.id) {
+        await advancedMastersApi.equipment.update(editingItem.id, payload);
+        toast.success('Equipment updated successfully.');
+      } else {
+        await advancedMastersApi.equipment.create(payload);
+        toast.success('Equipment added successfully.');
+      }
+      handleClose();
+      fetchEquipments();
+    } catch (err) {
+      const msg = err?.message || (editingItem ? 'Failed to update equipment.' : 'Failed to add equipment.');
+      toast.error(msg);
+    } finally {
+      setSaving(false);
     }
-
-    setEquipments(updatedList);
-    localStorage.setItem('mock_equipment_master', JSON.stringify(updatedList));
-    setIsAddOpen(false);
-    setEditingItem(null);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deletingItem) return;
-    const updatedList = equipments.filter(e => e.id !== deletingItem.id);
-    setEquipments(updatedList);
-    localStorage.setItem('mock_equipment_master', JSON.stringify(updatedList));
-    toast.success('Equipment deleted successfully');
-    setDeletingItem(null);
+    try {
+      await advancedMastersApi.equipment.remove(deletingItem.id);
+      toast.success('Equipment deleted successfully.');
+      setDeletingItem(null);
+      fetchEquipments();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to delete equipment.');
+      setDeletingItem(null);
+    }
   };
 
-  const filteredEquipments = equipments.filter(item => 
-    item.name.toLowerCase().includes(search.toLowerCase())
+  const filteredEquipments = equipments.filter(item =>
+    (item.name || '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const activeCount = equipments.filter(e => e.is_active === 1 || e.is_active === true).length;
 
   return (
     <PageContainer>
@@ -121,8 +144,8 @@ export function EquipmentMasterPage() {
       <div className="flex w-full flex-col gap-3 sm:gap-4">
         {/* KPI Ribbons */}
         <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 sm:gap-3">
-          <KpiCard label="Total Equipment" value={equipments.length} icon={<Package />} status="info" />
-          <KpiCard label="Active Equipment" value={equipments.filter(e => e.is_active).length} icon={<ShieldCheck className="text-emerald-500" />} status="success" />
+          <KpiCard label="Total Equipment" value={loading ? '…' : equipments.length} icon={<Package />} status="info" />
+          <KpiCard label="Active Equipment" value={loading ? '…' : activeCount} icon={<ShieldCheck className="text-emerald-500" />} status="success" />
         </div>
 
         {/* Controls */}
@@ -166,58 +189,70 @@ export function EquipmentMasterPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredEquipments.length === 0 ? (
+              {loading ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-text-muted text-[13px]">
-                    No equipment found.
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      Loading equipment...
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredEquipments.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-text-muted text-[13px]">
+                    {search ? 'No equipment matches your search.' : 'No equipment found. Add your first equipment above.'}
                   </td>
                 </tr>
               ) : (
-                filteredEquipments.map((item) => (
-                  <tr key={item.id} className="hover:bg-surface-muted/30 transition-colors group">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-text-primary text-[13px]">{item.name}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant="neutral" className="text-[10px] font-bold uppercase tracking-wider">
-                        {item.equipment_type}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-text-secondary text-[12px] hidden md:table-cell">
-                      {item.description || '-'}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge 
-                        variant={item.is_active ? 'success' : 'neutral'}
-                        className="text-[9px] font-bold uppercase tracking-wider h-5 px-2 inline-flex items-center"
-                      >
-                        {item.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          title="Edit"
-                          onClick={() => handleOpenEdit(item)}
+                filteredEquipments.map((item) => {
+                  const isActive = item.is_active === 1 || item.is_active === true;
+                  return (
+                    <tr key={item.id} className="hover:bg-surface-muted/30 transition-colors group">
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-text-primary text-[13px]">{item.name}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="neutral" className="text-[10px] font-bold uppercase tracking-wider">
+                          {item.equipment_type || '—'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-text-secondary text-[12px] hidden md:table-cell">
+                        {item.description || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge
+                          variant={isActive ? 'success' : 'neutral'}
+                          className="text-[9px] font-bold uppercase tracking-wider h-5 px-2 inline-flex items-center"
                         >
-                          <Edit className="h-4 w-4 text-text-secondary hover:text-primary" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          title="Delete"
-                          onClick={() => setDeletingItem(item)}
-                        >
-                          <Trash2 className="h-4 w-4 text-text-secondary hover:text-error" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          {isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            title="Edit"
+                            onClick={() => handleOpenEdit(item)}
+                          >
+                            <Edit className="h-4 w-4 text-text-secondary hover:text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            title="Delete"
+                            onClick={() => setDeletingItem(item)}
+                          >
+                            <Trash2 className="h-4 w-4 text-text-secondary hover:text-error" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -226,19 +261,13 @@ export function EquipmentMasterPage() {
 
       <EntityEditModal
         isOpen={isAddOpen || Boolean(editingItem)}
-        onClose={() => {
-          setIsAddOpen(false);
-          setEditingItem(null);
-        }}
+        onClose={handleClose}
       >
         <EntityEditModal.Header
           icon={Package}
           title={editingItem ? 'Edit Equipment' : 'Add New Equipment'}
           subtitle="Configure equipment details."
-          onClose={() => {
-            setIsAddOpen(false);
-            setEditingItem(null);
-          }}
+          onClose={handleClose}
         />
         <form id="equipment-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
@@ -290,10 +319,8 @@ export function EquipmentMasterPage() {
           <EntityEditModal.Footer
             formId="equipment-form"
             submitLabel={editingItem ? 'Update' : 'Create'}
-            onCancel={() => {
-              setIsAddOpen(false);
-              setEditingItem(null);
-            }}
+            isSubmitting={saving}
+            onCancel={handleClose}
           />
         </form>
       </EntityEditModal>
@@ -301,7 +328,7 @@ export function EquipmentMasterPage() {
       <ConfirmDialog
         isOpen={Boolean(deletingItem)}
         title="Delete Equipment"
-        message="Are you sure you want to delete this equipment?"
+        message={`Are you sure you want to delete "${deletingItem?.name}"?`}
         variant="danger"
         confirmLabel="Delete"
         onConfirm={confirmDelete}

@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, receivablesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -41,15 +41,8 @@ const EMPTY_FORM = {
 export function ClientAdvancesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [advances, setAdvances] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_receivables_ClientAdvancesPage');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [loading, setLoading] = useState(false);
+  const [advances, setAdvances] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -66,18 +59,28 @@ export function ClientAdvancesPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  // Load Projects & Data
+  const fetchAdvances = async () => {
+    setLoading(true);
+    try {
+      const res = await receivablesApi.advances.list();
+      const list = res?.data?.advances ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setAdvances(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load client advances.');
+      setAdvances([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+    fetchAdvances();
   }, []);
-
-  
-  useEffect(() => {
-    localStorage.setItem('mock_receivables_ClientAdvancesPage', JSON.stringify(advances));
-  }, [advances]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -130,51 +133,49 @@ export function ClientAdvancesPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const amt = Number(form.advance_amount || 0);
-
-      const newAdv = {
-        id: editingItem?.id || Date.now(),
+      const payload = {
         project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        advance_no: form.advance_no,
+        advance_no: form.advance_no.trim(),
         contract_no: form.contract_no,
-        client_name: form.client_name || 'Client Corp',
+        client_name: form.client_name,
         claim_date: form.claim_date,
         advance_type: form.advance_type,
-        advance_amount: amt,
+        advance_amount: Number(form.advance_amount || 0),
         abg_reference_no: form.abg_reference_no,
-        abg_validity_date: form.abg_validity_date,
-        recovered_amount: editingItem?.recovered_amount || 0,
-        balance_outstanding: amt - (editingItem?.recovered_amount || 0),
+        abg_validity_date: form.abg_validity_date || null,
         recovery_mechanism: form.recovery_mechanism,
-        status: editingItem?.status || 'Claim Raised (Pending BG Verification)',
         notes: form.notes,
       };
 
       if (editingItem?.id) {
-        setAdvances(prev => prev.map(a => a.id === editingItem.id ? newAdv : a));
+        await receivablesApi.advances.update(editingItem.id, payload);
         toast.success('Advance claim invoice updated.');
       } else {
-        setAdvances(prev => [newAdv, ...prev]);
+        await receivablesApi.advances.create(payload);
         toast.success('Mobilization advance claim registered.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save advance claim.');
+      fetchAdvances();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save advance claim.');
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setAdvances(prev => prev.filter(a => a.id !== deleteItem.id));
-    toast.success('Advance record removed.');
-    setDeleteItem(null);
+    try {
+      await receivablesApi.advances.remove(deleteItem.id);
+      toast.success('Advance record removed.');
+      setDeleteItem(null);
+      fetchAdvances();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to remove advance record.');
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -631,3 +632,5 @@ export function ClientAdvancesPage() {
     </PageContainer>
   );
 }
+
+

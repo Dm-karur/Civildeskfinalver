@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   RotateCcw, CheckCircle2, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi , procurementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -46,7 +46,7 @@ export function ProcurementReturnsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
   const [returns, setReturns] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -63,34 +63,34 @@ export function ProcurementReturnsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  const fetchReturns = async () => {
+    setLoading(true);
+    try {
+      const res = await procurementApi.returns.list();
+      const list = res?.data?.returns ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setReturns(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load data.');
+      setReturns([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+    // Load Projects
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
-  }, []);
-
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_procurement_ProcurementReturnsPage');
-      if (saved) {
-        setReturns(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
+    fetchReturns();
   }, []);
 
   useEffect(() => {
     // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
     // but for purely mock pages, saving the current state on every change is correct).
     // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_procurement_ProcurementReturnsPage');
     if (returns.length > 0 || saved) {
-       localStorage.setItem('mock_procurement_ProcurementReturnsPage', JSON.stringify(returns));
     }
   }, [returns]);
   // ---------------------------------
@@ -660,3 +660,6 @@ export function ProcurementReturnsPage() {
     </PageContainer>
   );
 }
+
+
+

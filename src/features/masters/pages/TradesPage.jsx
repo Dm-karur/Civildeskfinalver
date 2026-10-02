@@ -1,11 +1,19 @@
-import { UnderConstructionPage } from './UnderConstructionPage';
+import { Hammer } from 'lucide-react';
+import { MasterCrudPage } from './MasterCrudPage';
+import { tradesApi } from '../../../api/apiservice';
 
 export function TradesPage() {
   return (
-    <UnderConstructionPage
+    <MasterCrudPage
       title="Trades Registry"
-      moduleName="Trade Classifications"
-      description="No backend routes exist for managing construction trade master types. Trades are currently mapped implicitly to WBS work categories."
+      subtitle="Manage trade classifications for skilled labor & subcontractors"
+      icon={Hammer}
+      apiService={tradesApi}
+      dataKey="trades"
+      codeField="trade_code"
+      nameField="trade_name"
     />
   );
 }
+
+export default TradesPage;

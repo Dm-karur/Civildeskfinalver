@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi , financeApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -43,7 +43,7 @@ export function ProjectIncomePage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
   const [incomes, setIncomes] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -60,37 +60,29 @@ export function ProjectIncomePage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+
+  const fetchIncomes = async () => {
+    setLoading(true);
+    try {
+      const res = await financeApi.projectIncome.list();
+      const list = res?.data?.project_income ?? res?.data?.incomes ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setIncomes(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load project income records.');
+      setIncomes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects & Income
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+    fetchIncomes();
   }, []);
-
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_finance_ProjectIncomePage');
-      if (saved) {
-        setIncomes(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_finance_ProjectIncomePage');
-    if (incomes.length > 0 || saved) {
-       localStorage.setItem('mock_finance_ProjectIncomePage', JSON.stringify(incomes));
-    }
-  }, [incomes]);
-  // ---------------------------------
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -153,53 +145,50 @@ export function ProjectIncomePage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const grs = Number(form.gross_billed || 0);
-      const tds = Number(form.tds_deducted || 0);
-      const ret = Number(form.retention_deducted || 0);
-      const net = Math.max(0, grs - tds - ret);
-
-      const newItem = {
-        id: editingItem?.id || Date.now(),
+      const payload = {
         project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        income_no: form.income_no,
+        income_no: form.income_no.trim(),
         income_date: form.income_date,
         revenue_stream: form.revenue_stream,
-        client_name: form.client_name,
-        gross_billed: grs,
-        tds_deducted: tds,
-        retention_deducted: ret,
-        net_realized_inflow: net,
+        client_name: form.client_name.trim(),
+        gross_billed: Number(form.gross_billed || 0),
+        tds_deducted: Number(form.tds_deducted || 0),
+        retention_deducted: Number(form.retention_deducted || 0),
+        net_realized_inflow: Number(form.net_realized_inflow || 0),
         bank_account: form.bank_account,
-        utr_no: form.utr_no || 'RTGS-TRF-001',
-        status: 'Realized in Bank',
+        utr_no: form.utr_no,
         notes: form.notes,
       };
 
       if (editingItem?.id) {
-        setIncomes(prev => prev.map(i => i.id === editingItem.id ? newItem : i));
+        await financeApi.projectIncome.update(editingItem.id, payload);
         toast.success('Income entry updated.');
       } else {
-        setIncomes(prev => [newItem, ...prev]);
+        await financeApi.projectIncome.create(payload);
         toast.success('Project revenue inflow voucher registered.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save income record.');
+      fetchIncomes();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save income record.');
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setIncomes(prev => prev.filter(i => i.id !== deleteItem.id));
-    toast.success('Income record removed.');
-    setDeleteItem(null);
+    try {
+      await financeApi.projectIncome.remove(deleteItem.id);
+      toast.success('Income record removed.');
+      setDeleteItem(null);
+      fetchIncomes();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to remove income record.');
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -633,3 +622,5 @@ export function ProjectIncomePage() {
     </PageContainer>
   );
 }
+
+

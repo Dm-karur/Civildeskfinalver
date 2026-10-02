@@ -1,11 +1,19 @@
-import { UnderConstructionPage } from './UnderConstructionPage';
+import { DollarSign } from 'lucide-react';
+import { MasterCrudPage } from './MasterCrudPage';
+import { costHeadsApi } from '../../../api/apiservice';
 
 export function CostHeadsPage() {
   return (
-    <UnderConstructionPage
+    <MasterCrudPage
       title="Cost Heads"
-      moduleName="Budget Cost Heads"
-      description="The application backend does not have a separate cost heads table. WBS cost categories and budget classifications are managed directly in the WBS Work Categories registry."
+      subtitle="Manage cost breakdown structures & accounting heads"
+      icon={DollarSign}
+      apiService={costHeadsApi}
+      dataKey="cost_heads"
+      codeField="cost_head_code"
+      nameField="cost_head_name"
     />
   );
 }
+
+export default CostHeadsPage;

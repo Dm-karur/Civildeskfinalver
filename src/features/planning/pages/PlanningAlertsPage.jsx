@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   Bell, AlertTriangle, Flame, ShieldAlert, CheckCircle2,
   Clock, Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi , planningApi } from '../../../api/apiservice';
 
 const ALERT_CATEGORIES = [
   { id: 'all', name: 'All Alert Categories' },
@@ -47,7 +47,7 @@ const EMPTY_FORM = {
 export function PlanningAlertsPage() {
   const [projects, setProjects] = useState([]);
   const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -66,34 +66,34 @@ export function PlanningAlertsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  const fetchAlerts = async () => {
+    setLoading(true);
+    try {
+      const res = await planningApi.alerts.list();
+      const list = res?.data?.alerts ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setAlerts(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load data.');
+      setAlerts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+    // Load Projects
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
-  }, []);
-
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_planning_PlanningAlertsPage');
-      if (saved) {
-        setAlerts(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
+    fetchAlerts();
   }, []);
 
   useEffect(() => {
     // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
     // but for purely mock pages, saving the current state on every change is correct).
     // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_planning_PlanningAlertsPage');
     if (alerts.length > 0 || saved) {
-       localStorage.setItem('mock_planning_PlanningAlertsPage', JSON.stringify(alerts));
     }
   }, [alerts]);
   // ---------------------------------
@@ -688,3 +688,6 @@ export function PlanningAlertsPage() {
     </PageContainer>
   );
 }
+
+
+

@@ -1,11 +1,23 @@
-import { UnderConstructionPage } from './UnderConstructionPage';
+import { Hash } from 'lucide-react';
+import { MasterCrudPage } from './MasterCrudPage';
+import { numberingApi } from '../../../api/apiservice';
 
 export function NumberingPage() {
   return (
-    <UnderConstructionPage
-      title="Document Numbering"
-      moduleName="Code Prefix & Formats"
-      description="The application backend does not support dynamic document numbering schemes. Prefixes and formats (e.g. MAT-CEMENT-001, BOQ-2026-0001) are statically defined inside backend migrations and code rules."
+    <MasterCrudPage
+      title="Auto-Numbering Series"
+      subtitle="Configure document prefixes, numbering sequences, and vouchers"
+      icon={Hash}
+      apiService={numberingApi}
+      dataKey="numbering"
+      codeField="document_type"
+      nameField="prefix"
+      extraFields={[
+        { name: 'current_number', label: 'Current Number', type: 'number', placeholder: '1001' },
+        { name: 'suffix', label: 'Suffix', placeholder: 'e.g. /2026' }
+      ]}
     />
   );
 }
+
+export default NumberingPage;

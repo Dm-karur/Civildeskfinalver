@@ -271,6 +271,7 @@ export const attendanceApi = {
     },
     timesheets: crud('/labour-attendance/timesheets'),
     overtime: crud('/labour-attendance/overtime'),
+    leave: crud('/labour-attendance/leave'),
 };
 
 export const wagesApi = {
@@ -573,7 +574,7 @@ export const financeApi = {
 };
 
 // Convenient page-level aliases for newly added labour screens.
-export const labourLeaveApi = labourApi.leave;
+export const labourLeaveApi = attendanceApi.leave;
 export const labourTimesheetsApi = attendanceApi.timesheets;
 export const labourOvertimeApi = attendanceApi.overtime;
 

@@ -14,7 +14,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi , receivablesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -22,15 +22,8 @@ import { useAuth } from '../../auth/context/AuthContext';
 export function AdvanceApprovalPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [advances, setAdvances] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_receivables_ClientAdvancesPage');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [loading, setLoading] = useState(false);
+  const [advances, setAdvances] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -42,26 +35,48 @@ export function AdvanceApprovalPage() {
   // Modals
   const [viewingItem, setViewingItem] = useState(null);
 
-  // Load Projects
+  const fetchAdvances = async () => {
+    setLoading(true);
+    try {
+      const res = await receivablesApi.advances.list();
+      const list = res?.data?.advances ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setAdvances(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load advance claims.');
+      setAdvances([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects & Advances
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+    fetchAdvances();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('mock_receivables_ClientAdvancesPage', JSON.stringify(advances));
-  }, [advances]);
 
-  const handleApprove = (item) => {
-    setAdvances(prev => prev.map(a => a.id === item.id ? { ...a, status: 'Authorized & Dispatched to Client' } : a));
-    toast.success(`Advance claim ${item.advance_no} authorized and dispatched to client.`);
+  const handleApprove = async (item) => {
+    try {
+      await receivablesApi.advances.update(item.id, { status: 'Authorized & Dispatched to Client' });
+      toast.success(`Advance claim ${item.advance_no} authorized and dispatched to client.`);
+      fetchAdvances();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to authorize advance.');
+    }
   };
 
-  const handleReturn = (item) => {
-    setAdvances(prev => prev.map(a => a.id === item.id ? { ...a, status: 'Returned for BG Revision' } : a));
-    toast.success(`Advance claim ${item.advance_no} returned for correction.`);
+  const handleReturn = async (item) => {
+    try {
+      await receivablesApi.advances.update(item.id, { status: 'Returned for BG Revision' });
+      toast.success(`Advance claim ${item.advance_no} returned for correction.`);
+      fetchAdvances();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to return advance.');
+    }
   };
 
   // Safe Filtered List
@@ -388,3 +403,4 @@ export function AdvanceApprovalPage() {
     </PageContainer>
   );
 }
+

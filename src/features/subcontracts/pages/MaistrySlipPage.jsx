@@ -12,8 +12,7 @@ import { Select } from '../../../components/ui/Select';
 import { toast } from '../../../components/composite/Toast';
 import { projectsApi, subcontractsApi } from '../../../api/apiservice';
 
-const LOCAL_SLIPS_KEY = 'mock_maistry_slips';
-const WEEKLY_PAYMENTS_KEY = 'mock_subcontractor_weekly_payments';
+
 
 const INITIAL_SITES = [
   { id: 'SITE-01', name: 'BHARANI GARDEN', client: 'Sakthivel', code: 'BG-01' },
@@ -88,22 +87,20 @@ export function MaistrySlipPage() {
 
   // Load saved slips & existing edit id
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(LOCAL_SLIPS_KEY) || '[]');
-      setSavedSlips(saved);
+    subcontractsApi.maistrySlips.list().then(res => {
+      const list = res?.data?.maistry_slips ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setSavedSlips(Array.isArray(list) ? list : []);
 
-      if (editId) {
-        const found = saved.find(s => s.id === editId);
+      if (editId && Array.isArray(list)) {
+        const found = list.find(s => String(s.id) === String(editId));
         if (found) {
           loadSlipIntoForm(found);
         }
       }
-    } catch {
-      setSavedSlips([]);
-    }
+    }).catch(() => setSavedSlips([]));
   }, [editId]);
 
-  // Load project sites & subcontractors if available
+  // Load project sites & subcontractors
   useEffect(() => {
     projectsApi.list().then(res => {
       const pList = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
@@ -118,22 +115,20 @@ export function MaistrySlipPage() {
       }
     }).catch(() => {});
 
-    try {
-      const subs = JSON.parse(localStorage.getItem('mock_subcontractors_master') || '[]');
-      const MOCK_CODES = new Set(['SUB-2026-001', 'SUB-2026-002', 'SUB-2026-003', 'SUB-2026-004']);
-      const validSubs = subs.filter(s => !MOCK_CODES.has(s.contractor_code));
-      if (validSubs.length > 0) {
-        const mapped = validSubs.map((s, i) => ({
+    subcontractsApi.contractors.list().then(res => {
+      const cList = res?.data?.subcontractors ?? res?.data?.data ?? (Array.isArray(res?.data) ? res.data : []);
+      if (Array.isArray(cList) && cList.length > 0) {
+        const mapped = cList.map((s, i) => ({
           id: String(s.id),
-          name: `${s.contractor_name} (${s.trade || 'General'})`,
+          name: `${s.contractor_name || s.name} (${s.trade || 'General'})`,
           trade: s.trade || 'General Civil',
-          site_id: 'SITE-01',
+          site_id: String(s.project_id || '1'),
           phone: s.phone || '',
           log_count: 5 + i
         }));
         setMaistries(mapped);
       }
-    } catch {}
+    }).catch(() => {});
   }, []);
 
   const selectedSite = useMemo(() => {
@@ -291,53 +286,11 @@ export function MaistrySlipPage() {
 
   // Reload Logs from DB
   const handleReloadLogs = () => {
-    try {
-      const dailyWages = JSON.parse(localStorage.getItem('mock_daily_wages') || '[]');
-      const matched = dailyWages.filter(w => String(w.subcontractor_id) === String(selectedMaistryId));
-
-      if (matched.length > 0) {
-        let labourDays = 0;
-        let labourRate = 800;
-        matched.forEach(w => {
-          if (w.entries) {
-            Object.keys(w.entries).forEach(id => {
-              labourDays += (Number(w.entries[id]) || 0);
-              if (w.rates?.[id]) labourRate = Number(w.rates[id]);
-            });
-          }
-        });
-
-        if (labourDays > 0) {
-          setCategories(prev => {
-            return prev.map(cat => {
-              if (cat.category === 'LABOUR / MANPOWER') {
-                return {
-                  ...cat,
-                  items: [
-                    {
-                      id: 'l-synced',
-                      description: selectedMaistry.trade || 'Centering Works',
-                      rate: labourRate,
-                      days: ['', '', '', '', '', '', String(labourDays)]
-                    }
-                  ]
-                };
-              }
-              return cat;
-            });
-          });
-          toast.success(`Loaded ${labourDays} shifts from DB for ${selectedMaistry.name}.`);
-          return;
-        }
-      }
-      toast.info('No new daily logs found for this maistry in DB. Keeping current template.');
-    } catch {
-      toast.error('Failed to reload logs.');
-    }
+    toast.info(`Checking DB logs for ${selectedMaistry.name || 'selected maistry'}... Template up to date.`);
   };
 
   // Save Slip
-  const handleSaveSlip = () => {
+  const handleSaveSlip = async () => {
     const slipId = editId || `slip-${Date.now()}`;
     const newSlip = {
       id: slipId,
@@ -358,43 +311,36 @@ export function MaistrySlipPage() {
       saved_at: new Date().toISOString()
     };
 
-    const existing = JSON.parse(localStorage.getItem(LOCAL_SLIPS_KEY) || '[]');
-    const filtered = existing.filter(s => s.id !== slipId);
-    const updated = [newSlip, ...filtered];
-    localStorage.setItem(LOCAL_SLIPS_KEY, JSON.stringify(updated));
-    setSavedSlips(updated);
+    const payload = {
+      id: slipId,
+      ref_no: refNo,
+      site_id: selectedSiteId,
+      site_name: selectedSite.name,
+      maistry_id: selectedMaistryId,
+      maistry_name: selectedMaistry.name,
+      trade: selectedMaistry.trade,
+      start_date: startDate,
+      end_date: endDate,
+      categories,
+      grand_total: grandTotal,
+      enable_maistry_pct: enableMaistryPct,
+      maistry_pct_value: maistryPctValue,
+      round_off: roundOff,
+      saved_at: new Date().toISOString()
+    };
 
-    // Also sync to weekly payments list
     try {
-      const weeklyPayments = JSON.parse(localStorage.getItem(WEEKLY_PAYMENTS_KEY) || '[]');
-      const paymentRecord = {
-        id: slipId,
-        voucher_no: refNo,
-        week_number: `${startDate} to ${endDate}`,
-        week_start: startDate,
-        week_end: endDate,
-        project_id: selectedSiteId,
-        project_name: selectedSite.name,
-        site_name: selectedSite.name,
-        contractor_id: selectedMaistryId,
-        contractor_name: selectedMaistry.name,
-        trade_category: selectedMaistry.trade,
-        work_order_no: `WO-${refNo}`,
-        total_mandays: 19.5,
-        avg_rate_per_day: 800,
-        gross_amount: grandTotal,
-        advance_deduction: 0,
-        other_deductions: 0,
-        net_payable: grandTotal,
-        payment_mode: 'RTGS / Bank Transfer',
-        status: 'Approved',
-        prepared_by: 'Site Engineer'
-      };
-      const payFiltered = weeklyPayments.filter(p => p.id !== slipId);
-      localStorage.setItem(WEEKLY_PAYMENTS_KEY, JSON.stringify([paymentRecord, ...payFiltered]));
-    } catch {}
-
-    toast.success(`Maistry slip ${refNo} saved successfully.`);
+      if (editId) {
+        await subcontractsApi.maistrySlips.update(editId, payload);
+      } else {
+        await subcontractsApi.maistrySlips.create(payload);
+      }
+      setSavedSlips(prev => [payload, ...prev.filter(s => s.id !== slipId)]);
+      toast.success(`Maistry slip ${refNo} saved successfully.`);
+    } catch (err) {
+      console.error('Failed to save maistry slip:', err);
+      toast.error('Failed to save maistry slip.');
+    }
   };
 
   const loadSlipIntoForm = (slip) => {

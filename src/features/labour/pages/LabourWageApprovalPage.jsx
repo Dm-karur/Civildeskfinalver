@@ -93,25 +93,18 @@ export function LabourWageApprovalPage() {
     try {
       const res = await wagesApi.list({ project_id: selectedProjectId !== 'all' ? selectedProjectId : undefined });
       const list = extractList(res);
-      const mapped = list.map(b => {
-        // Find if we have any local edits for this backend ID since backend lacks PUT/PATCH
-        const localEditsStr = localStorage.getItem('wage_batch_edits');
-        const localEdits = localEditsStr ? JSON.parse(localEditsStr) : {};
-        const edits = localEdits[b.id] || {};
-
-        return {
-          ...b,
-          batch_code: edits.batch_code || b.batch_code || b.period_code || b.code || `WB-${b.id}`,
-          status: edits.status || (typeof b.status === 'object' ? b.status?.name || b.status?.status || 'Pending' : (b.status || 'Pending')),
-          worker_count: edits.worker_count || b.worker_count || b.workers_count || b.headcount || 0,
-          total_mandays: edits.total_mandays || b.total_mandays || b.mandays || 0,
-          gross_wages: edits.gross_wages || b.gross_wages || b.gross_amount || b.amount || 0,
-          advances_deducted: edits.advances_deducted || b.advances_deducted || b.deductions || b.advance_amount || 0,
-          net_payable: edits.net_payable || b.net_payable || b.net_amount || b.amount || 0,
-          contractor_name: edits.contractor_name || b.contractor_name || b.contractor?.name || b.contractor?.contractor_name || 'N/A',
-          project_name: edits.project_name || b.project_name || b.project?.name || b.project?.project_name || 'N/A',
-        };
-      });
+      const mapped = list.map(b => ({
+        ...b,
+        batch_code: b.batch_code || b.period_code || b.code || `WB-${b.id}`,
+        status: typeof b.status === 'object' ? b.status?.name || b.status?.status || 'Pending' : (b.status || 'Pending'),
+        worker_count: b.worker_count || b.workers_count || b.headcount || 0,
+        total_mandays: b.total_mandays || b.mandays || 0,
+        gross_wages: b.gross_wages || b.gross_amount || b.amount || 0,
+        advances_deducted: b.advances_deducted || b.deductions || b.advance_amount || 0,
+        net_payable: b.net_payable || b.net_amount || b.amount || 0,
+        contractor_name: b.contractor_name || b.contractor?.name || b.contractor?.contractor_name || 'N/A',
+        project_name: b.project_name || b.project?.name || b.project?.project_name || 'N/A',
+      }));
       setBatches(mapped);
     } catch (e) {
       console.error(e);

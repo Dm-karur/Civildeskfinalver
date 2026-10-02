@@ -14,7 +14,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, receivablesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -22,11 +22,41 @@ import { useAuth } from '../../auth/context/AuthContext';
 export function ClientStatementsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [entries, setEntries] = useState(() => {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filters
+  const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const perPage = 10;
+
+  const fetchStatements = async () => {
+    setLoading(true);
     try {
-      const invoices = JSON.parse(localStorage.getItem('mock_receivables_ClientInvoicesPage') || '[]');
-      const advances = JSON.parse(localStorage.getItem('mock_receivables_ClientAdvancesPage') || '[]');
-      const receipts = JSON.parse(localStorage.getItem('mock_receivables_ClientReceiptsPage') || '[]');
+      if (selectedProjectId !== 'all') {
+        try {
+          const stmtRes = await receivablesApi.projectStatement(selectedProjectId);
+          const stmtData = stmtRes?.data?.statements ?? stmtRes?.data?.entries ?? stmtRes?.data;
+          if (Array.isArray(stmtData) && stmtData.length > 0) {
+            setEntries(stmtData);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // Fallback to live multi-endpoint aggregation
+        }
+      }
+
+      const [invRes, advRes, recRes] = await Promise.allSettled([
+        receivablesApi.invoices.list(),
+        receivablesApi.advances.list(),
+        receivablesApi.receipts.list(),
+      ]);
+
+      const invoices = invRes.status === 'fulfilled' ? (invRes.value?.data?.invoices ?? invRes.value?.data ?? (Array.isArray(invRes.value) ? invRes.value : [])) : [];
+      const advances = advRes.status === 'fulfilled' ? (advRes.value?.data?.advances ?? advRes.value?.data ?? (Array.isArray(advRes.value) ? advRes.value : [])) : [];
+      const receipts = recRes.status === 'fulfilled' ? (recRes.value?.data?.receipts ?? recRes.value?.data ?? (Array.isArray(recRes.value) ? recRes.value : [])) : [];
 
       const formattedInvoices = invoices.map(i => ({
         id: `inv-${i.id}`,
@@ -65,27 +95,23 @@ export function ClientStatementsPage() {
       }));
 
       const combined = [...formattedInvoices, ...formattedAdvances, ...formattedReceipts];
-      // Sort by date descending
       combined.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-      return combined;
-    } catch {
-      return [];
+      setEntries(combined);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load statement of account.');
+      setEntries([]);
+    } finally {
+      setLoading(false);
     }
-  });
-  const [loading, setLoading] = useState(false);
+  };
 
-  // Filters
-  const [selectedProjectId, setSelectedProjectId] = useState('all');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const perPage = 10;
-
-  // Load Projects
+  // Load Projects & SOA Data
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+    fetchStatements();
   }, []);
 
   const handlePrint = () => {

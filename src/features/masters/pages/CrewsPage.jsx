@@ -1,11 +1,19 @@
-import { UnderConstructionPage } from './UnderConstructionPage';
+import { Users } from 'lucide-react';
+import { MasterCrudPage } from './MasterCrudPage';
+import { crewsApi } from '../../../api/apiservice';
 
 export function CrewsPage() {
   return (
-    <UnderConstructionPage
-      title="Labour Crews"
-      moduleName="Crew Registry"
-      description="The backend does not support crew-level scheduling or group allocation objects in the database. Workers are assigned to sites and jobs individually."
+    <MasterCrudPage
+      title="Crews & Gangs"
+      subtitle="Manage labor gangs, crews, and work units"
+      icon={Users}
+      apiService={crewsApi}
+      dataKey="crews"
+      codeField="crew_code"
+      nameField="crew_name"
     />
   );
 }
+
+export default CrewsPage;

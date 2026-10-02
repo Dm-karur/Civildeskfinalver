@@ -1,11 +1,19 @@
-import { UnderConstructionPage } from './UnderConstructionPage';
+import { TrendingUp } from 'lucide-react';
+import { MasterCrudPage } from './MasterCrudPage';
+import { incomeCategoriesApi } from '../../../api/apiservice';
 
 export function IncomeCategoriesPage() {
   return (
-    <UnderConstructionPage
+    <MasterCrudPage
       title="Income Categories"
-      moduleName="Revenue Categories"
-      description="The application backend does not have an 'income_categories' table. Inflow entries are instead consolidated under Client Invoices and WBS Progress Billings."
+      subtitle="Manage project billing & non-billing revenue categories"
+      icon={TrendingUp}
+      apiService={incomeCategoriesApi}
+      dataKey="income_categories"
+      codeField="category_code"
+      nameField="category_name"
     />
   );
 }
+
+export default IncomeCategoriesPage;

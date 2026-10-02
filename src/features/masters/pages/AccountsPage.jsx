@@ -1,11 +1,19 @@
-import { UnderConstructionPage } from './UnderConstructionPage';
+import { BookOpen } from 'lucide-react';
+import { MasterCrudPage } from './MasterCrudPage';
+import { accountsApi } from '../../../api/apiservice';
 
 export function AccountsPage() {
   return (
-    <UnderConstructionPage
-      title="Company Accounts"
-      moduleName="Chart of Accounts"
-      description="The application backend does not support general ledger accounts, bank accounts, or financial cash accounts. Company payments are tracked directly through Vendor Payments and Labour Wage Sheets."
+    <MasterCrudPage
+      title="Chart of Accounts"
+      subtitle="Manage financial ledger accounts & head classifications"
+      icon={BookOpen}
+      apiService={accountsApi}
+      dataKey="accounts"
+      codeField="account_code"
+      nameField="account_name"
     />
   );
 }
+
+export default AccountsPage;

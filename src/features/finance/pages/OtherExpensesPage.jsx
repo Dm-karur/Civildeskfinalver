@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi , expensesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -40,7 +40,7 @@ export function OtherExpensesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
   const [expenses, setExpenses] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -58,37 +58,29 @@ export function OtherExpensesPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+
+  const fetchExpenses = async () => {
+    setLoading(true);
+    try {
+      const res = await expensesApi.bills.list();
+      const list = res?.data?.bills ?? res?.data?.expenses ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setExpenses(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load expenses.');
+      setExpenses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects & Expenses
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+    fetchExpenses();
   }, []);
-
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_finance_OtherExpensesPage');
-      if (saved) {
-        setExpenses(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_finance_OtherExpensesPage');
-    if (expenses.length > 0 || saved) {
-       localStorage.setItem('mock_finance_OtherExpensesPage', JSON.stringify(expenses));
-    }
-  }, [expenses]);
-  // ---------------------------------
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -139,48 +131,47 @@ export function OtherExpensesPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const amt = Number(form.amount || 0);
-
-      const newItem = {
-        id: editingItem?.id || Date.now(),
+      const payload = {
         project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        voucher_no: form.voucher_no,
+        voucher_no: form.voucher_no.trim(),
         expense_date: form.expense_date,
         category: form.category,
         payee_name: form.payee_name,
         description: form.description,
-        amount: amt,
+        amount: Number(form.amount || 0),
         payment_mode: form.payment_mode,
-        approved_by: 'Er. Suresh Babu (Project Director)',
-        status: 'Approved & Settled',
         notes: form.notes,
       };
 
       if (editingItem?.id) {
-        setExpenses(prev => prev.map(e => e.id === editingItem.id ? newItem : e));
+        await expensesApi.bills.update(editingItem.id, payload);
         toast.success('Expense voucher updated.');
       } else {
-        setExpenses(prev => [newItem, ...prev]);
+        await expensesApi.bills.create(payload);
         toast.success('Site overhead expense voucher recorded.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save expense voucher.');
+      fetchExpenses();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save expense voucher.');
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setExpenses(prev => prev.filter(e => e.id !== deleteItem.id));
-    toast.success('Expense voucher removed.');
-    setDeleteItem(null);
+    try {
+      await expensesApi.bills.remove(deleteItem.id);
+      toast.success('Expense voucher removed.');
+      setDeleteItem(null);
+      fetchExpenses();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to remove expense voucher.');
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -608,3 +599,5 @@ export function OtherExpensesPage() {
     </PageContainer>
   );
 }
+
+

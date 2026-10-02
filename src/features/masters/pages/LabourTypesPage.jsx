@@ -1,11 +1,19 @@
-import { UnderConstructionPage } from './UnderConstructionPage';
+import { HardHat } from 'lucide-react';
+import { MasterCrudPage } from './MasterCrudPage';
+import { labourTypesApi } from '../../../api/apiservice';
 
 export function LabourTypesPage() {
   return (
-    <UnderConstructionPage
-      title="Labour Types"
-      moduleName="Labour Type Registry"
-      description="The backend database does not have a 'labour_types' schema or controller. Labour groups are currently consolidated under categories and skill levels."
+    <MasterCrudPage
+      title="Labour Types Master"
+      subtitle="Manage skilled, semi-skilled, and un-skilled worker categories"
+      icon={HardHat}
+      apiService={labourTypesApi}
+      dataKey="labour_types"
+      codeField="type_code"
+      nameField="type_name"
     />
   );
 }
+
+export default LabourTypesPage;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   TrendingUp, CheckCircle2, IndianRupee, Clock, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, receivablesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -42,15 +42,8 @@ const EMPTY_FORM = {
 export function ContractValuesPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [variations, setVariations] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_receivables_ContractValuesPage');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [loading, setLoading] = useState(false);
+  const [variations, setVariations] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -76,9 +69,6 @@ export function ContractValuesPage() {
   }, []);
 
   
-  useEffect(() => {
-    localStorage.setItem('mock_receivables_ContractValuesPage', JSON.stringify(variations));
-  }, [variations]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -641,3 +631,5 @@ export function ContractValuesPage() {
     </PageContainer>
   );
 }
+
+

@@ -16,7 +16,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { subcontractsApi, request } from '../../../api/apiservice';
+import { subcontractsApi, request, advancedMastersApi } from '../../../api/apiservice';
 
 const EMPTY_FORM = {
   type_code: '',
@@ -99,13 +99,12 @@ export function SubcontractorTypesPage() {
   }, []);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('mock_equipment_master');
-      if (stored) {
-        setEquipmentMasters(JSON.parse(stored).filter(e => e.is_active));
-      }
-    } catch {}
+    advancedMastersApi.equipment.list().then(res => {
+      const list = res?.data?.equipment ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setEquipmentMasters(Array.isArray(list) ? list.filter(e => e.is_active === 1 || e.is_active === true) : []);
+    }).catch(() => setEquipmentMasters([]));
   }, []);
+
 
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);

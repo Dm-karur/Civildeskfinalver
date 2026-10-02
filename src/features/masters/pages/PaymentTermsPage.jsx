@@ -1,11 +1,20 @@
-import { UnderConstructionPage } from './UnderConstructionPage';
+import { Calendar } from 'lucide-react';
+import { MasterCrudPage } from './MasterCrudPage';
+import { paymentTermsApi } from '../../../api/apiservice';
 
 export function PaymentTermsPage() {
   return (
-    <UnderConstructionPage
+    <MasterCrudPage
       title="Payment Terms"
-      moduleName="Standard Payment Terms"
-      description="The application backend does not maintain a standalone database table for payment term policies. Payment terms (in number of days) are configured inline directly on vendor/supplier and subcontractor profiles."
+      subtitle="Manage standard payment milestones & credit periods"
+      icon={Calendar}
+      apiService={paymentTermsApi}
+      dataKey="payment_terms"
+      codeField="code"
+      nameField="name"
+      extraFields={[{ name: 'due_days', label: 'Due Days', type: 'number', placeholder: 'e.g. 30' }]}
     />
   );
 }
+
+export default PaymentTermsPage;

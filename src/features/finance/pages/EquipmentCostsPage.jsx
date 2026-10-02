@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi , financeApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -41,7 +41,7 @@ export function EquipmentCostsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
   const [equipmentCosts, setEquipmentCosts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -58,37 +58,29 @@ export function EquipmentCostsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+
+  const fetchEquipmentCosts = async () => {
+    setLoading(true);
+    try {
+      const res = await financeApi.equipmentCosts.list();
+      const list = res?.data?.equipment_costs ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setEquipmentCosts(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load equipment costs.');
+      setEquipmentCosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects & Equipment Costs
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+    fetchEquipmentCosts();
   }, []);
-
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_finance_EquipmentCostsPage');
-      if (saved) {
-        setEquipmentCosts(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_finance_EquipmentCostsPage');
-    if (equipmentCosts.length > 0 || saved) {
-       localStorage.setItem('mock_finance_EquipmentCostsPage', JSON.stringify(equipmentCosts));
-    }
-  }, [equipmentCosts]);
-  // ---------------------------------
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -145,54 +137,48 @@ export function EquipmentCostsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const hrs = Number(form.operating_hours || 0);
-      const rnt = Number(form.rental_cost || 0);
-      const fl = Number(form.fuel_cost || 0);
-      const mt = Number(form.maintenance_cost || 0);
-      const tot = rnt + fl + mt;
-      const cph = hrs > 0 ? Math.round(tot / hrs) : 0;
-
-      const newItem = {
-        id: editingItem?.id || Date.now(),
+      const payload = {
         project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        asset_name: form.asset_name,
+        asset_name: form.asset_name.trim(),
         ownership_type: form.ownership_type,
-        vendor_name: form.vendor_name || 'Internal Asset',
-        operating_hours: hrs,
-        rental_cost: rnt,
-        fuel_cost: fl,
-        maintenance_cost: mt,
-        total_operating_cost: tot,
-        cost_per_hour: cph,
-        status: 'Active (Daily Logged)',
+        vendor_name: form.vendor_name,
+        operating_hours: Number(form.operating_hours || 0),
+        rental_cost: Number(form.rental_cost || 0),
+        fuel_cost: Number(form.fuel_cost || 0),
+        maintenance_cost: Number(form.maintenance_cost || 0),
+        total_operating_cost: Number(form.total_operating_cost || 0),
         notes: form.notes,
       };
 
       if (editingItem?.id) {
-        setEquipmentCosts(prev => prev.map(e => e.id === editingItem.id ? newItem : e));
+        await financeApi.equipmentCosts.update(editingItem.id, payload);
         toast.success('Equipment cost record updated.');
       } else {
-        setEquipmentCosts(prev => [newItem, ...prev]);
+        await financeApi.equipmentCosts.create(payload);
         toast.success('Machinery cost record registered.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save equipment cost item.');
+      fetchEquipmentCosts();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save equipment cost item.');
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setEquipmentCosts(prev => prev.filter(e => e.id !== deleteItem.id));
-    toast.success('Equipment record removed.');
-    setDeleteItem(null);
+    try {
+      await financeApi.equipmentCosts.remove(deleteItem.id);
+      toast.success('Equipment record removed.');
+      setDeleteItem(null);
+      fetchEquipmentCosts();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to remove equipment record.');
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {
@@ -632,3 +618,4 @@ export function EquipmentCostsPage() {
     </PageContainer>
   );
 }
+

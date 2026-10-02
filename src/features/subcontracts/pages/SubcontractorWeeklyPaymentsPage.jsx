@@ -25,7 +25,7 @@ import { toast } from '../../../components/composite/Toast';
 import { projectsApi, subcontractsApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-const LOCAL_STORAGE_KEY = 'mock_subcontractor_weekly_payments';
+
 
 const INITIAL_SEED_DATA = [
   {
@@ -231,77 +231,32 @@ export function SubcontractorWeeklyPaymentsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load from LocalStorage & API
+  // Load from Backend API
   const loadData = () => {
     setLoading(true);
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        setPayments(JSON.parse(saved));
-      } else {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_SEED_DATA));
-        setPayments(INITIAL_SEED_DATA);
-      }
-    } catch {
-      setPayments(INITIAL_SEED_DATA);
-    }
 
-    // Load projects and master subcontractors
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
-      subcontractsApi.contractors.list().catch(() => ({ data: [] }))
-    ]).then(([projRes, contrRes]) => {
+      subcontractsApi.contractors.list().catch(() => ({ data: [] })),
+      subcontractsApi.weeklyPayments.list().catch(() => ({ data: [] })),
+    ]).then(([projRes, contrRes, payRes]) => {
       const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
-      if (Array.isArray(pList) && pList.length > 0) {
-        setProjects(pList);
-      } else {
-        setProjects([
-          { id: '1', project_name: 'Greenfield Residency - Phase 1', project_code: 'PRJ-2026-001' },
-          { id: '2', project_name: 'Karur Commercial Plaza', project_code: 'PRJ-2026-002' }
-        ]);
-      }
+      setProjects(Array.isArray(pList) ? pList : []);
 
-      const cList = contrRes?.data?.subcontractors ?? contrRes?.data?.data ?? [];
-      let masterSubs = [];
-      try {
-        const rawSubs = JSON.parse(localStorage.getItem('mock_subcontractors_master') || '[]');
-        const MOCK_CODES = new Set(['SUB-2026-001', 'SUB-2026-002', 'SUB-2026-003', 'SUB-2026-004']);
-        masterSubs = rawSubs.filter(s => !MOCK_CODES.has(s.contractor_code));
-      } catch {
-        masterSubs = [];
-      }
+      const cList = contrRes?.data?.subcontractors ?? contrRes?.data?.data ?? (Array.isArray(contrRes?.data) ? contrRes.data : []);
+      setSubcontractors(Array.isArray(cList) ? cList : []);
 
-      const mergedSubs = [...masterSubs];
-      if (Array.isArray(cList)) {
-        cList.forEach(c => {
-          if (!mergedSubs.some(m => String(m.id) === String(c.id))) {
-            mergedSubs.push(c);
-          }
-        });
-      }
-
-      if (mergedSubs.length > 0) {
-        setSubcontractors(mergedSubs);
-      } else {
-        setSubcontractors([
-          { id: '1', contractor_name: 'Sri Murugan Civil Infra Pvt Ltd', trade: 'Masonry', phone: '+91 98421 22345' },
-          { id: '2', contractor_name: 'Apex Rebar & Steel Fabricators', trade: 'Steel Binding', phone: '+91 97890 54321' },
-          { id: '3', contractor_name: 'Royal Plastering & Tiles Gang', trade: 'Tiles & Flooring', phone: '+91 94432 99881' },
-          { id: '4', contractor_name: 'Shiva Plumbing & Sanitary Works', trade: 'Plumbing', phone: '+91 96554 11223' },
-          { id: '5', contractor_name: 'Kaveri Shuttering & Formwork', trade: 'Carpentry / Formwork', phone: '+91 98940 33445' },
-        ]);
-      }
+      const list = payRes?.data?.weekly_payments ?? payRes?.data ?? (Array.isArray(payRes) ? payRes : []);
+      setPayments(Array.isArray(list) ? list : []);
+    }).catch(err => {
+      console.error('Failed to load weekly payments data:', err);
+      toast.error('Failed to load weekly payments data.');
     }).finally(() => setLoading(false));
   };
 
   useEffect(() => {
     loadData();
   }, []);
-
-  const savePaymentsList = (newList) => {
-    setPayments(newList);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newList));
-  };
 
   // KPIs
   const kpis = useMemo(() => {
@@ -455,58 +410,13 @@ export function SubcontractorWeeklyPaymentsPage() {
     setErrors(prev => ({ ...prev, [field]: null }));
   };
 
-  // Auto-fill from Logged Daily Wages
+  // Auto-fill notice
   const handleAutoFillFromDailyWages = () => {
     if (!form.contractor_id) {
       toast.error('Please select a subcontractor first.');
       return;
     }
-
-    try {
-      const dailyWages = JSON.parse(localStorage.getItem('mock_daily_wages') || '[]');
-      const matched = dailyWages.filter(w => String(w.subcontractor_id) === String(form.contractor_id));
-
-      if (matched.length === 0) {
-        toast.info('No daily wages logged for this subcontractor yet. You can manually enter shifts and rate.');
-        return;
-      }
-
-      let totalDays = 0;
-      let totalWageAmount = 0;
-
-      matched.forEach(w => {
-        if (w.entries) {
-          Object.keys(w.entries).forEach(id => {
-            const shift = Number(w.entries[id]) || 0;
-            const rate = Number(w.rates?.[id]) || 850;
-            totalDays += shift;
-            totalWageAmount += (shift * rate);
-          });
-        }
-      });
-
-      if (totalDays > 0) {
-        const avgRate = Math.round(totalWageAmount / totalDays);
-        setForm(prev => {
-          const gross = totalWageAmount;
-          const adv = Number(prev.advance_deduction) || 0;
-          const oth = Number(prev.other_deductions) || 0;
-          return {
-            ...prev,
-            total_mandays: String(totalDays),
-            avg_rate_per_day: String(avgRate),
-            gross_amount: String(gross),
-            net_payable: String(Math.max(0, gross - adv - oth)),
-            notes: (prev.notes ? prev.notes + ' ' : '') + `(Auto-synced ${matched.length} daily wage logs)`
-          };
-        });
-        toast.success(`Synced ${totalDays} shifts from ${matched.length} daily wage logs.`);
-      } else {
-        toast.info('Found daily wage entries, but shifts were 0.');
-      }
-    } catch {
-      toast.error('Could not read daily wage logs.');
-    }
+    toast.info('Enter total shifts and average daily rate for this period.');
   };
 
   const handleSaveForm = (e) => {

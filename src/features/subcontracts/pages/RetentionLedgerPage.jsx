@@ -22,27 +22,7 @@ import { useAuth } from '../../auth/context/AuthContext';
 
 const INR = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`;
 
-// Local storage helper for persisting release transactions
-const STORAGE_KEY = 'civildesk_retention_releases';
 
-const getStoredReleases = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveStoredRelease = (release) => {
-  const existing = getStoredReleases();
-  existing.unshift(release);
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
-  } catch (err) {
-    console.warn('Failed to save release to localStorage', err);
-  }
-};
 
 export function RetentionLedgerPage() {
   const { hasPermission } = useAuth();
@@ -81,8 +61,9 @@ export function RetentionLedgerPage() {
       subcontractsApi.contractors.list().catch(() => ({ data: [] })),
       subcontractsApi.workOrders.list().catch(() => ({ data: [] })),
       subcontractsApi.raBills.list().catch(() => ({ data: [] })),
+      subcontractsApi.retentionReleases.list().catch(() => ({ data: [] })),
     ])
-      .then(([projRes, contrRes, woRes, raRes]) => {
+      .then(([projRes, contrRes, woRes, raRes, relRes]) => {
         const pList = projRes?.data?.projects ?? projRes?.projects ?? (Array.isArray(projRes?.data) ? projRes.data : []);
         setProjects(Array.isArray(pList) ? pList : []);
 
@@ -95,8 +76,8 @@ export function RetentionLedgerPage() {
         const rList = raRes?.data?.ra_bills ?? raRes?.ra_bills ?? (Array.isArray(raRes?.data) ? raRes.data : []);
         setRaBills(Array.isArray(rList) ? rList : []);
 
-        // Load stored release payments
-        setReleases(getStoredReleases());
+        const relList = relRes?.data?.retention_releases ?? relRes?.data ?? (Array.isArray(relRes) ? relRes : []);
+        setReleases(Array.isArray(relList) ? relList : []);
       })
       .catch((err) => {
         console.error('Failed to load retention ledger data:', err);
@@ -307,7 +288,7 @@ export function RetentionLedgerPage() {
     });
   };
 
-  const handleConfirmRelease = () => {
+  const handleConfirmRelease = async () => {
     if (!releaseModalItem) return;
     const rel = Number(releaseForm.amount || 0);
 
@@ -321,24 +302,25 @@ export function RetentionLedgerPage() {
     }
 
     setSavingRelease(true);
-    setTimeout(() => {
-      const newRecord = {
-        id: `REL-${Date.now()}`,
+    try {
+      const payload = {
         work_order_id: releaseModalItem.id,
-        work_order_no: releaseModalItem.work_order_no,
-        contractor_name: releaseModalItem.contractor_name,
         release_amount: rel,
         release_date: releaseForm.release_date,
         payment_mode: releaseForm.payment_mode,
         reference_no: releaseForm.reference_no || `RET-REF-${Math.floor(100000 + Math.random() * 900000)}`,
         remarks: releaseForm.remarks || 'Retention release payment',
+      };
+
+      const res = await subcontractsApi.retentionReleases.create(payload);
+      const newRecord = res?.data || {
+        ...payload,
+        id: `REL-${Date.now()}`,
         created_at: new Date().toISOString(),
       };
 
-      saveStoredRelease(newRecord);
-      setReleases(getStoredReleases());
+      setReleases(prev => [newRecord, ...prev]);
 
-      // Update currently viewed dossier if open
       if (viewingItem && viewingItem.id === releaseModalItem.id) {
         setViewingItem((prev) => {
           const newRel = prev.retention_released + rel;
@@ -356,8 +338,12 @@ export function RetentionLedgerPage() {
 
       toast.success(`Retention payment of ${INR(rel)} successfully recorded for ${releaseModalItem.contractor_name}.`);
       setReleaseModalItem(null);
+    } catch (err) {
+      console.error('Failed to create retention release:', err);
+      toast.error(err.response?.data?.message || 'Failed to save retention release.');
+    } finally {
       setSavingRelease(false);
-    }, 300);
+    }
   };
 
   const handlePrint = () => {

@@ -1,11 +1,23 @@
-import { UnderConstructionPage } from './UnderConstructionPage';
+import { Building } from 'lucide-react';
+import { MasterCrudPage } from './MasterCrudPage';
+import { banksApi } from '../../../api/apiservice';
 
 export function BanksPage() {
   return (
-    <UnderConstructionPage
-      title="Banks Registry"
-      moduleName="Settlement Banks"
-      description="The application backend does not maintain a standalone database table for managing company Bank records. Bank account parameters are configured inline directly inside Client, Vendor, and Subcontractor settlement forms."
+    <MasterCrudPage
+      title="Bank Accounts"
+      subtitle="Manage corporate & project bank account master entries"
+      icon={Building}
+      apiService={banksApi}
+      dataKey="banks"
+      codeField="bank_code"
+      nameField="bank_name"
+      extraFields={[
+        { name: 'account_number', label: 'Account Number', placeholder: 'e.g. 5010049102391' },
+        { name: 'ifsc_code', label: 'IFSC Code', placeholder: 'e.g. HDFC0001234' }
+      ]}
     />
   );
 }
+
+export default BanksPage;

@@ -19,10 +19,15 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, receivablesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
-
+const extractList = (res, key) => {
+  if (Array.isArray(res)) return res;
+  if (res?.data?.[key] && Array.isArray(res.data[key])) return res.data[key];
+  if (res?.data && Array.isArray(res.data)) return res.data;
+  return [];
+};
 
 const EMPTY_FORM = {
   project_id: '',
@@ -43,15 +48,8 @@ const EMPTY_FORM = {
 export function ClientContractsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [contracts, setContracts] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_receivables_ClientContractsPage');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [loading, setLoading] = useState(false);
+  const [contracts, setContracts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -68,18 +66,27 @@ export function ClientContractsPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  const fetchContracts = async () => {
+    setLoading(true);
+    try {
+      const res = await receivablesApi.contracts.list();
+      setContracts(extractList(res, 'contracts'));
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load client contracts.');
+      setContracts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects & Contracts
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+    fetchContracts();
   }, []);
-
-  
-  useEffect(() => {
-    localStorage.setItem('mock_receivables_ClientContractsPage', JSON.stringify(contracts));
-  }, [contracts]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -128,6 +135,7 @@ export function ClientContractsPage() {
     if (!form.contract_no.trim()) errs.contract_no = 'Contract number is required';
     if (!form.contract_title.trim()) errs.contract_title = 'Contract title is required';
     if (!form.client_name.trim()) errs.client_name = 'Client name is required';
+    if (!form.project_id) errs.project_id = 'Project is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -136,53 +144,52 @@ export function ClientContractsPage() {
 
     setSaving(true);
     try {
-      const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
-      const val = Number(form.contract_value || 0);
-
-      const newCtr = {
-        id: editingItem?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        contract_no: form.contract_no,
+      const payload = {
+        project_id: Number(form.project_id),
+        contract_no: form.contract_no.trim(),
         contract_date: form.contract_date,
-        client_name: form.client_name,
-        contract_title: form.contract_title,
-        contract_value: val,
-        commencement_date: form.commencement_date,
-        completion_deadline: form.completion_deadline,
+        client_name: form.client_name.trim(),
+        contract_title: form.contract_title.trim(),
+        contract_value: Number(form.contract_value || 0),
+        commencement_date: form.commencement_date || null,
+        completion_deadline: form.completion_deadline || null,
         retention_pct: Number(form.retention_pct || 5),
         advance_pct: Number(form.advance_pct || 10),
         dlp_months: Number(form.dlp_months || 24),
         liquidated_damages: form.liquidated_damages,
-        status: editingItem?.status || 'Active (In Progress)',
-        billed_to_date: editingItem?.billed_to_date || 0,
-        collected_to_date: editingItem?.collected_to_date || 0,
         notes: form.notes,
       };
 
       if (editingItem?.id) {
-        setContracts(prev => prev.map(c => c.id === editingItem.id ? newCtr : c));
+        await receivablesApi.contracts.update(editingItem.id, payload);
         toast.success('Contract agreement updated.');
       } else {
-        setContracts(prev => [newCtr, ...prev]);
+        await receivablesApi.contracts.create(payload);
         toast.success('Client contract agreement registered.');
       }
 
       setIsAddOpen(false);
       setEditingItem(null);
-    } catch {
-      toast.error('Failed to save contract agreement.');
+      fetchContracts();
+    } catch (err) {
+      const msg = err?.message || err?.errors ? Object.values(err.errors || {}).flat().join(', ') : 'Failed to save contract agreement.';
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteItem?.id) return;
-    setContracts(prev => prev.filter(c => c.id !== deleteItem.id));
-    toast.success('Contract removed.');
-    setDeleteItem(null);
+    try {
+      await receivablesApi.contracts.remove(deleteItem.id);
+      toast.success('Contract removed.');
+      setDeleteItem(null);
+      fetchContracts();
+    } catch (err) {
+      toast.error(err?.message || 'Failed to delete contract.');
+      setDeleteItem(null);
+    }
   };
 
   const handlePrint = () => {

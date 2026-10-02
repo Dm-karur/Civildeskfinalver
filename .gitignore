@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated Reports & Documents
+*.docx
+*.pdf
+*.html
+generate_report_*.py

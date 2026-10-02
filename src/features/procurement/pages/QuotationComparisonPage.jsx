@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   Scale, CheckCircle2, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi , procurementApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -44,7 +44,7 @@ export function QuotationComparisonPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
   const [comparisons, setComparisons] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -62,34 +62,34 @@ export function QuotationComparisonPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  const fetchComparisons = async () => {
+    setLoading(true);
+    try {
+      const res = await procurementApi.comparisons.list();
+      const list = res?.data?.comparisons ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setComparisons(Array.isArray(list) ? list : []);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to load data.');
+      setComparisons([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+    // Load Projects
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
-  }, []);
-
-  
-  // --- MOCK PERSISTENCE INJECTED ---
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mock_procurement_QuotationComparisonPage');
-      if (saved) {
-        setComparisons(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load mock data', e);
-    }
+    fetchComparisons();
   }, []);
 
   useEffect(() => {
     // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
     // but for purely mock pages, saving the current state on every change is correct).
     // To be safe, we check if there's at least something, or if there's a saved version already.
-    const saved = localStorage.getItem('mock_procurement_QuotationComparisonPage');
     if (comparisons.length > 0 || saved) {
-       localStorage.setItem('mock_procurement_QuotationComparisonPage', JSON.stringify(comparisons));
     }
   }, [comparisons]);
   // ---------------------------------
@@ -711,3 +711,6 @@ export function QuotationComparisonPage() {
     </PageContainer>
   );
 }
+
+
+

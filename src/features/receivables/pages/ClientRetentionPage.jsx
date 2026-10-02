@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   Lock, CheckCircle2, IndianRupee, Clock, ShieldCheck,
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, receivablesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -40,15 +40,8 @@ const EMPTY_FORM = {
 export function ClientRetentionPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [retentions, setRetentions] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_receivables_ClientRetentionPage');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [loading, setLoading] = useState(false);
+  const [retentions, setRetentions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -73,9 +66,6 @@ export function ClientRetentionPage() {
     }).catch(() => setProjects([]));
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('mock_receivables_ClientRetentionPage', JSON.stringify(retentions));
-  }, [retentions]);
 
   const handleOpenAdd = () => {
     setForm({ ...EMPTY_FORM, retention_no: `RET-2026-${String(retentions.length + 1).padStart(3, '0')}` });
@@ -559,3 +549,4 @@ export function ClientRetentionPage() {
     </PageContainer>
   );
 }
+

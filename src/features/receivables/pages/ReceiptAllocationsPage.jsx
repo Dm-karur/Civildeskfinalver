@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   Link2, CheckCircle2, IndianRupee, Clock, ShieldCheck,
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
@@ -19,7 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
+import { projectsApi, receivablesApi } from '../../../api/apiservice';
 import { useAuth } from '../../auth/context/AuthContext';
 
 
@@ -40,15 +40,8 @@ const EMPTY_FORM = {
 export function ReceiptAllocationsPage() {
   const { hasPermission } = useAuth();
   const [projects, setProjects] = useState([]);
-  const [allocations, setAllocations] = useState(() => {
-    try {
-      const saved = localStorage.getItem('mock_receivables_ReceiptAllocationsPage');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [loading, setLoading] = useState(false);
+  const [allocations, setAllocations] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -74,9 +67,6 @@ export function ReceiptAllocationsPage() {
   }, []);
 
   
-  useEffect(() => {
-    localStorage.setItem('mock_receivables_ReceiptAllocationsPage', JSON.stringify(allocations));
-  }, [allocations]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -598,3 +588,4 @@ export function ReceiptAllocationsPage() {
     </PageContainer>
   );
 }
+
