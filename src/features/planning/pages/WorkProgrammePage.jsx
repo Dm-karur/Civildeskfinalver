@@ -19,9 +19,6 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi , planningApi } from '../../../api/apiservice';
-
-
 const EMPTY_FORM = {
   project_id: '',
   stage_code: '',
@@ -64,10 +61,10 @@ export function WorkProgrammePage() {
     setLoading(true);
     try {
       const res = await planningApi.workProgramme.list();
-      const list = res?.data?.work_programmes ?? res?.data ?? (Array.isArray(res) ? res : []);
+      const list = res?.data?.work_programmes ?? res?.work_programmes ?? res?.data ?? (Array.isArray(res) ? res : []);
       setPackages(Array.isArray(list) ? list : []);
     } catch (err) {
-      toast.error(err?.message || 'Failed to load work programme data.');
+      console.warn('Backend /api/planning/work-programme fetch error:', err);
       setPackages([]);
     } finally {
       setLoading(false);

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Award, CheckCircle2, IndianRupee, Clock, ShieldCheck,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
@@ -28,13 +28,13 @@ const EMPTY_FORM = {
   project_id: '',
   certificate_no: '',
   package_title: '',
-  work_order_no: 'WO-2026-012',
-  contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
+  work_order_no: '',
+  contractor_name: '',
   actual_completion_date: '',
-  final_contract_value: '1500000',
-  snag_list_status: '100% Snags Cleared',
-  dlp_period: '12 Months',
-  as_built_status: 'Handed Over & Approved',
+  final_contract_value: '',
+  snag_list_status: '',
+  dlp_period: '',
+  as_built_status: '',
   notes: '',
 };
 
@@ -86,7 +86,7 @@ export function PackageCompletionPage() {
     // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
     // but for purely mock pages, saving the current state on every change is correct).
     // To be safe, we check if there's at least something, or if there's a saved version already.
-    if (completions.length > 0 || saved) {
+    if (completions.length > 0) {
     }
   }, [completions]);
   // ---------------------------------
@@ -94,12 +94,11 @@ export function PackageCompletionPage() {
   // Form Handlers
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
 
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
-      certificate_no: `TOC-2026-00${completions.length + 6}`,
       actual_completion_date: today,
     });
     setErrors({});
@@ -114,10 +113,10 @@ export function PackageCompletionPage() {
       work_order_no: item.work_order_no || '',
       contractor_name: item.contractor_name || '',
       actual_completion_date: item.actual_completion_date || '',
-      final_contract_value: String(item.final_contract_value || '1500000'),
-      snag_list_status: item.snag_list_status || '100% Snags Cleared',
-      dlp_period: item.dlp_period || '12 Months',
-      as_built_status: item.as_built_status || 'Handed Over & Approved',
+      final_contract_value: String(item.final_contract_value || ''),
+      snag_list_status: item.snag_list_status || '',
+      dlp_period: item.dlp_period || '',
+      as_built_status: item.as_built_status || '',
       notes: item.notes || '',
     });
     setErrors({});

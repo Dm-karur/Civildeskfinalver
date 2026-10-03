@@ -27,154 +27,6 @@ import { useAuth } from '../../auth/context/AuthContext';
 
 
 
-const INITIAL_SEED_DATA = [
-  {
-    id: 'swp-001',
-    voucher_no: 'SWP-2026-W36-001',
-    week_number: 'Week 36 (01 Sep - 07 Sep 2026)',
-    week_start: '2026-09-01',
-    week_end: '2026-09-07',
-    project_id: '1',
-    project_name: 'Greenfield Residency - Phase 1',
-    site_id: 'SITE-01',
-    site_name: 'Main Residential Tower A',
-    contractor_id: '1',
-    contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-    trade_category: 'Brick Masonry & Plastering',
-    work_order_no: 'WO-2026-012',
-    total_mandays: 64,
-    avg_rate_per_day: 850,
-    gross_amount: 54400,
-    advance_deduction: 5000,
-    other_deductions: 1400,
-    net_payable: 48000,
-    payment_mode: 'RTGS / Bank Transfer',
-    bank_account: 'HDFC Bank - Current A/C (*4910)',
-    reference_no: 'UTR-HDFC-982103482',
-    payment_date: '2026-09-05',
-    status: 'Paid',
-    prepared_by: 'Site Supervisor (Ram)',
-    approved_by: 'Project Manager (K. Sundar)',
-    notes: 'Weekly settlement for Block B 3rd floor masonry work gang.'
-  },
-  {
-    id: 'swp-002',
-    voucher_no: 'SWP-2026-W36-002',
-    week_number: 'Week 36 (01 Sep - 07 Sep 2026)',
-    week_start: '2026-09-01',
-    week_end: '2026-09-07',
-    project_id: '1',
-    project_name: 'Greenfield Residency - Phase 1',
-    site_id: 'SITE-01',
-    site_name: 'Basement Parking 2',
-    contractor_id: '2',
-    contractor_name: 'Apex Rebar & Steel Fabricators',
-    trade_category: 'Rebar Cutting & Tying',
-    work_order_no: 'WO-2026-018',
-    total_mandays: 48,
-    avg_rate_per_day: 950,
-    gross_amount: 45600,
-    advance_deduction: 3000,
-    other_deductions: 600,
-    net_payable: 42000,
-    payment_mode: 'NEFT Transfer',
-    bank_account: 'ICICI Bank - Escrow A/C (*2201)',
-    reference_no: 'UTR-ICIC-749102834',
-    payment_date: '2026-09-05',
-    status: 'Paid',
-    prepared_by: 'Steel Incharge',
-    approved_by: 'Project Manager (K. Sundar)',
-    notes: 'Weekly wages for raft foundation rebar binding crew.'
-  },
-  {
-    id: 'swp-003',
-    voucher_no: 'SWP-2026-W36-003',
-    week_number: 'Week 36 (01 Sep - 07 Sep 2026)',
-    week_start: '2026-09-01',
-    week_end: '2026-09-07',
-    project_id: '2',
-    project_name: 'Karur Commercial Plaza',
-    site_id: 'SITE-081',
-    site_name: 'Ajantha Theater Trichy Site',
-    contractor_id: '3',
-    contractor_name: 'Royal Plastering & Tiles Gang',
-    trade_category: 'Tile Laying & Flooring',
-    work_order_no: 'WO-2026-022',
-    total_mandays: 36,
-    avg_rate_per_day: 900,
-    gross_amount: 32400,
-    advance_deduction: 2000,
-    other_deductions: 400,
-    net_payable: 30000,
-    payment_mode: 'RTGS / Bank Transfer',
-    bank_account: 'Axis Bank - Project A/C (*7721)',
-    reference_no: '',
-    payment_date: '',
-    status: 'Approved',
-    prepared_by: 'Site Supervisor',
-    approved_by: 'Commercial Head',
-    notes: 'Floor tiling 1st floor corridor completed and verified.'
-  },
-  {
-    id: 'swp-004',
-    voucher_no: 'SWP-2026-W36-004',
-    week_number: 'Week 36 (01 Sep - 07 Sep 2026)',
-    week_start: '2026-09-01',
-    week_end: '2026-09-07',
-    project_id: '2',
-    project_name: 'Karur Commercial Plaza',
-    site_id: 'SITE-020',
-    site_name: 'Commercial Complex Wing B',
-    contractor_id: '4',
-    contractor_name: 'Shiva Plumbing & Sanitary Works',
-    trade_category: 'Plumbing & Drainage',
-    work_order_no: 'WO-2026-031',
-    total_mandays: 28,
-    avg_rate_per_day: 850,
-    gross_amount: 23800,
-    advance_deduction: 0,
-    other_deductions: 800,
-    net_payable: 23000,
-    payment_mode: 'UPI / IMPS',
-    bank_account: 'HDFC Bank - Current A/C (*4910)',
-    reference_no: '',
-    payment_date: '',
-    status: 'Pending Approval',
-    prepared_by: 'Junior Engineer',
-    approved_by: '',
-    notes: 'Vertical drainage pipe installation 1st to 4th floor.'
-  },
-  {
-    id: 'swp-005',
-    voucher_no: 'SWP-2026-W36-005',
-    week_number: 'Week 36 (01 Sep - 07 Sep 2026)',
-    week_start: '2026-09-01',
-    week_end: '2026-09-07',
-    project_id: '1',
-    project_name: 'Greenfield Residency - Phase 1',
-    site_id: 'SITE-01',
-    site_name: 'Main Residential Tower A',
-    contractor_id: '5',
-    contractor_name: 'Kaveri Shuttering & Formwork',
-    trade_category: 'Formwork & Shuttering',
-    work_order_no: 'WO-2026-015',
-    total_mandays: 52,
-    avg_rate_per_day: 920,
-    gross_amount: 47840,
-    advance_deduction: 5000,
-    other_deductions: 1840,
-    net_payable: 41000,
-    payment_mode: 'Cheque',
-    bank_account: 'SBI Project Escrow (*0918)',
-    reference_no: '',
-    payment_date: '',
-    status: 'Draft',
-    prepared_by: 'Site Supervisor',
-    approved_by: '',
-    notes: 'Formwork de-shuttering and staging for 4th floor slab.'
-  }
-];
-
 const EMPTY_FORM = {
   project_id: '',
   project_name: '',
@@ -186,18 +38,20 @@ const EMPTY_FORM = {
   week_start: '',
   week_end: '',
   total_mandays: '0',
-  avg_rate_per_day: '850',
+  avg_rate_per_day: '',
   gross_amount: '0',
   advance_deduction: '0',
   other_deductions: '0',
   net_payable: '0',
-  payment_mode: 'RTGS / Bank Transfer',
-  bank_account: 'HDFC Bank - Current A/C (*4910)',
+  payment_mode: '',
+  bank_account: '',
   reference_no: '',
   payment_date: '',
   status: 'Pending Approval',
   notes: ''
 };
+
+
 
 export function SubcontractorWeeklyPaymentsPage() {
   const navigate = useNavigate();
@@ -221,10 +75,10 @@ export function SubcontractorWeeklyPaymentsPage() {
   const [deleteItem, setDeleteItem] = useState(null);
   const [disburseItem, setDisburseItem] = useState(null);
   const [disburseForm, setDisburseForm] = useState({
-    payment_mode: 'RTGS / Bank Transfer',
+    payment_mode: '',
     reference_no: '',
     payment_date: new Date().toISOString().split('T')[0],
-    bank_account: 'HDFC Bank - Current A/C (*4910)'
+    bank_account: ''
   });
 
   const [form, setForm] = useState(EMPTY_FORM);
@@ -323,20 +177,15 @@ export function SubcontractorWeeklyPaymentsPage() {
   // Form Handlers
   const handleOpenAdd = () => {
     const { start, end } = getCurrentWeekDefaults();
-    const nextSeq = payments.length + 1;
-    const voucher_no = `SWP-2026-W36-${String(nextSeq).padStart(3, '0')}`;
-    const defaultProj = projects[0] ? String(projects[0].id) : '1';
-    const defaultProjName = projects[0]?.project_name || 'Greenfield Residency - Phase 1';
+    const defaultProj = projects[0] ? String(projects[0].id) : '';
+    const defaultProjName = projects[0]?.project_name || '';
 
     setForm({
       ...EMPTY_FORM,
-      voucher_no,
       project_id: defaultProj,
       project_name: defaultProjName,
-      site_name: 'Main Site Tower A',
       week_start: start,
       week_end: end,
-      work_order_no: `WO-2026-0${nextSeq + 10}`,
       status: 'Pending Approval'
     });
     setErrors({});

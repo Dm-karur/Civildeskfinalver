@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Scale, CheckCircle2, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
@@ -28,15 +28,15 @@ const EMPTY_FORM = {
   project_id: '',
   cs_no: '',
   date: '',
-  rfq_reference: 'RFQ-2026-031',
-  material_scope: 'OPC 53 Grade Cement (500 Bags)',
+  rfq_reference: '',
+  material_scope: '',
   l1_vendor: '',
-  l1_rate: '382.2',
-  l1_total: '191100',
-  budget_ceiling: '192500',
-  variance_savings: '1400',
+  l1_rate: '',
+  l1_total: '',
+  budget_ceiling: '',
+  variance_savings: '',
   recommended_vendor: '',
-  status: 'Approved for PO Award',
+  status: 'Draft',
   notes: '',
 };
 

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   RotateCcw, CheckCircle2, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
@@ -28,17 +28,17 @@ const EMPTY_FORM = {
   project_id: '',
   debit_note_no: '',
   return_date: '',
-  po_reference: 'PO-2026-088',
-  grn_reference: 'GRN-2026-081',
+  po_reference: '',
+  grn_reference: '',
   supplier_name: '',
-  material_code: 'MAT-CEM-001',
-  material_name: 'OPC 53 Grade Cement',
-  return_qty: '20',
-  uom: 'Bags',
-  unit_rate: '340',
-  debit_amount: '6800',
-  reason: 'Damaged in transit',
-  status: 'Debit Note Issued (Vendor Credit Acknowledged)',
+  material_code: '',
+  material_name: '',
+  return_qty: '',
+  uom: '',
+  unit_rate: '',
+  debit_amount: '',
+  reason: '',
+  status: 'Draft',
   notes: '',
 };
 

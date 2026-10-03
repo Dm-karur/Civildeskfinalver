@@ -33,7 +33,7 @@ const AVAILABLE_ACTIVITIES = [
 export function PlanningBoqMappingPage() {
   const [projects, setProjects] = useState([]);
   const [mappings, setMappings] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -48,12 +48,27 @@ export function PlanningBoqMappingPage() {
   const [selectedActCode, setSelectedActCode] = useState('ACT-0101-EXC');
   const [weightagePct, setWeightagePct] = useState('100');
 
-  // Load Projects
+  const fetchMappings = async () => {
+    setLoading(true);
+    try {
+      const res = await planningApi.boqMappings.list();
+      const list = res?.data?.boq_mappings ?? res?.boq_mappings ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setMappings(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.warn('Backend planning/boq-mappings API fetch error:', err);
+      setMappings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects & BOQ Mappings
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
+    fetchMappings();
   }, []);
 
   // Filtered List

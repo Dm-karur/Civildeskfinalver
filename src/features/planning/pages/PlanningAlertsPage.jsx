@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Bell, AlertTriangle, Flame, ShieldAlert, CheckCircle2,
   Clock, Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
@@ -70,17 +70,17 @@ export function PlanningAlertsPage() {
     setLoading(true);
     try {
       const res = await planningApi.alerts.list();
-      const list = res?.data?.alerts ?? res?.data ?? (Array.isArray(res) ? res : []);
+      const list = res?.data?.alerts ?? res?.alerts ?? res?.data ?? (Array.isArray(res) ? res : []);
       setAlerts(Array.isArray(list) ? list : []);
     } catch (err) {
-      toast.error(err?.message || 'Failed to load data.');
+      console.warn('Backend /api/planning/alerts fetch error:', err);
       setAlerts([]);
     } finally {
       setLoading(false);
     }
   };
 
-    // Load Projects
+  // Load Projects
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
@@ -88,14 +88,6 @@ export function PlanningAlertsPage() {
     }).catch(() => setProjects([]));
     fetchAlerts();
   }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    if (alerts.length > 0 || saved) {
-    }
-  }, [alerts]);
   // ---------------------------------
 
   // Form Handlers
@@ -200,7 +192,8 @@ export function PlanningAlertsPage() {
     return alerts.filter(a => {
       if (selectedProjectId !== 'all' && String(a.project_id) !== String(selectedProjectId)) return false;
       if (categoryFilter !== 'all' && a.category_id !== categoryFilter) return false;
-      if (priorityFilter !== 'all' && a.priority !== priorityFilter) return false;
+      const prio = a.priority || a.severity || '';
+      if (priorityFilter !== 'all' && !prio.toLowerCase().includes(priorityFilter.toLowerCase())) return false;
       if (search) {
         const q = search.toLowerCase();
         const code = (a.alert_code || '').toLowerCase();
@@ -217,14 +210,20 @@ export function PlanningAlertsPage() {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const criticalCount = useMemo(() => alerts.filter(a => a.priority === 'Critical' && a.status !== 'Resolved').length, [alerts]);
+  const criticalCount = useMemo(() => alerts.filter(a => {
+    const prio = (a.priority || a.severity || '').toLowerCase();
+    return prio.includes('critical') && a.status !== 'Resolved';
+  }).length, [alerts]);
+
   const activeCount = useMemo(() => alerts.filter(a => a.status !== 'Resolved').length, [alerts]);
   const resolvedCount = useMemo(() => alerts.filter(a => a.status === 'Resolved').length, [alerts]);
 
   const getPriorityVariant = (priority) => {
-    if (priority === 'Critical') return 'error';
-    if (priority === 'High') return 'warning';
-    if (priority === 'Medium') return 'neutral';
+    if (!priority) return 'neutral';
+    const lower = String(priority).toLowerCase();
+    if (lower.includes('critical')) return 'error';
+    if (lower.includes('high')) return 'warning';
+    if (lower.includes('medium')) return 'neutral';
     return 'neutral';
   };
 
@@ -267,7 +266,7 @@ export function PlanningAlertsPage() {
           />
           <KpiCard
             label="High & Moderate Alerts"
-            value={activeCount - criticalCount}
+            value={Math.max(0, activeCount - criticalCount)}
             status="warning"
             icon={<AlertTriangle className="w-4 h-4 text-amber-500" />}
           />
@@ -390,6 +389,10 @@ export function PlanningAlertsPage() {
                 ) : (
                   paged.map((a, idx) => {
                     const isResolved = a.status === 'Resolved';
+                    const priority = a.priority || a.severity || 'Medium';
+                    const categoryName = a.category_name || a.alert_type || 'Early Warning';
+                    const triggeredDate = a.triggered_at || a.trigger_date || '';
+                    const agingText = a.aging_days !== undefined && a.aging_days !== null ? ` (${a.aging_days}d ago)` : '';
 
                     return (
                       <tr key={a.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
@@ -407,22 +410,22 @@ export function PlanningAlertsPage() {
                               {a.title}
                             </span>
                             <span className="text-[10px] text-text-muted truncate">
-                              Impact: {a.impacted_scope} • Triggered: {a.triggered_at} ({a.aging_days}d ago)
+                              Impact: {a.impacted_scope}{triggeredDate ? ` • Triggered: ${triggeredDate}${agingText}` : ''}
                             </span>
                           </div>
                         </td>
                         <td className="px-3 py-2 hidden md:table-cell">
                           <div className="flex items-center gap-1.5 text-[11px] text-text-primary">
                             {getCategoryIcon(a.category_id)}
-                            <span className="truncate">{a.category_name}</span>
+                            <span className="truncate">{categoryName}</span>
                           </div>
                         </td>
                         <td className="px-3 py-2 text-center">
                           <Badge
-                            variant={getPriorityVariant(a.priority)}
+                            variant={getPriorityVariant(priority)}
                             className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
                           >
-                            {a.priority}
+                            {priority}
                           </Badge>
                         </td>
                         <td className="px-3 py-2 hidden lg:table-cell text-[11px] text-text-secondary truncate">
@@ -480,41 +483,45 @@ export function PlanningAlertsPage() {
 
         {/* Mobile View - Cards List for Phones (< sm) */}
         <div className="block sm:hidden space-y-3">
-          {paged.map((a, idx) => (
-            <div key={a.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="font-mono text-[10px] font-bold text-red-600 block">{a.alert_code}</span>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{a.title}</h4>
+          {paged.map((a, idx) => {
+            const priority = a.priority || a.severity || 'Medium';
+
+            return (
+              <div key={a.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="font-mono text-[10px] font-bold text-red-600 block">{a.alert_code}</span>
+                    <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{a.title}</h4>
+                  </div>
+                  <Badge
+                    variant={getPriorityVariant(priority)}
+                    className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
+                  >
+                    {priority}
+                  </Badge>
                 </div>
-                <Badge
-                  variant={getPriorityVariant(a.priority)}
-                  className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
-                >
-                  {a.priority}
-                </Badge>
-              </div>
 
-              <div className="p-2 bg-surface-muted/30 rounded border border-border/50 text-xs">
-                <span className="text-[10px] uppercase font-bold text-text-muted block">Impacted Scope</span>
-                <span className="text-text-primary text-[11px] font-medium block">{a.impacted_scope}</span>
-              </div>
+                <div className="p-2 bg-surface-muted/30 rounded border border-border/50 text-xs">
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Impacted Scope</span>
+                  <span className="text-text-primary text-[11px] font-medium block">{a.impacted_scope}</span>
+                </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-border/60 text-xs">
-                <span className="text-[10px] text-text-muted font-mono">{a.category_name}</span>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingAlert(a)}>
-                    <Eye className="w-3 h-3 mr-1" /> View
-                  </Button>
-                  {a.status !== 'Resolved' && (
-                    <Button variant="primary" size="sm" className="h-7 text-[11px] px-2 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleResolve(a)}>
-                      <Check className="w-3 h-3 mr-1" /> Resolve
+                <div className="flex items-center justify-between pt-1 border-t border-border/60 text-xs">
+                  <span className="text-[10px] text-text-muted font-mono">{a.category_name || a.alert_type}</span>
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingAlert(a)}>
+                      <Eye className="w-3 h-3 mr-1" /> View
                     </Button>
-                  )}
+                    {a.status !== 'Resolved' && (
+                      <Button variant="primary" size="sm" className="h-7 text-[11px] px-2 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleResolve(a)}>
+                        <Check className="w-3 h-3 mr-1" /> Resolve
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Mobile Pagination */}
           <div className="pt-2">

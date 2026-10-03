@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   CalendarDays, CheckCircle2, Clock, AlertTriangle, PlayCircle,
   Plus, Edit, Trash2, Search, Filter, Eye, Layers,
@@ -74,17 +74,17 @@ export function PlanningActivitiesPage() {
     setLoading(true);
     try {
       const res = await planningApi.activities.list();
-      const list = res?.data?.activities ?? res?.data ?? (Array.isArray(res) ? res : []);
+      const list = res?.data?.activities ?? res?.activities ?? res?.data ?? (Array.isArray(res) ? res : []);
       setActivities(Array.isArray(list) ? list : []);
     } catch (err) {
-      toast.error(err?.message || 'Failed to load data.');
+      console.warn('Backend planning/activities API fetch error:', err);
       setActivities([]);
     } finally {
       setLoading(false);
     }
   };
 
-    // Load Projects
+  // Load Projects
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
@@ -92,14 +92,6 @@ export function PlanningActivitiesPage() {
     }).catch(() => setProjects([]));
     fetchActivities();
   }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    if (activities.length > 0 || saved) {
-    }
-  }, [activities]);
   // ---------------------------------
 
   // Form Handlers

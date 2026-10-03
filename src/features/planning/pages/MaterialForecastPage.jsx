@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   TrendingUp, CheckCircle2, Clock, AlertTriangle, IndianRupee,
   Search, Filter, Eye, Edit, Trash2, Plus, Calendar,
@@ -70,17 +70,17 @@ export function MaterialForecastPage() {
     setLoading(true);
     try {
       const res = await planningApi.materialForecasts.list();
-      const list = res?.data?.forecasts ?? res?.data ?? (Array.isArray(res) ? res : []);
+      const list = res?.data?.forecasts ?? res?.forecasts ?? res?.data ?? (Array.isArray(res) ? res : []);
       setForecasts(Array.isArray(list) ? list : []);
     } catch (err) {
-      toast.error(err?.message || 'Failed to load data.');
+      console.warn('Backend /api/planning/material-forecasts fetch error:', err);
       setForecasts([]);
     } finally {
       setLoading(false);
     }
   };
 
-    // Load Projects
+  // Load Projects
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
@@ -88,14 +88,6 @@ export function MaterialForecastPage() {
     }).catch(() => setProjects([]));
     fetchForecasts();
   }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    if (forecasts.length > 0 || saved) {
-    }
-  }, [forecasts]);
   // ---------------------------------
 
   // Form Handlers
@@ -217,9 +209,9 @@ export function MaterialForecastPage() {
       if (selectedProjectId !== 'all' && String(f.project_id) !== String(selectedProjectId)) return false;
       if (search) {
         const q = search.toLowerCase();
-        const code = (f.material_code || '').toLowerCase();
-        const name = (f.name || '').toLowerCase();
-        const cat = (f.category || '').toLowerCase();
+        const code = (f.material_code || f.item_code || '').toLowerCase();
+        const name = (f.name || f.item_name || '').toLowerCase();
+        const cat = (f.category || f.category_name || '').toLowerCase();
         if (!code.includes(q) && !name.includes(q) && !cat.includes(q)) return false;
       }
       return true;
@@ -230,9 +222,17 @@ export function MaterialForecastPage() {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const totalQuarterlyValuation = useMemo(() => forecasts.reduce((acc, f) => acc + Number(f.total_amount || 0), 0), [forecasts]);
-  const m1TotalValuation = useMemo(() => forecasts.reduce((acc, f) => acc + (f.m1_qty * f.unit_rate), 0), [forecasts]);
-  const m2TotalValuation = useMemo(() => forecasts.reduce((acc, f) => acc + (f.m2_qty * f.unit_rate), 0), [forecasts]);
+  const totalQuarterlyValuation = useMemo(() => forecasts.reduce((acc, f) => acc + Number(f.total_amount ?? f.forecast_cost ?? 0), 0), [forecasts]);
+  const m1TotalValuation = useMemo(() => forecasts.reduce((acc, f) => {
+    const m1 = Number(f.m1_qty ?? (f.estimated_qty ? Math.round(f.estimated_qty * 0.4) : 0));
+    const rate = Number(f.unit_rate ?? f.unit_price ?? 0);
+    return acc + (m1 * rate);
+  }, 0), [forecasts]);
+  const m2TotalValuation = useMemo(() => forecasts.reduce((acc, f) => {
+    const m2 = Number(f.m2_qty ?? (f.estimated_qty ? Math.round(f.estimated_qty * 0.4) : 0));
+    const rate = Number(f.unit_rate ?? f.unit_price ?? 0);
+    return acc + (m2 * rate);
+  }, 0), [forecasts]);
 
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
@@ -364,74 +364,92 @@ export function MaterialForecastPage() {
                     </td>
                   </tr>
                 ) : (
-                  paged.map((f, idx) => (
-                    <tr key={f.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
-                      <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
-                        {(page - 1) * perPage + idx + 1}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                          {f.material_code}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-text-primary text-[12px] truncate" title={f.name}>
-                            {f.name}
+                  paged.map((f, idx) => {
+                    const code = f.material_code || f.item_code || '';
+                    const name = f.name || f.item_name || '';
+                    const cat = f.category || f.category_name || '';
+                    const uom = f.uom_name || '';
+                    const m1 = Number(f.m1_qty ?? (f.estimated_qty ? Math.round(f.estimated_qty * 0.4) : 0));
+                    const m2 = Number(f.m2_qty ?? (f.estimated_qty ? Math.round(f.estimated_qty * 0.4) : 0));
+                    const m3 = Number(f.m3_qty ?? (f.estimated_qty ? Math.round(f.estimated_qty * 0.2) : 0));
+                    const totalQty = Number(f.total_qty ?? f.estimated_qty ?? (m1 + m2 + m3));
+                    const rate = Number(f.unit_rate ?? f.unit_price ?? 0);
+                    const totalAmt = Number(f.total_amount ?? f.forecast_cost ?? (totalQty * rate));
+                    const subText = [cat, f.project_name].filter(Boolean).join(' • ');
+
+                    return (
+                      <tr key={f.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
+                        <td className="px-3 py-2 text-center font-medium text-text-primary text-[11px]">
+                          {(page - 1) * perPage + idx + 1}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                            {code}
                           </span>
-                          <span className="text-[10px] text-text-muted truncate">
-                            {f.category} • {f.project_name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
-                        {f.m1_qty} {f.uom_name}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary font-bold">
-                        {f.m2_qty} {f.uom_name}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
-                        {f.m3_qty} {f.uom_name}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
-                        {Number(f.total_qty).toLocaleString('en-IN')} {f.uom_name}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
-                        ₹{Number(f.total_amount).toLocaleString('en-IN')}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="View Logistics & Forecast"
-                            onClick={() => setViewingItem(f)}
-                          >
-                            <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Edit"
-                            onClick={() => handleOpenEdit(f)}
-                          >
-                            <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            title="Delete"
-                            onClick={() => setDeleteItem(f)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex flex-col min-w-0">
+                            {name ? (
+                              <span className="font-semibold text-text-primary text-[12px] truncate" title={name}>
+                                {name}
+                              </span>
+                            ) : null}
+                            {subText ? (
+                              <span className="text-[10px] text-text-muted truncate">
+                                {subText}
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
+                          {m1.toLocaleString('en-IN')} {uom}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary font-bold">
+                          {m2.toLocaleString('en-IN')} {uom}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-[11px] text-text-secondary">
+                          {m3.toLocaleString('en-IN')} {uom}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono font-bold text-text-primary text-[11px]">
+                          {totalQty.toLocaleString('en-IN')} {uom}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono font-bold text-primary text-[11px]">
+                          ₹{totalAmt.toLocaleString('en-IN')}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="View Logistics & Forecast"
+                              onClick={() => setViewingItem(f)}
+                            >
+                              <Eye className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="Edit"
+                              onClick={() => handleOpenEdit(f)}
+                            >
+                              <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              title="Delete"
+                              onClick={() => setDeleteItem(f)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-text-secondary hover:text-error" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -440,52 +458,64 @@ export function MaterialForecastPage() {
 
         {/* Mobile View - Cards List for Phones (< sm) */}
         <div className="block sm:hidden space-y-3">
-          {paged.map((f, idx) => (
-            <div key={f.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="font-mono text-[10px] font-bold text-primary block">{f.material_code}</span>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{f.name}</h4>
-                </div>
-                <Badge variant="neutral" className="text-[10px] font-mono px-1.5 shrink-0">
-                  {f.uom_name}
-                </Badge>
-              </div>
+          {paged.map((f, idx) => {
+            const code = f.material_code || f.item_code || '';
+            const name = f.name || f.item_name || '';
+            const uom = f.uom_name || '';
+            const m1 = Number(f.m1_qty ?? (f.estimated_qty ? Math.round(f.estimated_qty * 0.4) : 0));
+            const m2 = Number(f.m2_qty ?? (f.estimated_qty ? Math.round(f.estimated_qty * 0.4) : 0));
+            const m3 = Number(f.m3_qty ?? (f.estimated_qty ? Math.round(f.estimated_qty * 0.2) : 0));
+            const totalQty = Number(f.total_qty ?? f.estimated_qty ?? (m1 + m2 + m3));
+            const rate = Number(f.unit_rate ?? f.unit_price ?? 0);
+            const totalAmt = Number(f.total_amount ?? f.forecast_cost ?? (totalQty * rate));
 
-              <div className="grid grid-cols-3 gap-1 bg-surface-muted/30 p-2 rounded border border-border/50 text-center text-xs">
-                <div>
-                  <span className="text-[9px] uppercase font-bold text-text-muted block">Sep (M1)</span>
-                  <span className="font-mono text-[11px]">{f.m1_qty}</span>
+            return (
+              <div key={f.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="font-mono text-[10px] font-bold text-primary block">{code}</span>
+                    {name && <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{name}</h4>}
+                  </div>
+                  <Badge variant="neutral" className="text-[10px] font-mono px-1.5 shrink-0">
+                    {uom}
+                  </Badge>
                 </div>
-                <div>
-                  <span className="text-[9px] uppercase font-bold text-text-muted block">Oct (M2)</span>
-                  <span className="font-mono font-bold text-primary text-[11px]">{f.m2_qty}</span>
-                </div>
-                <div>
-                  <span className="text-[9px] uppercase font-bold text-text-muted block">Nov (M3)</span>
-                  <span className="font-mono text-[11px]">{f.m3_qty}</span>
-                </div>
-              </div>
 
-              <div className="flex items-center justify-between pt-1 text-xs">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Total 90-Day Valuation</span>
-                  <span className="font-mono font-bold text-primary text-[12px]">₹{Number(f.total_amount).toLocaleString('en-IN')}</span>
+                <div className="grid grid-cols-3 gap-1 bg-surface-muted/30 p-2 rounded border border-border/50 text-center text-xs">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-text-muted block">Sep (M1)</span>
+                    <span className="font-mono text-[11px]">{m1}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-text-muted block">Oct (M2)</span>
+                    <span className="font-mono font-bold text-primary text-[11px]">{m2}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-text-muted block">Nov (M3)</span>
+                    <span className="font-mono text-[11px]">{m3}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(f)}>
-                    <Eye className="w-3 h-3 mr-1" /> View
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleOpenEdit(f)}>
-                    <Edit className="w-3.5 h-3.5 text-text-secondary" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setDeleteItem(f)}>
-                    <Trash2 className="w-3.5 h-3.5 text-error" />
-                  </Button>
+
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-text-muted block">Total 90-Day Valuation</span>
+                    <span className="font-mono font-bold text-primary text-[12px]">₹{totalAmt.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(f)}>
+                      <Eye className="w-3 h-3 mr-1" /> View
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleOpenEdit(f)}>
+                      <Edit className="w-3.5 h-3.5 text-text-secondary" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setDeleteItem(f)}>
+                      <Trash2 className="w-3.5 h-3.5 text-error" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Mobile Pagination */}
           <div className="pt-2">

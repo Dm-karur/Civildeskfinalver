@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   FastForward, CheckCircle2, Clock, AlertTriangle, ShieldCheck,
   Search, Filter, Eye, Edit, Trash2, Plus, Calendar,
@@ -27,9 +27,6 @@ const WINDOW_OPTIONS = [
   { id: '4w', name: '4-Week Lookahead' },
   { id: '6w', name: '6-Week Lookahead' },
 ];
-
-
-
 const EMPTY_FORM = {
   project_id: '',
   task_code: '',
@@ -75,17 +72,17 @@ export function LookAheadSchedulePage() {
     setLoading(true);
     try {
       const res = await planningApi.lookAhead.list();
-      const list = res?.data?.look_ahead ?? res?.data ?? (Array.isArray(res) ? res : []);
+      const list = res?.data?.look_ahead ?? res?.look_ahead ?? res?.data ?? (Array.isArray(res) ? res : []);
       setTasks(Array.isArray(list) ? list : []);
     } catch (err) {
-      toast.error(err?.message || 'Failed to load data.');
+      console.warn('Backend /api/planning/look-ahead fetch error:', err);
       setTasks([]);
     } finally {
       setLoading(false);
     }
   };
 
-    // Load Projects
+  // Load Projects
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
@@ -93,14 +90,6 @@ export function LookAheadSchedulePage() {
     }).catch(() => setProjects([]));
     fetchTasks();
   }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    if (tasks.length > 0 || saved) {
-    }
-  }, [tasks]);
   // ---------------------------------
 
   // Form Handlers

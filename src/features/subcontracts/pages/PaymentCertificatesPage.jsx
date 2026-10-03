@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   FileCheck, CheckCircle2, IndianRupee, Clock, ShieldCheck,
   Search, Filter, Eye, Edit, Trash2, Plus, Building,
@@ -30,13 +30,13 @@ const EMPTY_FORM = {
   issue_date: '',
   period_from: '',
   period_to: '',
-  work_order_no: 'WO-2026-012',
-  contractor_name: 'Sri Murugan Civil Infra Pvt Ltd',
-  gross_certified_value: '500000',
-  retention_deduction: '25000',
-  advance_recovery: '50000',
-  tds_deduction: '10000',
-  net_certified_amount: '415000',
+  work_order_no: '',
+  contractor_name: '',
+  gross_certified_value: '',
+  retention_deduction: '',
+  advance_recovery: '',
+  tds_deduction: '',
+  net_certified_amount: '',
   notes: '',
 };
 

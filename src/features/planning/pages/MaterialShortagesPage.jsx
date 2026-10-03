@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ShieldAlert, AlertTriangle, Flame, Clock, IndianRupee,
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
@@ -63,17 +63,17 @@ export function MaterialShortagesPage() {
     setLoading(true);
     try {
       const res = await planningApi.materialShortages.list();
-      const list = res?.data?.shortages ?? res?.data ?? (Array.isArray(res) ? res : []);
+      const list = res?.data?.shortages ?? res?.shortages ?? res?.data ?? (Array.isArray(res) ? res : []);
       setShortages(Array.isArray(list) ? list : []);
     } catch (err) {
-      toast.error(err?.message || 'Failed to load data.');
+      console.warn('Backend /api/planning/material-shortages fetch error:', err);
       setShortages([]);
     } finally {
       setLoading(false);
     }
   };
 
-    // Load Projects
+  // Load Projects
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
@@ -81,14 +81,6 @@ export function MaterialShortagesPage() {
     }).catch(() => setProjects([]));
     fetchShortages();
   }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    if (shortages.length > 0 || saved) {
-    }
-  }, [shortages]);
   // ---------------------------------
 
   // Form Handlers
@@ -209,12 +201,13 @@ export function MaterialShortagesPage() {
   const filtered = useMemo(() => {
     return shortages.filter(s => {
       if (selectedProjectId !== 'all' && String(s.project_id) !== String(selectedProjectId)) return false;
-      if (severityFilter !== 'all' && s.severity !== severityFilter) return false;
+      const sev = s.severity || s.risk_level || '';
+      if (severityFilter !== 'all' && !sev.toLowerCase().includes(severityFilter.toLowerCase().replace('critical stockout', 'critical').replace('high risk', 'high'))) return false;
       if (search) {
         const q = search.toLowerCase();
-        const code = (s.material_code || '').toLowerCase();
-        const name = (s.name || '').toLowerCase();
-        const act = (s.impacted_activity_name || '').toLowerCase();
+        const code = (s.material_code || s.item_code || '').toLowerCase();
+        const name = (s.name || s.item_name || '').toLowerCase();
+        const act = (s.impacted_activity_name || s.impacted_activities || '').toLowerCase();
         const actCode = (s.impacted_activity_code || '').toLowerCase();
         if (!code.includes(q) && !name.includes(q) && !act.includes(q) && !actCode.includes(q)) return false;
       }
@@ -226,13 +219,24 @@ export function MaterialShortagesPage() {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const criticalCount = useMemo(() => shortages.filter(s => s.severity === 'Critical Stockout').length, [shortages]);
-  const highRiskCount = useMemo(() => shortages.filter(s => s.severity === 'High Risk').length, [shortages]);
-  const stalledActivities = useMemo(() => new Set(shortages.map(s => s.impacted_activity_code)).size, [shortages]);
+  const criticalCount = useMemo(() => shortages.filter(s => {
+    const sev = (s.severity || s.risk_level || '').toLowerCase();
+    return sev.includes('critical');
+  }).length, [shortages]);
+
+  const highRiskCount = useMemo(() => shortages.filter(s => {
+    const sev = (s.severity || s.risk_level || '').toLowerCase();
+    return sev.includes('high');
+  }).length, [shortages]);
+
+  const stalledActivities = useMemo(() => new Set(shortages.map(s => s.impacted_activity_code || s.impacted_activities)).size, [shortages]);
 
   const getSeverityVariant = (severity) => {
-    if (severity === 'Critical Stockout') return 'error';
-    if (severity === 'High Risk') return 'warning';
+    if (!severity) return 'neutral';
+    const lower = String(severity).toLowerCase();
+    if (lower.includes('critical')) return 'error';
+    if (lower.includes('high')) return 'warning';
+    if (lower.includes('moderate') || lower.includes('warning')) return 'warning';
     return 'neutral';
   };
 
@@ -371,7 +375,18 @@ export function MaterialShortagesPage() {
                   </tr>
                 ) : (
                   paged.map((s, idx) => {
-                    const isCritical = s.severity === 'Critical Stockout';
+                    const code = s.material_code || s.item_code || '';
+                    const name = s.name || s.item_name || '';
+                    const cat = s.category || s.category_name || '';
+                    const stock = s.current_stock ?? 0;
+                    const minStock = s.min_buffer_stock ?? s.required_qty_30d ?? 0;
+                    const uom = s.uom_name || '';
+                    const runway = s.runway_days ?? s.days_to_stockout ?? 0;
+                    const actCode = s.impacted_activity_code || '';
+                    const actName = s.impacted_activity_name || s.impacted_activities || '';
+                    const severity = s.severity || s.risk_level || 'High Risk';
+                    const isCritical = String(severity).toLowerCase().includes('critical');
+                    const subText = [cat, s.project_name].filter(Boolean).join(' • ');
 
                     return (
                       <tr key={s.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
@@ -380,44 +395,50 @@ export function MaterialShortagesPage() {
                         </td>
                         <td className="px-3 py-2">
                           <span className="font-mono text-[10px] font-bold text-red-600 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
-                            {s.material_code}
+                            {code}
                           </span>
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-text-primary text-[12px] truncate" title={s.name}>
-                              {s.name}
-                            </span>
-                            <span className="text-[10px] text-text-muted truncate">
-                              {s.category} • {s.project_name}
-                            </span>
+                            {name ? (
+                              <span className="font-semibold text-text-primary text-[12px] truncate" title={name}>
+                                {name}
+                              </span>
+                            ) : null}
+                            {subText ? (
+                              <span className="text-[10px] text-text-muted truncate">
+                                {subText}
+                              </span>
+                            ) : null}
                           </div>
                         </td>
                         <td className="px-3 py-2 text-right font-mono text-[11px]">
-                          <span className="font-bold text-red-600">{s.current_stock}</span>
-                          <span className="text-text-muted text-[10px]"> / {s.min_buffer_stock} {s.uom_name}</span>
+                          <span className="font-bold text-red-600">{stock}</span>
+                          <span className="text-text-muted text-[10px]"> / {minStock} {uom}</span>
                         </td>
                         <td className="px-3 py-2 text-center font-mono font-bold text-[11px]">
                           <span className={isCritical ? 'text-red-600 bg-red-500/10 px-1.5 py-0.5 rounded' : 'text-amber-600'}>
-                            {s.runway_days} Days
+                            {runway} Days
                           </span>
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex flex-col min-w-0">
                             <span className="font-medium text-text-primary text-[11px] truncate">
-                              {s.impacted_activity_code}: {s.impacted_activity_name}
+                              {actCode ? `${actCode}: ` : ''}{actName}
                             </span>
-                            <span className="text-[10px] text-text-muted truncate" title={s.mitigation_action}>
-                              {s.mitigation_action}
-                            </span>
+                            {s.mitigation_action ? (
+                              <span className="text-[10px] text-text-muted truncate" title={s.mitigation_action}>
+                                {s.mitigation_action}
+                              </span>
+                            ) : null}
                           </div>
                         </td>
                         <td className="px-3 py-2 text-center">
                           <Badge
-                            variant={getSeverityVariant(s.severity)}
+                            variant={getSeverityVariant(severity)}
                             className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
                           >
-                            {s.severity}
+                            {severity}
                           </Badge>
                         </td>
                         <td className="px-3 py-2">
@@ -462,50 +483,62 @@ export function MaterialShortagesPage() {
 
         {/* Mobile View - Cards List for Phones (< sm) */}
         <div className="block sm:hidden space-y-3">
-          {paged.map((s, idx) => (
-            <div key={s.id || idx} className="bg-surface border border-red-200/60 rounded-lg p-3.5 shadow-xs space-y-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="font-mono text-[10px] font-bold text-red-600 block">{s.material_code}</span>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{s.name}</h4>
-                </div>
-                <Badge
-                  variant={getSeverityVariant(s.severity)}
-                  className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
-                >
-                  {s.severity}
-                </Badge>
-              </div>
+          {paged.map((s, idx) => {
+            const code = s.material_code || s.item_code || '';
+            const name = s.name || s.item_name || '';
+            const stock = s.current_stock ?? 0;
+            const minStock = s.min_buffer_stock ?? s.required_qty_30d ?? 0;
+            const uom = s.uom_name || '';
+            const runway = s.runway_days ?? s.days_to_stockout ?? 0;
+            const actCode = s.impacted_activity_code || '';
+            const actName = s.impacted_activity_name || s.impacted_activities || '';
+            const severity = s.severity || s.risk_level || 'High Risk';
 
-              <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Stock vs Buffer</span>
-                  <span className="font-mono font-bold text-red-600 text-[11px]">{s.current_stock} / {s.min_buffer_stock} {s.uom_name}</span>
+            return (
+              <div key={s.id || idx} className="bg-surface border border-red-200/60 rounded-lg p-3.5 shadow-xs space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="font-mono text-[10px] font-bold text-red-600 block">{code}</span>
+                    {name && <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{name}</h4>}
+                  </div>
+                  <Badge
+                    variant={getSeverityVariant(severity)}
+                    className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
+                  >
+                    {severity}
+                  </Badge>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Runway Days</span>
-                  <span className="font-mono font-bold text-red-600 text-[11px]">{s.runway_days} Days Left</span>
-                </div>
-              </div>
 
-              <div className="p-2 bg-surface-muted/30 rounded border border-border/50 text-xs">
-                <span className="text-[10px] uppercase font-bold text-text-muted block">Stalled Activity</span>
-                <span className="font-semibold text-text-primary text-[11px] block">{s.impacted_activity_code}: {s.impacted_activity_name}</span>
-              </div>
+                <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-text-muted block">Stock vs Buffer</span>
+                    <span className="font-mono font-bold text-red-600 text-[11px]">{stock} / {minStock} {uom}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase font-bold text-text-muted block">Runway Days</span>
+                    <span className="font-mono font-bold text-red-600 text-[11px]">{runway} Days Left</span>
+                  </div>
+                </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
-                <span className="text-[10px] text-text-muted font-mono">{s.project_name}</span>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(s)}>
-                    <Eye className="w-3 h-3 mr-1" /> View
-                  </Button>
-                  <Button variant="primary" size="sm" className="h-7 text-[11px] px-2 bg-red-600 hover:bg-red-700" onClick={() => handleExpedite(s)}>
-                    <Truck className="w-3 h-3 mr-1" /> Expedite
-                  </Button>
+                <div className="p-2 bg-surface-muted/30 rounded border border-border/50 text-xs">
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Stalled Activity</span>
+                  <span className="font-semibold text-text-primary text-[11px] block">{actCode ? `${actCode}: ` : ''}{actName}</span>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
+                  <span className="text-[10px] text-text-muted font-mono">{s.project_name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(s)}>
+                      <Eye className="w-3 h-3 mr-1" /> View
+                    </Button>
+                    <Button variant="primary" size="sm" className="h-7 text-[11px] px-2 bg-red-600 hover:bg-red-700" onClick={() => handleExpedite(s)}>
+                      <Truck className="w-3 h-3 mr-1" /> Expedite
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Mobile Pagination */}
           <div className="pt-2">

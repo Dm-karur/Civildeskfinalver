@@ -18,14 +18,12 @@ import { Textarea } from '../../../components/ui/Textarea';
 import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi } from '../../../api/apiservice';
-
-
+import { projectsApi, planningApi } from '../../../api/apiservice';
 
 export function PlannedVsCompletedPage() {
   const [projects, setProjects] = useState([]);
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState('all');
@@ -42,13 +40,29 @@ export function PlannedVsCompletedPage() {
   const [remarks, setRemarks] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Load Projects
+  const fetchItems = async () => {
+    setLoading(true);
+    try {
+      const projId = selectedProjectId !== 'all' ? selectedProjectId : '1';
+      const res = await planningApi.plannedVsCompleted(projId);
+      const list = res?.data?.planned_vs_completed ?? res?.planned_vs_completed ?? res?.data ?? (Array.isArray(res) ? res : []);
+      setItems(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.warn('Backend planning/planned-vs-completed API fetch error:', err);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load Projects & Planned vs Completed Data
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
       setProjects(Array.isArray(list) ? list : []);
     }).catch(() => setProjects([]));
-  }, []);
+    fetchItems();
+  }, [selectedProjectId]);
 
   // Filtered List
   const filtered = useMemo(() => {
@@ -71,8 +85,8 @@ export function PlannedVsCompletedPage() {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const avgPlanned = useMemo(() => Math.round(items.reduce((acc, i) => acc + i.planned_progress_pct, 0) / items.length), [items]);
-  const avgActual = useMemo(() => Math.round(items.reduce((acc, i) => acc + i.actual_progress_pct, 0) / items.length), [items]);
+  const avgPlanned = useMemo(() => (items.length > 0 ? Math.round(items.reduce((acc, i) => acc + (Number(i.planned_progress_pct) || 0), 0) / items.length) : 0), [items]);
+  const avgActual = useMemo(() => (items.length > 0 ? Math.round(items.reduce((acc, i) => acc + (Number(i.actual_progress_pct) || 0), 0) / items.length) : 0), [items]);
   const overallSpi = useMemo(() => (avgPlanned > 0 ? (avgActual / avgPlanned).toFixed(2) : '1.00'), [avgActual, avgPlanned]);
   const criticalDelays = useMemo(() => items.filter(i => i.status === 'Critical Slippage').length, [items]);
 

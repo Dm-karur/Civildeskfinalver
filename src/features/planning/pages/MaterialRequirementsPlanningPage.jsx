@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Boxes, CheckCircle2, Clock, AlertTriangle, IndianRupee,
   Search, Filter, Eye, Edit, Trash2, Plus, ShoppingCart,
@@ -69,17 +69,17 @@ export function MaterialRequirementsPlanningPage() {
     setLoading(true);
     try {
       const res = await planningApi.materialRequirements.list();
-      const list = res?.data?.material_requirements ?? res?.data ?? (Array.isArray(res) ? res : []);
+      const list = res?.data?.material_requirements ?? res?.material_requirements ?? res?.data ?? (Array.isArray(res) ? res : []);
       setItems(Array.isArray(list) ? list : []);
     } catch (err) {
-      toast.error(err?.message || 'Failed to load data.');
+      console.warn('Backend /api/planning/material-requirements fetch error:', err);
       setItems([]);
     } finally {
       setLoading(false);
     }
   };
 
-    // Load Projects
+  // Load Projects
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
@@ -87,14 +87,6 @@ export function MaterialRequirementsPlanningPage() {
     }).catch(() => setProjects([]));
     fetchItems();
   }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    if (items.length > 0 || saved) {
-    }
-  }, [items]);
   // ---------------------------------
 
   // Form Handlers
@@ -223,13 +215,19 @@ export function MaterialRequirementsPlanningPage() {
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   // Metrics
-  const sufficientCount = useMemo(() => items.filter(i => i.status === 'Stock Sufficient').length, [items]);
-  const deficitCount = useMemo(() => items.filter(i => i.status !== 'Stock Sufficient').length, [items]);
-  const totalProcurementValuation = useMemo(() => items.reduce((acc, i) => acc + (i.net_deficit_qty * i.unit_rate), 0), [items]);
+  const sufficientCount = useMemo(() => items.filter(i => i.status === 'Stock Sufficient' || i.status === 'Sufficient').length, [items]);
+  const deficitCount = useMemo(() => items.filter(i => i.status !== 'Stock Sufficient' && i.status !== 'Sufficient').length, [items]);
+  const totalProcurementValuation = useMemo(() => items.reduce((acc, i) => {
+    const gross = Number(i.gross_planned_qty ?? i.required_qty ?? 0);
+    const stock = Number(i.current_stock_qty ?? i.available_stock ?? 0);
+    const deficit = Number(i.net_deficit_qty ?? i.shortage_qty ?? Math.max(0, gross - stock));
+    const rate = Number(i.unit_rate ?? i.est_unit_price ?? 0);
+    return acc + (deficit * rate);
+  }, 0), [items]);
 
   const getStatusVariant = (status) => {
-    if (status === 'Stock Sufficient') return 'success';
-    if (status === 'Procurement Required') return 'warning';
+    if (status === 'Stock Sufficient' || status === 'Sufficient') return 'success';
+    if (status === 'Procurement Required' || status === 'Shortage Warning') return 'warning';
     if (status === 'Critical Shortage') return 'error';
     return 'neutral';
   };
@@ -386,7 +384,14 @@ export function MaterialRequirementsPlanningPage() {
                   </tr>
                 ) : (
                   paged.map((i, idx) => {
-                    const hasDeficit = i.net_deficit_qty > 0;
+                    const code = i.material_code || i.mrp_code || i.item_code || '';
+                    const name = i.name || i.item_name || '';
+                    const gross = Number(i.gross_planned_qty ?? i.required_qty ?? 0);
+                    const stock = Number(i.current_stock_qty ?? i.available_stock ?? 0);
+                    const deficit = Number(i.net_deficit_qty ?? i.shortage_qty ?? Math.max(0, gross - stock));
+                    const uom = i.uom_name || '';
+                    const hasDeficit = deficit > 0;
+                    const subText = [i.category_name, i.approved_brands ? `Brands: ${i.approved_brands}` : ''].filter(Boolean).join(' • ');
 
                     return (
                       <tr key={i.id || idx} className="hover:bg-surface-muted/30 transition-colors group">
@@ -395,28 +400,32 @@ export function MaterialRequirementsPlanningPage() {
                         </td>
                         <td className="px-3 py-2">
                           <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                            {i.material_code}
+                            {code}
                           </span>
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-text-primary text-[12px] truncate" title={i.name}>
-                              {i.name}
-                            </span>
-                            <span className="text-[10px] text-text-muted truncate">
-                              {i.category_name} • Brands: {i.approved_brands || 'Standard'}
-                            </span>
+                            {name ? (
+                              <span className="font-semibold text-text-primary text-[12px] truncate" title={name}>
+                                {name}
+                              </span>
+                            ) : null}
+                            {subText ? (
+                              <span className="text-[10px] text-text-muted truncate">
+                                {subText}
+                              </span>
+                            ) : null}
                           </div>
                         </td>
                         <td className="px-3 py-2 text-right font-mono text-text-secondary text-[11px]">
-                          {Number(i.gross_planned_qty).toLocaleString('en-IN')} {i.uom_name}
+                          {gross.toLocaleString('en-IN')} {uom}
                         </td>
                         <td className="px-3 py-2 text-right font-mono text-text-primary text-[11px]">
-                          {Number(i.current_stock_qty).toLocaleString('en-IN')} {i.uom_name}
+                          {stock.toLocaleString('en-IN')} {uom}
                         </td>
                         <td className="px-3 py-2 text-right font-mono font-bold text-[11px]">
                           <span className={hasDeficit ? 'text-red-600' : 'text-emerald-600'}>
-                            {hasDeficit ? `-${Number(i.net_deficit_qty).toLocaleString('en-IN')}` : 'Sufficient'} {hasDeficit ? i.uom_name : ''}
+                            {hasDeficit ? `-${deficit.toLocaleString('en-IN')} ${uom}` : 'Sufficient'}
                           </span>
                         </td>
                         <td className="px-3 py-2 text-center">
@@ -424,7 +433,7 @@ export function MaterialRequirementsPlanningPage() {
                             variant={getStatusVariant(i.status)}
                             className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
                           >
-                            {i.status}
+                            {i.status || (hasDeficit ? 'Shortage Warning' : 'Stock Sufficient')}
                           </Badge>
                         </td>
                         <td className="px-3 py-2">
@@ -471,49 +480,59 @@ export function MaterialRequirementsPlanningPage() {
 
         {/* Mobile View - Cards List for Phones (< sm) */}
         <div className="block sm:hidden space-y-3">
-          {paged.map((i, idx) => (
-            <div key={i.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="font-mono text-[10px] font-bold text-primary block">{i.material_code}</span>
-                  <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{i.name}</h4>
-                </div>
-                <Badge
-                  variant={getStatusVariant(i.status)}
-                  className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
-                >
-                  {i.status}
-                </Badge>
-              </div>
+          {paged.map((i, idx) => {
+            const code = i.material_code || i.mrp_code || i.item_code || '';
+            const name = i.name || i.item_name || '';
+            const gross = Number(i.gross_planned_qty ?? i.required_qty ?? 0);
+            const stock = Number(i.current_stock_qty ?? i.available_stock ?? 0);
+            const deficit = Number(i.net_deficit_qty ?? i.shortage_qty ?? Math.max(0, gross - stock));
+            const uom = i.uom_name || '';
+            const hasDeficit = deficit > 0;
 
-              <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Yard Stock</span>
-                  <span className="font-mono text-text-primary text-[11px]">{i.current_stock_qty} / {i.gross_planned_qty} {i.uom_name}</span>
+            return (
+              <div key={i.id || idx} className="bg-surface border border-border rounded-lg p-3.5 shadow-xs space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="font-mono text-[10px] font-bold text-primary block">{code}</span>
+                    {name && <h4 className="font-semibold text-text-primary text-[13px] leading-snug">{name}</h4>}
+                  </div>
+                  <Badge
+                    variant={getStatusVariant(i.status)}
+                    className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
+                  >
+                    {i.status || (hasDeficit ? 'Shortage Warning' : 'Stock Sufficient')}
+                  </Badge>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Deficit Indent</span>
-                  <span className={`font-mono font-bold text-[11px] ${i.net_deficit_qty > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                    {i.net_deficit_qty > 0 ? `-${i.net_deficit_qty} ${i.uom_name}` : 'Stock OK'}
-                  </span>
-                </div>
-              </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
-                <span className="text-[10px] text-text-muted font-mono">{i.category_name}</span>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(i)}>
-                    <Eye className="w-3 h-3 mr-1" /> View
-                  </Button>
-                  {i.net_deficit_qty > 0 && (
-                    <Button variant="primary" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleRaisePR(i)}>
-                      <ShoppingCart className="w-3 h-3 mr-1" /> Indent
+                <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-text-muted block">Yard Stock</span>
+                    <span className="font-mono text-text-primary text-[11px]">{stock} / {gross} {uom}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase font-bold text-text-muted block">Deficit Indent</span>
+                    <span className={`font-mono font-bold text-[11px] ${hasDeficit ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {hasDeficit ? `-${deficit} ${uom}` : 'Stock OK'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
+                  <span className="text-[10px] text-text-muted font-mono">{i.category_name}</span>
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => setViewingItem(i)}>
+                      <Eye className="w-3 h-3 mr-1" /> View
                     </Button>
-                  )}
+                    {hasDeficit && (
+                      <Button variant="primary" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleRaisePR(i)}>
+                        <ShoppingCart className="w-3 h-3 mr-1" /> Indent
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Mobile Pagination */}
           <div className="pt-2">

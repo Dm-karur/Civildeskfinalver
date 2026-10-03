@@ -31,15 +31,15 @@ const EMPTY_FORM = {
   requisition_date: '',
   required_by_date: '',
   priority: 'Normal',
-  material_code: 'MAT-CEM-001',
-  material_name: 'OPC 53 Grade Cement',
-  quantity: '100',
-  uom: 'Bags',
-  estimated_rate: '385',
-  estimated_total: '38500',
-  requested_by: 'Site Engineer',
-  department: 'Civil Structural Works',
-  status: 'Pending PR Approval',
+  material_code: '',
+  material_name: '',
+  quantity: '',
+  uom: '',
+  estimated_rate: '',
+  estimated_total: '',
+  requested_by: '',
+  department: '',
+  status: 'Draft',
   purpose: '',
   suggested_supplier: '',
 };
@@ -99,25 +99,25 @@ export function PurchaseRequisitionsPage() {
           return {
             id: r.id || idx + 1,
             project_id: r.project_id || 1,
-            project_code: proj?.project_code || 'PRJ-2026-001',
-            project_name: proj?.project_name || 'Civil Project',
-            site_name: site?.site_name || r.site_name || 'Site Yard',
-            requisition_no: `PR-2026-${String(idx + 1).padStart(3, '0')}`,
-            mr_no: r.request_no || `MRN-2026-${String(idx + 1).padStart(3, '0')}`,
-            requisition_date: r.request_date || new Date().toISOString().split('T')[0],
-            required_by_date: r.required_by_date || new Date().toISOString().split('T')[0],
+            project_code: proj?.project_code || r.project_code || '',
+            project_name: proj?.project_name || r.project_name || '',
+            site_name: site?.site_name || r.site_name || '',
+            requisition_no: r.requisition_no || r.request_no || '',
+            mr_no: r.request_no || r.mr_no || '',
+            requisition_date: r.request_date || r.requisition_date || '',
+            required_by_date: r.required_by_date || '',
             priority: r.priority_name || r.priority || 'Normal',
-            material_code: r.material_code || 'MAT-GEN-001',
-            material_name: r.material_name || 'Construction Material',
-            quantity: Number(r.quantity || r.requested_qty || 100),
-            uom: r.uom || 'Nos',
-            estimated_rate: Number(r.estimated_rate || 385),
-            estimated_total: Number(r.estimated_total || (Number(r.quantity || r.requested_qty || 100) * Number(r.estimated_rate || 385))),
-            requested_by: r.requested_by || 'Site Engineer',
-            department: r.department || 'Civil Works',
-            status: r.status_name || r.status || 'Pending PR Approval',
+            material_code: r.material_code || '',
+            material_name: r.material_name || '',
+            quantity: Number(r.quantity || r.requested_qty || 0),
+            uom: r.uom || '',
+            estimated_rate: Number(r.estimated_rate || 0),
+            estimated_total: Number(r.estimated_total || (Number(r.quantity || r.requested_qty || 0) * Number(r.estimated_rate || 0))),
+            requested_by: r.requested_by || '',
+            department: r.department || '',
+            status: r.status_name || r.status || 'Draft',
             purpose: r.purpose || '',
-            suggested_supplier: r.suggested_supplier || 'Approved Vendor',
+            suggested_supplier: r.suggested_supplier || '',
           };
         });
         setRequisitions(normalized);
@@ -159,12 +159,11 @@ export function PurchaseRequisitionsPage() {
   const handleOpenAdd = () => {
     const today = new Date().toISOString().split('T')[0];
     const defaultRequired = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1');
+    const defaultProj = selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '');
 
     setForm({
       ...EMPTY_FORM,
       project_id: defaultProj,
-      requisition_no: `PR-2026-04${requisitions.length + 1}`,
       requisition_date: today,
       required_by_date: defaultRequired,
     });

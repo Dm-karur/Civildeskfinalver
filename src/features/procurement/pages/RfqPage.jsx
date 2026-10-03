@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Send, CheckCircle2, Clock, IndianRupee, Layers,
   Search, Filter, Eye, Edit, Trash2, Plus, ArrowRight,
@@ -29,13 +29,13 @@ const EMPTY_FORM = {
   rfq_no: '',
   rfq_date: '',
   submission_deadline: '',
-  pr_reference: 'PR-2026-041',
-  material_code: 'MAT-CEM-001',
-  material_name: 'OPC 53 Grade Cement',
-  required_qty: '100',
-  uom: 'Bags',
-  invited_vendors: 'UltraTech, Dalmia Bharat, Ramco Cements',
-  status: 'Enquiry Floated (Awaiting Bids)',
+  pr_reference: '',
+  material_code: '',
+  material_name: '',
+  required_qty: '',
+  uom: '',
+  invited_vendors: '',
+  status: 'Draft',
   notes: '',
 };
 
