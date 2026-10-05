@@ -198,6 +198,7 @@ export const projectMilestonesApi = {
 // Frontend compatibility masters backed by the new CI4 master endpoints.
 export const progressMethodsApi = { ...crud('/progress-methods') };
 export const workStagesApi = { ...crud('/work-stages') };
+export const executionStagesApi = { ...crud('/execution-stages') };
 
 export const boqApi = {
     ...crud('/project-boqs'),
@@ -249,7 +250,9 @@ export const labourApi = {
         },
     },
     assignments: crud('/labour/assignments'),
-    leave: crud('/labour/leave'),
+    // Leave is provided by the Phase 7 attendance extension routes.
+    leave: crud('/labour-attendance/leave'),
+    manpowerCost: crud('/labour/manpower-cost'),
 };
 
 export const attendanceApi = {
@@ -577,6 +580,7 @@ export const financeApi = {
 export const labourLeaveApi = attendanceApi.leave;
 export const labourTimesheetsApi = attendanceApi.timesheets;
 export const labourOvertimeApi = attendanceApi.overtime;
+export const manpowerCostApi = labourApi.manpowerCost;
 
 export const projectCostingApi = {
     summary: (projectId, params) => request.get(`/project-costing/projects/${enc(projectId)}/summary`, params),
