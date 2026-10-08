@@ -586,13 +586,6 @@ export function SubcontractRABillsPage() {
                   />
                 </FormField>
 
-                <FormField label="RA Bill Number" required error={errors.ra_bill_no}>
-                  <Input
-                    value={form.ra_bill_no}
-                    onChange={(e) => handleFormChange('ra_bill_no', e.target.value)}
-                    placeholder="RA-2026-008"
-                  />
-                </FormField>
 
                 <FormField label="Vendor Tax Invoice No">
                   <Input

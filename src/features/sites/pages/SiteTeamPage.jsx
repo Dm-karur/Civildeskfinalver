@@ -11,6 +11,7 @@ import { SearchField } from '../../../components/composite/SearchField';
 import { KpiCard } from '../../../components/composite/KpiCard';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Toggle } from '../../../components/ui/Toggle';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
@@ -661,35 +662,23 @@ export function SiteTeamPage() {
 
             <EntityEditModal.Section title="Authority Flags">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-text-primary">
-                  <input
-                    type="checkbox"
-                    checked={form.is_primary}
-                    onChange={(e) => handleFormChange('is_primary', e.target.checked)}
-                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-                  />
-                  <span>Primary Site Incharge</span>
-                </label>
+                <Toggle
+                  label="Primary Site Incharge"
+                  checked={form.is_primary}
+                  onChange={(e) => handleFormChange('is_primary', e.target.checked)}
+                />
 
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-text-primary">
-                  <input
-                    type="checkbox"
-                    checked={form.can_approve}
-                    onChange={(e) => handleFormChange('can_approve', e.target.checked)}
-                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-                  />
-                  <span>Site Approval Authority</span>
-                </label>
+                <Toggle
+                  label="Site Approval Authority"
+                  checked={form.can_approve}
+                  onChange={(e) => handleFormChange('can_approve', e.target.checked)}
+                />
 
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-text-primary">
-                  <input
-                    type="checkbox"
-                    checked={form.is_active}
-                    onChange={(e) => handleFormChange('is_active', e.target.checked)}
-                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-                  />
-                  <span>Active Assignment</span>
-                </label>
+                <Toggle
+                  label="Active Assignment"
+                  checked={form.is_active}
+                  onChange={(e) => handleFormChange('is_active', e.target.checked)}
+                />
               </div>
             </EntityEditModal.Section>
           </EntityEditModal.Body>

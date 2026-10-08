@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Building2 } from 'lucide-react';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
+import { Toggle } from '../../../components/ui/Toggle';
 import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { EmailInput } from '../../../components/ui/fields/EmailInput';
@@ -353,17 +354,13 @@ export function CompanyFormModal({ isOpen, onClose, company, onSaveSuccess }) {
                 <Input name="date_format" value={formData.date_format || ''} onChange={handleChange} placeholder="d-m-Y" maxLength={20} />
               </FormField>
               <div className="flex items-center gap-2 mt-7">
-                <input 
-                  type="checkbox" 
-                  id="is_active" 
+                <Toggle 
+                  id="is_active"
                   name="is_active" 
+                  label="Mark as Active"
                   checked={formData.is_active} 
                   onChange={handleChange}
-                  className="rounded-sm border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
                 />
-                <label htmlFor="is_active" className="text-sm font-medium text-text-primary cursor-pointer">
-                  Mark as Active
-                </label>
               </div>
             </EntityEditModal.Grid>
           </EntityEditModal.Section>

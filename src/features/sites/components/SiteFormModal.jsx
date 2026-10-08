@@ -5,6 +5,7 @@ import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { FormField } from '../../../components/composite/FormField';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
+import { Toggle } from '../../../components/ui/Toggle';
 import { Textarea } from '../../../components/ui/Textarea';
 import { toast } from '../../../components/composite/Toast';
 
@@ -422,15 +423,11 @@ export function SiteFormModal({ isOpen, site = null, onClose, onSaveSuccess }) {
               </FormField>
 
               <div className="md:col-span-2 pt-2">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-text-primary">
-                  <input
-                    type="checkbox"
-                    checked={form.is_primary}
-                    onChange={(e) => change('is_primary', e.target.checked)}
-                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-                  />
-                  <span>Designate as Primary Project Site</span>
-                </label>
+                <Toggle
+                  label="Designate as Primary Project Site"
+                  checked={form.is_primary}
+                  onChange={(e) => change('is_primary', e.target.checked)}
+                />
               </div>
 
               <FormField label="Site Notes & Scope" className="md:col-span-2" error={errors.notes}>

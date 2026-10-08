@@ -97,13 +97,17 @@ export function BoqSectionsPage() {
   const fetchIdRef = useRef(0);
 
   // Helper to fetch with automatic retry on transient failure
-  const fetchWithRetry = async (fn, maxRetries = 2, delayMs = 250) => {
+  const fetchWithRetry = async (fn, maxRetries = 1, delayMs = 150) => {
     let lastError;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await fn();
       } catch (err) {
         lastError = err;
+        const status = err?.status || err?.response?.status;
+        if (status >= 400) {
+          throw err;
+        }
         if (attempt < maxRetries) {
           await new Promise((resolve) => setTimeout(resolve, delayMs * (attempt + 1)));
         }

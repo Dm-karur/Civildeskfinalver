@@ -8,6 +8,7 @@ import { SearchField } from '../../../components/composite/SearchField';
 import { KpiCard } from '../../../components/composite/KpiCard';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Toggle } from '../../../components/ui/Toggle';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
@@ -19,6 +20,7 @@ import { projectsApi, usersApi, mastersApi } from '../../../api/apiservice';
 
 const EMPTY_MEMBER_FORM = {
   project_id: '',
+  members: [{ user_id: '', team_role_id: '' }],
   user_id: '',
   team_role_id: '',
   responsibility: '',
@@ -125,7 +127,8 @@ export function ProjectTeamPage() {
   const handleOpenAdd = () => {
     setForm({
       ...EMPTY_MEMBER_FORM,
-      project_id: selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : ''),
+      project_id: '',
+      members: [{ user_id: '', team_role_id: '' }],
     });
     setErrors({});
     setIsAddOpen(true);
@@ -152,38 +155,88 @@ export function ProjectTeamPage() {
     setErrors(prev => ({ ...prev, [field]: null }));
   };
 
+  const handleMemberChange = (index, field, value) => {
+    setForm(prev => {
+      const updatedMembers = [...(prev.members || [{ user_id: '', team_role_id: '' }])];
+      updatedMembers[index] = { ...updatedMembers[index], [field]: value };
+      return { ...prev, members: updatedMembers };
+    });
+    setErrors(prev => ({ ...prev, members: null }));
+  };
+
+  const handleAddMemberRow = () => {
+    setForm(prev => ({
+      ...prev,
+      members: [...(prev.members || []), { user_id: '', team_role_id: '' }]
+    }));
+  };
+
+  const handleRemoveMemberRow = (index) => {
+    setForm(prev => {
+      if ((prev.members || []).length <= 1) return prev;
+      const updatedMembers = prev.members.filter((_, i) => i !== index);
+      return { ...prev, members: updatedMembers };
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.project_id) errs.project_id = 'Project is required';
-    if (!form.user_id) errs.user_id = 'User is required';
-    if (!form.team_role_id) errs.team_role_id = 'Team Role is required';
+    if (!form.project_id) errs.project_id = 'Target project is required';
+
+    if (editingMember) {
+      if (!form.user_id) errs.user_id = 'User is required';
+      if (!form.team_role_id) errs.team_role_id = 'Team Role is required';
+    } else {
+      const validMembers = (form.members || []).filter(m => m.user_id && m.team_role_id);
+      if (validMembers.length === 0) {
+        errs.members = 'Please select at least one team member and their role.';
+      }
+    }
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      toast.error('Please fill all required fields correctly.');
       return;
     }
 
     setSaving(true);
     try {
-      const payload = {
-        project_id: Number(form.project_id),
-        user_id: Number(form.user_id),
-        team_role_id: form.team_role_id ? Number(form.team_role_id) : null,
-        responsibility: form.responsibility || null,
-        assignment_start: form.assignment_start || null,
-        assignment_end: form.assignment_end || null,
-        is_primary: form.is_primary ? 1 : 0,
-        can_approve: form.can_approve ? 1 : 0,
-        is_active: form.is_active ? 1 : 0,
-      };
-
       if (editingMember?.id) {
+        const payload = {
+          project_id: Number(form.project_id),
+          user_id: Number(form.user_id),
+          team_role_id: form.team_role_id ? Number(form.team_role_id) : null,
+          responsibility: form.responsibility || null,
+          assignment_start: form.assignment_start || null,
+          assignment_end: form.assignment_end || null,
+          is_primary: form.is_primary ? 1 : 0,
+          can_approve: form.can_approve ? 1 : 0,
+          is_active: form.is_active ? 1 : 0,
+        };
         await projectsApi.teamMembers.update(payload.project_id, editingMember.id, payload);
         toast.success('Team member assignment updated.');
       } else {
-        await projectsApi.teamMembers.create(payload.project_id, payload);
-        toast.success('Team member assigned successfully.');
+        const validMembers = form.members.filter(m => m.user_id && m.team_role_id);
+        let successCount = 0;
+
+        for (const member of validMembers) {
+          const payload = {
+            project_id: Number(form.project_id),
+            user_id: Number(member.user_id),
+            team_role_id: Number(member.team_role_id),
+            responsibility: form.responsibility || null,
+            assignment_start: form.assignment_start || null,
+            assignment_end: form.assignment_end || null,
+            is_primary: form.is_primary ? 1 : 0,
+            can_approve: form.can_approve ? 1 : 0,
+            is_active: form.is_active ? 1 : 0,
+          };
+          await projectsApi.teamMembers.create(payload.project_id, payload);
+          successCount++;
+        }
+
+        toast.success(`${successCount} team member(s) assigned successfully.`);
       }
 
       setIsAddOpen(false);
@@ -191,7 +244,7 @@ export function ProjectTeamPage() {
       await fetchTeamMembers();
     } catch (err) {
       setErrors(err?.errors ?? {});
-      toast.error(err?.message || 'Failed to save team member.');
+      toast.error(err?.message || 'Failed to save team member(s).');
     } finally {
       setSaving(false);
     }
@@ -291,14 +344,6 @@ export function ProjectTeamPage() {
               />
             </div>
 
-            <div className="w-full sm:w-48">
-              <SearchField
-                placeholder="Search member, role, email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-
             <div className="w-full sm:w-40">
               <Select
                 options={[
@@ -308,6 +353,14 @@ export function ProjectTeamPage() {
                 value={roleFilter}
                 onChange={setRoleFilter}
                 className="text-xs h-8"
+              />
+            </div>
+
+            <div className="w-full sm:w-48">
+              <SearchField
+                placeholder="Search member, role, email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
           </div>
@@ -583,33 +636,115 @@ export function ProjectTeamPage() {
         />
         <form id="team-member-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <EntityEditModal.Body>
-            <EntityEditModal.Section title="Assignment Mapping">
-              <EntityEditModal.Grid>
-                <FormField label="Target Project" required error={errors.project_id}>
-                  <Select
-                    options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
-                    value={form.project_id}
-                    onChange={(v) => handleFormChange('project_id', v)}
-                  />
-                </FormField>
-
-                <FormField label="Team Member (User)" required error={errors.user_id}>
-                  <Select
-                    options={users.map(u => ({ value: String(u.id), label: `${u.first_name || ''} ${u.last_name || ''} (${u.email || u.username || u.id})` }))}
-                    value={form.user_id}
-                    onChange={(v) => handleFormChange('user_id', v)}
-                  />
-                </FormField>
-
-                <FormField label="Team Role" required error={errors.team_role_id}>
-                  <Select
-                    options={teamRoles.map(r => ({ value: String(r.id), label: r.role_name || r.team_role_name || r.name || r.code || `Role #${r.id}` }))}
-                    value={form.team_role_id}
-                    onChange={(v) => handleFormChange('team_role_id', v)}
-                  />
-                </FormField>
-              </EntityEditModal.Grid>
+            <EntityEditModal.Section title="Target Project Selection">
+              <FormField label="Target Project" required error={errors.project_id}>
+                <Select
+                  options={[
+                    { value: '', label: 'Select Project' },
+                    ...projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))
+                  ]}
+                  value={form.project_id}
+                  onChange={(v) => handleFormChange('project_id', v)}
+                />
+              </FormField>
             </EntityEditModal.Section>
+
+            {editingMember ? (
+              <EntityEditModal.Section title="Assignment Mapping">
+                <EntityEditModal.Grid>
+                  <FormField label="Team Member (User)" required error={errors.user_id}>
+                    <Select
+                      options={[
+                        { value: '', label: 'Select Member' },
+                        ...users.map(u => ({ value: String(u.id), label: `${u.first_name || ''} ${u.last_name || ''} (${u.email || u.username || u.id})` }))
+                      ]}
+                      value={form.user_id}
+                      onChange={(v) => handleFormChange('user_id', v)}
+                    />
+                  </FormField>
+
+                  <FormField label="Team Role" required error={errors.team_role_id}>
+                    <Select
+                      options={[
+                        { value: '', label: 'Select Role' },
+                        ...teamRoles.map(r => ({ value: String(r.id), label: r.role_name || r.team_role_name || r.name || r.code || `Role #${r.id}` }))
+                      ]}
+                      value={form.team_role_id}
+                      onChange={(v) => handleFormChange('team_role_id', v)}
+                    />
+                  </FormField>
+                </EntityEditModal.Grid>
+              </EntityEditModal.Section>
+            ) : (
+              <EntityEditModal.Section title="Team Members & Roles Assignment">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-text-secondary">
+                      Members List ({form.members?.length || 0})
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs px-2 text-primary border-primary/30 hover:bg-primary/5"
+                      leftIcon={<Plus className="w-3.5 h-3.5" />}
+                      onClick={handleAddMemberRow}
+                    >
+                      Add Another Member
+                    </Button>
+                  </div>
+
+                  {errors.members && (
+                    <p className="text-xs text-error font-medium">{errors.members}</p>
+                  )}
+
+                  <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+                    {(form.members || []).map((memberRow, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-surface-muted/30 p-2.5 rounded-lg border border-border">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <FormField label={`Team Member #${idx + 1}`} required className="mb-0">
+                            <Select
+                              options={[
+                                { value: '', label: 'Select Member' },
+                                ...users.map(u => ({ value: String(u.id), label: `${u.first_name || ''} ${u.last_name || ''} (${u.email || u.username || u.id})` }))
+                              ]}
+                              value={memberRow.user_id}
+                              onChange={(v) => handleMemberChange(idx, 'user_id', v)}
+                              className="text-xs h-8"
+                            />
+                          </FormField>
+
+                          <FormField label="Role" required className="mb-0">
+                            <Select
+                              options={[
+                                { value: '', label: 'Select Role' },
+                                ...teamRoles.map(r => ({ value: String(r.id), label: r.role_name || r.team_role_name || r.name || r.code || `Role #${r.id}` }))
+                              ]}
+                              value={memberRow.team_role_id}
+                              onChange={(v) => handleMemberChange(idx, 'team_role_id', v)}
+                              className="text-xs h-8"
+                            />
+                          </FormField>
+                        </div>
+
+                        {form.members.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-text-secondary hover:text-error shrink-0 mt-5"
+                            title="Remove Member"
+                            onClick={() => handleRemoveMemberRow(idx)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </EntityEditModal.Section>
+            )}
 
             <EntityEditModal.Section title="Timeline & Responsibility">
               <EntityEditModal.Grid>
@@ -642,35 +777,23 @@ export function ProjectTeamPage() {
 
             <EntityEditModal.Section title="Permissions & Flags">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-text-primary">
-                  <input
-                    type="checkbox"
-                    checked={form.is_primary}
-                    onChange={(e) => handleFormChange('is_primary', e.target.checked)}
-                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-                  />
-                  <span>Primary Project Lead</span>
-                </label>
+                <Toggle
+                  label="Primary Project Lead"
+                  checked={form.is_primary}
+                  onChange={(e) => handleFormChange('is_primary', e.target.checked)}
+                />
 
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-text-primary">
-                  <input
-                    type="checkbox"
-                    checked={form.can_approve}
-                    onChange={(e) => handleFormChange('can_approve', e.target.checked)}
-                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-                  />
-                  <span>Has Approval Authority</span>
-                </label>
+                <Toggle
+                  label="Has Approval Authority"
+                  checked={form.can_approve}
+                  onChange={(e) => handleFormChange('can_approve', e.target.checked)}
+                />
 
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-text-primary">
-                  <input
-                    type="checkbox"
-                    checked={form.is_active}
-                    onChange={(e) => handleFormChange('is_active', e.target.checked)}
-                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-                  />
-                  <span>Assignment Active</span>
-                </label>
+                <Toggle
+                  label="Assignment Active"
+                  checked={form.is_active}
+                  onChange={(e) => handleFormChange('is_active', e.target.checked)}
+                />
               </div>
             </EntityEditModal.Section>
           </EntityEditModal.Body>

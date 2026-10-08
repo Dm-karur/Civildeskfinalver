@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Shield, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
+import { Toggle } from '../../../components/ui/Toggle';
 import { rolesApi } from '../../../api/apiservice';
 import { toast } from '../../../components/composite/Toast';
 
@@ -120,16 +121,11 @@ export function RoleFormModal({ role, isOpen, onClose, onSaveSuccess }) {
           </div>
 
           <div className="pt-1">
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input 
-                type="checkbox"
-                name="is_active"
-                checked={formData.is_active === 1}
-                onChange={handleChange}
-                className="rounded-xs text-primary"
-              />
-              <span className="text-[10px] font-medium text-text-primary">Role Active</span>
-            </label>
+            <Toggle 
+              label="Role Active"
+              checked={formData.is_active === 1}
+              onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked ? 1 : 0 }))}
+            />
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">

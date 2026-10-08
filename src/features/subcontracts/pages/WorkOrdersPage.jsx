@@ -1055,19 +1055,6 @@ export function WorkOrdersPage() {
                   />
                 </FormField>
 
-                <FormField
-                  label="Work Order No (Auto-Generated)"
-                  required
-                  error={errors.work_order_no}
-                  hint="Auto-generated from previous order; editable if required."
-                >
-                  <Input
-                    value={form.work_order_no}
-                    onChange={(e) => handleFormChange('work_order_no', e.target.value)}
-                    placeholder="WO-2026-001"
-                    className="font-mono font-bold"
-                  />
-                </FormField>
 
                 <FormField label="Project Site (Optional)">
                   <Select

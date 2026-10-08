@@ -5,16 +5,20 @@ import { cn } from '../../utils/cn';
 
 export function KpiCard({
   label,
+  title,
   value,
   description,
   linkText,
   icon,
   trend,
   trendDirection,
-  status = 'primary',
+  status,
+  variant,
   loading = false,
   className
 }) {
+  const displayLabel = label || title || '';
+  const resolvedStatus = status || variant || 'primary';
   const isPositive = trendDirection === 'up';
   const isNegative = trendDirection === 'down';
 
@@ -52,13 +56,13 @@ export function KpiCard({
 
   return (
     <Card className={cn("flex flex-row items-center gap-2.5 px-3 py-2", className)}>
-      <div className={cn("w-9 h-9 rounded-lg flex flex-shrink-0 items-center justify-center [&>svg]:w-4 [&>svg]:h-4", iconBgClasses[status])}>
+      <div className={cn("w-9 h-9 rounded-lg flex flex-shrink-0 items-center justify-center [&>svg]:w-4 [&>svg]:h-4", iconBgClasses[resolvedStatus] || iconBgClasses.primary)}>
         {renderIcon()}
       </div>
 
       <div className="flex-1 min-w-0 flex flex-col justify-center">
         {/* Removed truncate, reduced font size to 11px with tight line height */}
-        <div className="text-[11px] font-medium text-text-secondary leading-tight pr-1 break-words">{label}</div>
+        <div className="text-[11px] font-medium text-text-secondary leading-tight pr-1 break-words">{displayLabel}</div>
         <div className="text-[15px] font-bold text-text-primary leading-tight mt-0.5">{value}</div>
 
         {/* Flex layout to keep description and trend horizontally aligned even when tight */}

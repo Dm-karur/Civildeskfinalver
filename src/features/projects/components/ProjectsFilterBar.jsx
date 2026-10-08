@@ -1,4 +1,4 @@
-import { Filter, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { SearchField } from '../../../components/composite/SearchField';
@@ -45,9 +45,6 @@ export function ProjectsFilterBar({ searchQuery = '', onSearchChange, onAddProje
       </div>
       
       <div className="flex items-center gap-2 w-full lg:w-auto justify-end mt-2 lg:mt-0">
-        <Button variant="outline" className="h-9 px-3 text-[13px]" leftIcon={<Filter className="w-3.5 h-3.5" />}>
-          Filter
-        </Button>
         {canCreate && (
           <Button
             variant="primary"

@@ -4,6 +4,7 @@ import { permissionsApi, rolesApi } from '../../../api/apiservice';
 import { PageContainer, PageHeader } from '../../../components/layout';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
+import { Toggle } from '../../../components/ui/Toggle';
 import { toast } from '../../../components/composite/Toast';
 import { useAuth } from '../../auth/context/AuthContext';
 
@@ -122,19 +123,17 @@ export function PermissionsPage() {
                 </header>
                 <div className="divide-y divide-border">
                   {permissions.map((permission) => (
-                    <label key={permission.id} className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-surface-muted/40">
-                      <input
-                        type="checkbox"
+                    <div key={permission.id} className="flex items-center justify-between px-4 py-3 hover:bg-surface-muted/40 transition-colors">
+                      <div>
+                        <span className="block text-sm font-medium text-text-primary">{permission.permission_name}</span>
+                        <span className="block text-xs font-mono text-text-muted">{permission.permission_code}</span>
+                      </div>
+                      <Toggle
                         checked={selectedIds.has(permission.id)}
                         onChange={() => togglePermission(permission.id)}
                         disabled={!hasPermission('role.manage_permissions')}
-                        className="mt-0.5 h-4 w-4 accent-primary"
                       />
-                      <span>
-                        <span className="block text-sm font-medium text-text-primary">{permission.permission_name}</span>
-                        <span className="block text-xs text-text-muted">{permission.permission_code}</span>
-                      </span>
-                    </label>
+                    </div>
                   ))}
                 </div>
               </section>

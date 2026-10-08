@@ -74,36 +74,15 @@ export function BoqTable({ searchQuery = '', refreshKey = 0, onEdit, onView, fil
     setLoading(true);
     setError(null);
     boqApi.list()
-      .then(async (res) => {
+      .then((res) => {
         const rawList = extractList(res);
-        setBoqs(rawList);
+        const mapped = rawList.map((b) => ({
+          ...b,
+          section_count: b.section_count ?? b.sections_count ?? 0,
+          item_count: b.item_count ?? b.items_count ?? 0,
+        }));
+        setBoqs(mapped);
         setLoading(false);
-
-        // Asynchronously populate accurate section and item counts
-        try {
-          const enriched = await Promise.all(
-            rawList.map(async (b) => {
-              try {
-                const [sRes, iRes] = await Promise.all([
-                  boqApi.sections.list(b.id).catch(() => null),
-                  boqApi.items.list(b.id).catch(() => null),
-                ]);
-                const sList = sRes?.data?.boq_sections ?? sRes?.data?.sections ?? sRes?.sections ?? (Array.isArray(sRes?.data) ? sRes.data : []);
-                const iList = iRes?.data?.boq_items ?? iRes?.data?.items ?? iRes?.boq_items ?? iRes?.items ?? (Array.isArray(iRes?.data) ? iRes.data : []);
-                return {
-                  ...b,
-                  section_count: Array.isArray(sList) ? sList.length : (b.section_count ?? 0),
-                  item_count: Array.isArray(iList) ? iList.length : (b.item_count ?? 0),
-                };
-              } catch {
-                return b;
-              }
-            })
-          );
-          setBoqs(enriched);
-        } catch {
-          // ignore background enrichment error
-        }
       })
       .catch((err) => {
         setBoqs([]);

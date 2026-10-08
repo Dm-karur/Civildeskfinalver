@@ -131,7 +131,7 @@ export function ProjectOverviewPage() {
                 variant="outline"
                 size="sm"
                 leftIcon={<Edit className="w-3.5 h-3.5" />}
-                onClick={() => setEditingProject(p)}
+                onClick={() => navigate(`/projects/${p.id}/edit`)}
                 className="text-xs h-8"
               >
                 Edit Details
@@ -379,7 +379,7 @@ export function ProjectOverviewPage() {
                 <Card className="p-4 sm:p-5">
                   <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-text-secondary">
-                      Project Governance & Team ({teamMembers.length})
+                      Project Team ({teamMembers.length})
                     </h3>
                     <Button
                       variant="ghost"

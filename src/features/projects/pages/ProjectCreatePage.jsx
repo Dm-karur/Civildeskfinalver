@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Save, Building2, Calendar, IndianRupee, FileText } from 'lucide-react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Save, Building2, Calendar, IndianRupee, FileText, ArrowLeft } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { FormField } from '../../../components/composite/FormField';
@@ -57,14 +57,20 @@ const EMPTY_FORM = {
 };
 
 const toOpts = (arr = [], labelKey = 'name') =>
-  arr.map((item) => ({
+  (arr || []).map((item) => ({
     value: String(item.id),
     label: item[labelKey] || item.status_name || item.type_name || item.client_name || item.name || `#${item.id}`,
   }));
 
 export function ProjectCreatePage() {
   const navigate = useNavigate();
+  const params = useParams();
+  const [searchParams] = useSearchParams();
+  const projectId = params.id || searchParams.get('id');
+  const isEditing = Boolean(projectId);
+
   const [form, setForm] = useState(EMPTY_FORM);
+  const [initialStatusId, setInitialStatusId] = useState(null);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState([]);
@@ -73,24 +79,54 @@ export function ProjectCreatePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
       projectsApi.list().catch(() => ({ data: [] })),
       clientsApi.list().catch(() => ({ data: [] })),
       branchesApi.list().catch(() => ({ data: [] })),
       mastersApi.all().catch(() => ({ data: {} })),
-    ]).then(([pRes, cRes, bRes, mRes]) => {
+      isEditing && projectId ? projectsApi.get(projectId).catch(() => null) : Promise.resolve(null),
+    ]).then(([pRes, cRes, bRes, mRes, singlePRes]) => {
       const pList = pRes?.data?.projects ?? pRes?.projects ?? (Array.isArray(pRes?.data) ? pRes.data : (Array.isArray(pRes) ? pRes : []));
       setClients(cRes?.data?.clients ?? cRes?.data ?? []);
       setBranches(bRes?.data?.branches ?? bRes?.data ?? []);
       setMasters(mRes?.data ?? {});
 
-      const autoCode = generateProjectCode(pList);
-      setForm((prev) => ({
-        ...prev,
-        project_code: prev.project_code && prev.project_code !== generateProjectCode([]) ? prev.project_code : autoCode,
-      }));
+      const editProjectData = singlePRes?.data?.project ?? singlePRes?.project ?? pList.find(x => String(x.id) === String(projectId));
+
+      if (isEditing && editProjectData) {
+        setInitialStatusId(editProjectData.project_status_id);
+        setForm({
+          project_code: editProjectData.project_code || editProjectData.code || '',
+          project_name: editProjectData.project_name || editProjectData.name || '',
+          client_id: String(editProjectData.client_id ?? ''),
+          project_type_id: String(editProjectData.project_type_id ?? ''),
+          project_status_id: String(editProjectData.project_status_id ?? ''),
+          billing_method_id: String(editProjectData.billing_method_id ?? ''),
+          priority_id: String(editProjectData.priority_id ?? ''),
+          branch_id: String(editProjectData.branch_id ?? ''),
+          financial_year_id: String(editProjectData.financial_year_id ?? ''),
+          planned_start_date: editProjectData.planned_start_date || editProjectData.start_date ? String(editProjectData.planned_start_date || editProjectData.start_date).split(' ')[0] : '',
+          expected_completion_date: editProjectData.expected_completion_date || editProjectData.end_date ? String(editProjectData.expected_completion_date || editProjectData.end_date).split(' ')[0] : '',
+          contract_value: editProjectData.contract_value ?? editProjectData.estimated_cost ?? editProjectData.budget ?? '',
+          approved_budget: editProjectData.approved_budget ?? editProjectData.budget ?? '',
+          retention_percentage: editProjectData.retention_percentage ?? '0',
+          tax_percentage: editProjectData.tax_percentage ?? '18',
+          currency_code: editProjectData.currency_code || 'INR',
+          description: editProjectData.description || '',
+          notes: editProjectData.notes || '',
+        });
+      } else {
+        setInitialStatusId(null);
+        const autoCode = generateProjectCode(pList);
+        setForm({
+          ...EMPTY_FORM,
+          project_code: autoCode,
+        });
+        setErrors({});
+      }
     }).finally(() => setLoading(false));
-  }, []);
+  }, [projectId, isEditing]);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -100,11 +136,13 @@ export function ProjectCreatePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
-    if (!form.project_code.trim()) newErrors.project_code = 'Project code is required';
     if (!form.project_name.trim()) newErrors.project_name = 'Project name is required';
     if (!form.client_id) newErrors.client_id = 'Client is required';
     if (!form.project_type_id) newErrors.project_type_id = 'Project type is required';
     if (!form.project_status_id) newErrors.project_status_id = 'Status is required';
+    if (form.expected_completion_date && form.planned_start_date && form.expected_completion_date < form.planned_start_date) {
+      newErrors.expected_completion_date = 'Completion date cannot be before the start date';
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -114,27 +152,39 @@ export function ProjectCreatePage() {
 
     setSaving(true);
     try {
+      const nullableNumber = (value) => value === '' || value === null || value === undefined ? null : Number(value);
       const payload = {
         ...form,
         client_id: Number(form.client_id),
         project_type_id: Number(form.project_type_id),
         project_status_id: Number(form.project_status_id),
-        billing_method_id: form.billing_method_id ? Number(form.billing_method_id) : null,
-        priority_id: form.priority_id ? Number(form.priority_id) : null,
-        branch_id: form.branch_id ? Number(form.branch_id) : null,
-        financial_year_id: form.financial_year_id ? Number(form.financial_year_id) : null,
+        billing_method_id: nullableNumber(form.billing_method_id),
+        priority_id: nullableNumber(form.priority_id),
+        branch_id: nullableNumber(form.branch_id),
+        financial_year_id: nullableNumber(form.financial_year_id),
         contract_value: form.contract_value ? Number(form.contract_value) : 0,
         approved_budget: form.approved_budget ? Number(form.approved_budget) : 0,
         retention_percentage: form.retention_percentage ? Number(form.retention_percentage) : 0,
         tax_percentage: form.tax_percentage ? Number(form.tax_percentage) : 0,
       };
 
-      await projectsApi.create(payload);
-      toast.success('Project created successfully!');
+      if (isEditing) {
+        await projectsApi.update(projectId, payload);
+        if (initialStatusId && String(initialStatusId) !== String(form.project_status_id)) {
+          await projectsApi.changeStatus(projectId, {
+            project_status_id: Number(form.project_status_id),
+            change_reason: 'Status changed during project details edit.'
+          }).catch(() => {});
+        }
+        toast.success('Project updated successfully!');
+      } else {
+        await projectsApi.create(payload);
+        toast.success('Project created successfully!');
+      }
       navigate('/projects');
     } catch (err) {
       setErrors(err?.errors ?? {});
-      toast.error(err?.message || 'Failed to create project');
+      toast.error(err?.message || (isEditing ? 'Failed to update project' : 'Failed to create project'));
     } finally {
       setSaving(false);
     }
@@ -143,34 +193,37 @@ export function ProjectCreatePage() {
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Projects', href: '/projects' },
-    { label: 'Add New Project' },
+    { label: isEditing ? 'Edit Project' : 'Add New Project' },
   ];
 
   return (
     <PageContainer>
       <PageHeader
-        title="Add New Project"
+        title={isEditing ? `Edit Project${form.project_name ? ` — ${form.project_name}` : ''}` : 'Add New Project'}
         breadcrumbs={breadcrumbs}
       />
 
       <form onSubmit={handleSubmit} className="w-full space-y-6 pb-12">
         {/* Section 1: Basic Information */}
         <Card className="p-5">
-          <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border text-text-primary font-semibold text-sm">
-            <Building2 className="w-4 h-4 text-primary" />
-            <span>Basic Project Details</span>
+          <div className="flex items-center justify-between gap-2 mb-4 pb-2 border-b border-border text-text-primary font-semibold text-sm">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-primary" />
+              <span>Basic Project Details</span>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs font-medium"
+              leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
+              onClick={() => navigate('/projects')}
+            >
+              Back to Project Register
+            </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField label="Project Code" required error={errors.project_code}>
-              <Input
-                value={form.project_code}
-                readOnly
-                className="bg-surface-muted/60 cursor-not-allowed font-mono font-semibold text-primary select-all"
-                placeholder={`e.g. PRJ-${new Date().getFullYear()}-001`}
-              />
-            </FormField>
-
-            <FormField label="Project Name" required className="md:col-span-2" error={errors.project_name}>
+            <FormField label="Project Name" required className="md:col-span-3" error={errors.project_name}>
               <Input
                 value={form.project_name}
                 onChange={(e) => handleChange('project_name', e.target.value)}
@@ -359,9 +412,9 @@ export function ProjectCreatePage() {
             type="submit"
             variant="primary"
             leftIcon={<Save className="w-4 h-4" />}
-            isLoading={saving}
+            isLoading={saving || loading}
           >
-            Save Project
+            {isEditing ? 'Update Project' : 'Save Project'}
           </Button>
         </div>
       </form>

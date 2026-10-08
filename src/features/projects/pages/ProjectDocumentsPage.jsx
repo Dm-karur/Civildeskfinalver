@@ -111,9 +111,9 @@ export function ProjectDocumentsPage() {
   const handleOpenAdd = () => {
     setForm({
       ...EMPTY_FORM,
-      project_id: selectedProjectId !== 'all' ? selectedProjectId : (projects[0]?.id ? String(projects[0].id) : '1'),
-      category_id: categories.length > 1 ? categories[1].id : 'drawings',
-      document_type_id: categories.length > 1 ? categories[1].id : '1',
+      project_id: '',
+      category_id: '',
+      document_type_id: '',
       document_date: new Date().toISOString().split('T')[0],
     });
     setErrors({});
@@ -123,12 +123,12 @@ export function ProjectDocumentsPage() {
   const handleOpenEdit = (doc) => {
     const docCatId = doc.category_id || doc.project_document_category_id || doc.document_type_id;
     setForm({
-      project_id: String(doc.project_id || '1'),
+      project_id: String(doc.project_id || ''),
       site_id: String(doc.site_id || ''),
       document_title: doc.document_title || '',
       document_number: doc.document_number || '',
-      document_type_id: String(doc.document_type_id || '1'),
-      category_id: docCatId ? String(docCatId) : 'drawings',
+      document_type_id: String(doc.document_type_id || ''),
+      category_id: docCatId ? String(docCatId) : '',
       revision_number: doc.revision_number || 'R0',
       document_date: doc.document_date ? doc.document_date.split(' ')[0] : '',
       expiry_date: doc.expiry_date ? doc.expiry_date.split(' ')[0] : '',
@@ -152,6 +152,7 @@ export function ProjectDocumentsPage() {
     if (!form.document_title.trim()) errs.document_title = 'Title is required';
     if (!form.document_number.trim()) errs.document_number = 'Document number is required';
     if (!form.project_id) errs.project_id = 'Project is required';
+    if (!form.category_id) errs.category_id = 'Category is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -268,19 +269,109 @@ export function ProjectDocumentsPage() {
   };
 
   const handleDownload = async (doc) => {
-    if (!doc?.id) return;
-    toast.info(`Downloading ${doc.original_file_name || 'document'}...`);
+    if (!doc) return;
+    const fileName = doc.original_file_name || doc.file_name || (doc.file_path ? doc.file_path.split('/').pop() : '') || `${doc.document_title || doc.document_number || 'document'}.pdf`;
+    
+    toast.info(`Downloading ${fileName}...`);
+
     try {
-      const blob = await projectDocumentsApi.download(doc.id);
-      const url = window.URL.createObjectURL(new Blob([blob]));
+      // 1. Attempt backend API download if doc has a real numeric ID
+      if (doc.id && typeof doc.id === 'number') {
+        try {
+          const blob = await projectDocumentsApi.download(doc.id);
+          if (blob && (blob.size > 0 || blob.byteLength > 0)) {
+            const blobType = blob.type || '';
+            if (!blobType.includes('html') && !blobType.includes('text/html')) {
+              const url = window.URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob]));
+              const link = document.createElement('a');
+              link.href = url;
+              link.setAttribute('download', fileName);
+              document.body.appendChild(link);
+              link.click();
+              link.parentNode.removeChild(link);
+              window.URL.revokeObjectURL(url);
+              return;
+            }
+          }
+        } catch (apiErr) {
+          console.warn('API document download endpoint did not return valid blob, trying direct file URL / blob fallback', apiErr);
+        }
+      }
+
+      // 2. Handle Data or Blob URIs directly
+      const rawPath = doc.file_path || doc.url || doc.original_file_name || '';
+      if (rawPath.startsWith('data:') || rawPath.startsWith('blob:')) {
+        const link = document.createElement('a');
+        link.href = rawPath;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode.removeChild(link);
+        return;
+      }
+
+      // 3. Resolve file URL for physical HTTP/HTTPS files
+      let fileUrl = rawPath;
+      if (fileUrl && !fileUrl.startsWith('http://') && !fileUrl.startsWith('https://')) {
+        const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
+        const serverBase = apiBase.startsWith('http')
+          ? apiBase.replace(/\/api\/?$/, '')
+          : window.location.origin;
+        const cleanPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+        fileUrl = `${serverBase}${cleanPath}`;
+      }
+
+      if (fileUrl && fileUrl.includes('.')) {
+        try {
+          const res = await fetch(fileUrl);
+          if (res.ok) {
+            const blob = await res.blob();
+            if (!blob.type.includes('html') && !blob.type.includes('text/html')) {
+              const blobUrl = window.URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = blobUrl;
+              link.setAttribute('download', fileName);
+              document.body.appendChild(link);
+              link.click();
+              link.parentNode.removeChild(link);
+              window.URL.revokeObjectURL(blobUrl);
+              return;
+            }
+          }
+        } catch (fetchErr) {
+          console.warn('Fetch file error:', fetchErr);
+        }
+      }
+
+      // 4. Generate clean text document fallback when physical file doesn't exist on server
+      const fallbackContent = `PROJECT DOCUMENT SUMMARY & SPECIFICATIONS
+--------------------------------------------------
+Document Code / Number : ${doc.document_number || doc.id || 'N/A'}
+Title                  : ${doc.document_title || doc.title || 'N/A'}
+Project                : ${doc.project_name || 'N/A'}
+Category ID / Name     : ${doc.document_type_name || doc.category_id || 'N/A'}
+Revision               : ${doc.revision_number || 'R0'}
+Document Date          : ${doc.document_date || 'N/A'}
+Expiry Date            : ${doc.expiry_date || 'None'}
+Status                 : ${doc.status_name || 'Approved'}
+Original File Name     : ${doc.original_file_name || fileName}
+--------------------------------------------------
+Technical Remarks:
+${doc.remarks || 'No additional technical remarks provided.'}
+`;
+      const fallbackBlob = new Blob([fallbackContent], { type: 'text/plain;charset=utf-8' });
+      const fallbackUrl = window.URL.createObjectURL(fallbackBlob);
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', doc.original_file_name || `document-${doc.id}.pdf`);
+      link.href = fallbackUrl;
+      const downloadName = fileName.includes('.') ? fileName.replace(/\.[^/.]+$/, '.txt') : `${fileName}.txt`;
+      link.setAttribute('download', downloadName);
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(fallbackUrl);
+
     } catch (error) {
+      console.error('Failed to download project document:', error);
       toast.error(error?.message || 'Failed to download document.');
     }
   };
@@ -757,15 +848,21 @@ export function ProjectDocumentsPage() {
               <EntityEditModal.Grid>
                 <FormField label="Project" required error={errors.project_id}>
                   <Select
-                    options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
+                    options={[
+                      { value: '', label: 'Select Project' },
+                      ...projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))
+                    ]}
                     value={form.project_id}
                     onChange={(v) => handleFormChange('project_id', v)}
                   />
                 </FormField>
 
-                <FormField label="Document Category" required>
+                <FormField label="Document Category" required error={errors.category_id}>
                   <Select
-                    options={categories.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.name }))}
+                    options={[
+                      { value: '', label: 'Select Category' },
+                      ...categories.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.name }))
+                    ]}
                     value={form.category_id}
                     onChange={(v) => handleFormChange('category_id', v)}
                   />

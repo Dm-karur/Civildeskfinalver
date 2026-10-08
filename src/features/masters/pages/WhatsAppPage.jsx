@@ -38,7 +38,7 @@ export function WhatsAppPage() {
   }, []);
 
   const handleSave = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setSaving(true);
     try {
       await systemSettingsApi.whatsapp.update(form);
@@ -52,36 +52,58 @@ export function WhatsAppPage() {
   };
 
   return (
-    <PageContainer>
+    <PageContainer className="space-y-4 font-sans text-xs pb-10">
       <PageHeader
         title="WhatsApp Gateway Settings"
         subtitle="Configure WhatsApp Business API parameters for automatic client updates & site alerts"
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Administration', href: '#' },
+          { label: 'WhatsApp Gateway' }
+        ]}
         actions={
-          <Button variant="outline" onClick={loadSettings} className="gap-2">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadSettings}
+            className="text-xs h-8 gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         }
       />
 
-      <div className="max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-        <form onSubmit={handleSave} className="space-y-6">
+      <div className="bg-surface border border-border rounded-xl p-5 sm:p-6 shadow-xs max-w-3xl space-y-5">
+        <div className="flex items-center gap-3 pb-4 border-b border-border">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+            <MessageSquare className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-text-primary">WhatsApp Business API Integration</h3>
+            <span className="text-[11px] text-text-muted">Configure Twilio or Meta API parameters for automated dispatch notifications.</span>
+          </div>
+        </div>
+
+        <form onSubmit={handleSave} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField label="API Gateway Provider">
+            <FormField label="API Gateway Provider" required>
               <Input
                 value={form.provider}
                 onChange={e => setForm(prev => ({ ...prev, provider: e.target.value }))}
                 placeholder="Twilio / Meta Business"
               />
             </FormField>
-            <FormField label="Account SID / Key">
+
+            <FormField label="Account SID / API Key" required>
               <Input
                 value={form.account_sid}
                 onChange={e => setForm(prev => ({ ...prev, account_sid: e.target.value }))}
                 placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxx"
               />
             </FormField>
-            <FormField label="Auth Token">
+
+            <FormField label="Auth Token / Secret" required>
               <Input
                 type="password"
                 value={form.auth_token}
@@ -89,7 +111,8 @@ export function WhatsAppPage() {
                 placeholder="••••••••••••••••"
               />
             </FormField>
-            <FormField label="Sender WhatsApp Number">
+
+            <FormField label="Sender WhatsApp Number" required>
               <Input
                 value={form.from_number}
                 onChange={e => setForm(prev => ({ ...prev, from_number: e.target.value }))}
@@ -98,9 +121,24 @@ export function WhatsAppPage() {
             </FormField>
           </div>
 
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
-            <Button type="submit" variant="primary" loading={saving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-              <Save className="w-4 h-4" />
+          <div className="pt-4 border-t border-border flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={loadSettings}
+              className="text-xs h-8 px-4"
+            >
+              Reset
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              isLoading={saving}
+              leftIcon={<Save className="w-3.5 h-3.5" />}
+              className="text-xs h-8 px-4 shadow-xs"
+            >
               Save WhatsApp Configuration
             </Button>
           </div>

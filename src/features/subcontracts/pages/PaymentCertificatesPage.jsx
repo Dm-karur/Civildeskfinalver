@@ -75,7 +75,7 @@ export function PaymentCertificatesPage() {
     }
   };
 
-    // Load Projects
+  // Load Projects & Payment Certificates
   useEffect(() => {
     projectsApi.list().then(res => {
       const list = res?.data?.projects ?? res?.projects ?? (Array.isArray(res?.data) ? res.data : []);
@@ -83,14 +83,6 @@ export function PaymentCertificatesPage() {
     }).catch(() => setProjects([]));
     fetchCertificates();
   }, []);
-
-  useEffect(() => {
-    // Only save if we have manipulated the array (to avoid overwriting initial state on mount with empty array if they load async, 
-    // but for purely mock pages, saving the current state on every change is correct).
-    // To be safe, we check if there's at least something, or if there's a saved version already.
-    if (certificates.length > 0 || saved) {
-    }
-  }, [certificates]);
   // ---------------------------------
 
   // Form Handlers
@@ -148,7 +140,6 @@ export function PaymentCertificatesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.certificate_no.trim()) errs.certificate_no = 'Certificate number is required';
     if (!form.contractor_name.trim()) errs.contractor_name = 'Contractor name is required';
 
     if (Object.keys(errs).length > 0) {
@@ -378,23 +369,23 @@ export function PaymentCertificatesPage() {
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right font-mono text-[11px] text-text-primary">
-                        ₹{c.gross_certified_value.toLocaleString('en-IN')}
+                        ₹{Number(c.gross_certified_value || 0).toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-right hidden md:table-cell font-mono text-[11px] text-amber-600">
-                        -₹{c.retention_deduction.toLocaleString('en-IN')}
+                        -₹{Number(c.retention_deduction || 0).toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-right hidden md:table-cell font-mono text-[11px] text-text-muted">
-                        -₹{c.tds_deduction.toLocaleString('en-IN')}
+                        -₹{Number(c.tds_deduction || 0).toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-bold text-emerald-600 text-[11px]">
-                        ₹{c.net_certified_amount.toLocaleString('en-IN')}
+                        ₹{Number(c.net_certified_amount || 0).toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-center">
                         <Badge
                           variant="success"
                           className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none"
                         >
-                          {c.status_name}
+                          {c.status_name || c.status || 'Certified'}
                         </Badge>
                       </td>
                       <td className="px-3 py-2">
@@ -441,18 +432,18 @@ export function PaymentCertificatesPage() {
                   variant="success"
                   className="text-[8px] font-bold uppercase tracking-wider h-4 px-1.5 inline-flex items-center leading-none shrink-0"
                 >
-                  ₹{c.net_certified_amount.toLocaleString('en-IN')}
+                  ₹{Number(c.net_certified_amount || 0).toLocaleString('en-IN')}
                 </Badge>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Gross Certified</span>
-                  <span className="font-mono font-bold text-text-primary text-[11px]">₹{c.gross_certified_value.toLocaleString('en-IN')}</span>
+                  <span className="font-mono font-bold text-text-primary text-[11px]">₹{Number(c.gross_certified_value || 0).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Deductions (Ret+TDS)</span>
-                  <span className="font-mono font-bold text-amber-600 text-[11px]">-₹{(c.retention_deduction + c.tds_deduction).toLocaleString('en-IN')}</span>
+                  <span className="font-mono font-bold text-amber-600 text-[11px]">-₹{(Number(c.retention_deduction || 0) + Number(c.tds_deduction || 0)).toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
@@ -497,10 +488,10 @@ export function PaymentCertificatesPage() {
 
             <div className="p-5 space-y-4 overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3 bg-surface-muted/30 p-3 rounded-lg border border-border">
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Gross Certified Work</span> <span className="font-bold text-primary font-mono text-base">₹{viewingItem.gross_certified_value.toLocaleString('en-IN')}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Net Certified Payable</span> <span className="font-bold text-emerald-600 font-mono text-base">₹{viewingItem.net_certified_amount.toLocaleString('en-IN')}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Retention Deduction (5%)</span> <span className="font-mono font-bold text-amber-600">-₹{viewingItem.retention_deduction.toLocaleString('en-IN')}</span></div>
-                <div><span className="text-text-muted block text-[10px] uppercase font-bold">TDS Deduction (2%)</span> <span className="font-mono">-₹{viewingItem.tds_deduction.toLocaleString('en-IN')}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Gross Certified Work</span> <span className="font-bold text-primary font-mono text-base">₹{Number(viewingItem.gross_certified_value || 0).toLocaleString('en-IN')}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Net Certified Payable</span> <span className="font-bold text-emerald-600 font-mono text-base">₹{Number(viewingItem.net_certified_amount || 0).toLocaleString('en-IN')}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">Retention Deduction (5%)</span> <span className="font-mono font-bold text-amber-600">-₹{Number(viewingItem.retention_deduction || 0).toLocaleString('en-IN')}</span></div>
+                <div><span className="text-text-muted block text-[10px] uppercase font-bold">TDS Deduction (2%)</span> <span className="font-mono">-₹{Number(viewingItem.tds_deduction || 0).toLocaleString('en-IN')}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Certified Period</span> <span className="font-mono">{viewingItem.period_from} to {viewingItem.period_to}</span></div>
                 <div><span className="text-text-muted block text-[10px] uppercase font-bold">Authorized Signatory</span> <span className="text-emerald-700 font-medium">{viewingItem.certified_by}</span></div>
               </div>
@@ -543,13 +534,6 @@ export function PaymentCertificatesPage() {
                   />
                 </FormField>
 
-                <FormField label="Certificate No" required error={errors.certificate_no}>
-                  <Input
-                    value={form.certificate_no}
-                    onChange={(e) => handleFormChange('certificate_no', e.target.value)}
-                    placeholder="IPC-2026-025"
-                  />
-                </FormField>
 
                 <FormField label="Linked Work Order No">
                   <Input

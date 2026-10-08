@@ -1,5 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
-import { FileSpreadsheet, Plus, RefreshCw, Eye, CheckCircle2, ArrowRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  FileSpreadsheet, Plus, RefreshCw, Eye, CheckCircle2, ArrowRight,
+  Building2, Clock, Search, Layers, FileText
+} from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -8,19 +12,22 @@ import { SearchField } from '../../../components/composite/SearchField';
 import { KpiCard } from '../../../components/composite/KpiCard';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
+import { Textarea } from '../../../components/ui/Textarea';
 import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { toast } from '../../../components/composite/Toast';
 import { drawingTakeoffApi, projectsApi } from '../../../api/apiservice';
-import { useNavigate } from 'react-router-dom';
 
 export function DrawingTakeoffPage() {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [search, setSearch] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const [page, setPage] = useState(1);
   const perPage = 10;
 
@@ -58,8 +65,22 @@ export function DrawingTakeoffPage() {
     fetchData();
   }, [fetchData]);
 
+  const handleOpenAdd = () => {
+    setForm({
+      job_name: '',
+      project_id: projects.length > 0 ? String(projects[0].id) : '',
+      drawing_ref: '',
+      description: ''
+    });
+    setIsAddOpen(true);
+  };
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (!form.job_name.trim() || !form.drawing_ref.trim()) {
+      toast.error('Job name and drawing reference are required.');
+      return;
+    }
     setSaving(true);
     try {
       await drawingTakeoffApi.jobs.create(form);
@@ -74,116 +95,234 @@ export function DrawingTakeoffPage() {
     }
   };
 
-  const filteredJobs = jobs.filter(j => {
-    const q = searchQuery.toLowerCase();
-    const name = String(j.job_name || j.name || '').toLowerCase();
-    const ref = String(j.drawing_ref || '').toLowerCase();
-    return name.includes(q) || ref.includes(q);
-  });
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(j => {
+      const q = search.toLowerCase();
+      const name = String(j.job_name || j.name || '').toLowerCase();
+      const ref = String(j.drawing_ref || '').toLowerCase();
+      const pName = String(j.project_name || '').toLowerCase();
+      const matchesSearch = name.includes(q) || ref.includes(q) || pName.includes(q);
+
+      const matchesProject = selectedProjectId === 'all' || String(j.project_id) === String(selectedProjectId);
+      const matchesStatus = selectedStatus === 'all' || String(j.status || 'Draft').toLowerCase() === selectedStatus.toLowerCase();
+
+      return matchesSearch && matchesProject && matchesStatus;
+    });
+  }, [jobs, search, selectedProjectId, selectedStatus]);
 
   const totalPages = Math.ceil(filteredJobs.length / perPage) || 1;
-  const paginatedJobs = filteredJobs.slice((page - 1) * perPage, page * perPage);
+  const pagedJobs = useMemo(() => {
+    const start = (page - 1) * perPage;
+    return filteredJobs.slice(start, start + perPage);
+  }, [filteredJobs, page, perPage]);
+
+  // KPI Calculations
+  const approvedCount = useMemo(() => jobs.filter(j => ['Approved', 'Completed'].includes(j.status)).length, [jobs]);
+  const pendingCount = useMemo(() => jobs.filter(j => !['Approved', 'Completed'].includes(j.status)).length, [jobs]);
+  const uniqueProjectsCount = useMemo(() => new Set(jobs.map(j => j.project_id).filter(Boolean)).size, [jobs]);
 
   return (
-    <PageContainer>
+    <PageContainer className="space-y-4 font-sans text-xs pb-10">
       <PageHeader
         title="Drawing Quantity Takeoff"
-        subtitle="Extract, review, and map structural/architectural drawing quantities directly to BOQ line items"
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={fetchData} className="gap-2">
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <Button variant="primary" onClick={() => setIsAddOpen(true)} className="gap-2 bg-[#0056C9] hover:bg-blue-700">
-              <Plus className="w-4 h-4" />
-              New Takeoff Job
-            </Button>
-          </div>
-        }
+        subtitle="Extract, review, and map structural and architectural drawing quantities directly to BOQ line items"
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'BOQ & Budget', href: '#' },
+          { label: 'Drawing Takeoff' }
+        ]}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* KPI Stats Bar - Standard Site Team Layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
-          title="Total Takeoff Jobs"
+          label="Total Takeoff Jobs"
           value={jobs.length}
-          icon={FileSpreadsheet}
-          variant="primary"
+          status="info"
+          icon={<FileSpreadsheet className="w-4 h-4 text-sky-500" />}
         />
         <KpiCard
-          title="Reviewed Jobs"
-          value={jobs.filter(j => j.status === 'Approved' || j.status === 'Completed').length}
-          icon={CheckCircle2}
-          variant="success"
+          label="Approved & Mapped"
+          value={approvedCount}
+          status="success"
+          icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
         />
         <KpiCard
-          title="Pending Review"
-          value={jobs.filter(j => j.status !== 'Approved' && j.status !== 'Completed').length}
-          icon={FileSpreadsheet}
-          variant="neutral"
+          label="Pending Review"
+          value={pendingCount}
+          status="warning"
+          icon={<Clock className="w-4 h-4 text-amber-500" />}
+        />
+        <KpiCard
+          label="Active Takeoff Projects"
+          value={uniqueProjectsCount || projects.length}
+          status="neutral"
+          icon={<Building2 className="w-4 h-4 text-slate-500" />}
         />
       </div>
 
-      <DataTableContainer
-        toolbar={
-          <div className="w-72">
-            <SearchField
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search takeoff jobs..."
+      {/* Clean Filter and Selector Bar - Matched with Site Team Assignment */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          {/* Project Selector */}
+          <div className="w-full sm:w-48">
+            <Select
+              options={[
+                { value: 'all', label: 'All Projects' },
+                ...projects.map(p => ({ value: String(p.id), label: `${p.project_code || 'PRJ'} - ${p.project_name || p.name}` }))
+              ]}
+              value={selectedProjectId}
+              onChange={(val) => {
+                setSelectedProjectId(val);
+                setPage(1);
+              }}
+              className="text-xs h-8"
             />
           </div>
-        }
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                <th className="py-3 px-4">Job Name</th>
-                <th className="py-3 px-4">Drawing Ref</th>
-                <th className="py-3 px-4">Project</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+
+          {/* Search Input */}
+          <div className="w-full sm:w-52">
+            <SearchField
+              placeholder="Search job name, drawing ref, project..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+
+          {/* Status Filter */}
+          <div className="w-full sm:w-36">
+            <Select
+              options={[
+                { value: 'all', label: 'All Statuses' },
+                { value: 'draft', label: 'Draft' },
+                { value: 'under review', label: 'Under Review' },
+                { value: 'approved', label: 'Approved' },
+                { value: 'completed', label: 'Completed' },
+              ]}
+              value={selectedStatus}
+              onChange={(val) => {
+                setSelectedStatus(val);
+                setPage(1);
+              }}
+              className="text-xs h-8"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchData}
+            className="text-xs h-8 gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
+            onClick={handleOpenAdd}
+            className="text-xs h-8 shadow-xs"
+          >
+            New Takeoff Job
+          </Button>
+        </div>
+      </div>
+
+      {/* Desktop & Tablet Table (Hidden on small screens) */}
+      <div className="hidden sm:block">
+        <DataTableContainer
+          pagination={
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={filteredJobs.length}
+              itemsPerPage={perPage}
+              onPageChange={setPage}
+              onItemsPerPageChange={() => {}}
+            />
+          }
+        >
+          <table className="w-full text-left text-[12px] table-auto">
+            <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+              <tr>
+                <th className="px-3 py-2 w-10 text-center">#</th>
+                <th className="px-3 py-2">Job Name</th>
+                <th className="px-3 py-2">Drawing Reference</th>
+                <th className="px-3 py-2">Assigned Project</th>
+                <th className="px-3 py-2 text-center w-28">Status</th>
+                <th className="px-3 py-2 text-right w-44">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+            <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-500">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-amber-500" />
+                  <td colSpan="6" className="text-center py-8 text-text-muted text-[12px]">
                     Loading drawing takeoff jobs...
                   </td>
                 </tr>
-              ) : paginatedJobs.length === 0 ? (
+              ) : pagedJobs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-500">
-                    No drawing takeoff jobs found in database.
+                  <td colSpan="6" className="text-center py-8 text-text-muted text-[12px]">
+                    No drawing takeoff jobs found matching filters.
                   </td>
                 </tr>
               ) : (
-                paginatedJobs.map(job => (
-                  <tr key={job.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
-                      {job.job_name || job.name}
+                pagedJobs.map((job, idx) => (
+                  <tr key={job.id || idx} className="hover:bg-surface-muted/50 transition-colors">
+                    <td className="px-3 py-2 text-center text-text-muted text-[11px]">
+                      {(page - 1) * perPage + idx + 1}
                     </td>
-                    <td className="py-3 px-4 font-mono text-xs text-amber-600 dark:text-amber-400">
-                      {job.drawing_ref || 'DWG-001'}
+                    <td className="px-3 py-2">
+                      <div className="font-bold text-text-primary text-[12px]">
+                        {job.job_name || job.name}
+                      </div>
+                      {job.description && (
+                        <div className="text-[10px] text-text-muted truncate max-w-xs">{job.description}</div>
+                      )}
                     </td>
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                    <td className="px-3 py-2 font-mono text-[11px] font-semibold text-primary">
+                      {job.drawing_ref || 'DWG-REF-001'}
+                    </td>
+                    <td className="px-3 py-2 text-text-secondary">
                       {job.project_name || 'General Project'}
                     </td>
-                    <td className="py-3 px-4">
-                      <Badge variant={job.status === 'Approved' ? 'success' : 'info'}>
+                    <td className="px-3 py-2 text-center">
+                      <Badge
+                        variant={
+                          ['approved', 'completed'].includes(String(job.status).toLowerCase())
+                            ? 'success'
+                            : ['under review', 'in progress'].includes(String(job.status).toLowerCase())
+                            ? 'warning'
+                            : 'info'
+                        }
+                        className="text-[8px] px-1.5 py-0.5"
+                      >
                         {job.status || 'Draft'}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => navigate(`/boq/takeoff/review?job_id=${job.id}`)}>
-                          <Eye className="w-4 h-4 text-slate-600" /> Review
+                    <td className="px-3 py-2 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px] px-2 gap-1"
+                          onClick={() => navigate(`/takeoff/review?job_id=${job.id}`)}
+                        >
+                          <Eye className="w-3 h-3 text-text-secondary" /> Review
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => navigate(`/boq/takeoff/convert?job_id=${job.id}`)}>
-                          <ArrowRight className="w-4 h-4 text-amber-500" /> Convert to BOQ
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="h-7 text-[11px] px-2 gap-1"
+                          onClick={() => navigate(`/takeoff/convert?job_id=${job.id}`)}
+                        >
+                          <ArrowRight className="w-3 h-3" /> Convert to BOQ
                         </Button>
                       </div>
                     </td>
@@ -192,54 +331,121 @@ export function DrawingTakeoffPage() {
               )}
             </tbody>
           </table>
-        </div>
+        </DataTableContainer>
+      </div>
 
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          totalEntries={filteredJobs.length}
-          perPage={perPage}
-        />
-      </DataTableContainer>
+      {/* Mobile Card Layout (Visible only on small screens) */}
+      <div className="sm:hidden space-y-3">
+        {loading ? (
+          <div className="text-center py-6 text-text-muted text-xs bg-surface border border-border rounded-lg">
+            Loading drawing takeoff jobs...
+          </div>
+        ) : pagedJobs.length === 0 ? (
+          <div className="text-center py-6 text-text-muted text-xs bg-surface border border-border rounded-lg">
+            No drawing takeoff jobs found.
+          </div>
+        ) : (
+          pagedJobs.map((job) => (
+            <div key={job.id} className="bg-surface border border-border rounded-lg p-3 space-y-2.5 shadow-xs">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h4 className="font-bold text-text-primary text-xs">{job.job_name || job.name}</h4>
+                  <span className="font-mono text-[10px] text-primary font-bold">{job.drawing_ref || 'DWG-REF-001'}</span>
+                </div>
+                <Badge
+                  variant={
+                    ['approved', 'completed'].includes(String(job.status).toLowerCase())
+                      ? 'success'
+                      : ['under review', 'in progress'].includes(String(job.status).toLowerCase())
+                      ? 'warning'
+                      : 'info'
+                  }
+                  className="text-[8px] px-1.5 py-0.5"
+                >
+                  {job.status || 'Draft'}
+                </Badge>
+              </div>
 
-      {/* Add Modal */}
+              <div className="text-xs pt-1 border-t border-border/60">
+                <span className="text-[10px] uppercase font-bold text-text-muted block">Project</span>
+                <span className="font-medium text-text-primary text-[11px] truncate block">{job.project_name || 'General Project'}</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/60 text-xs">
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => navigate(`/takeoff/review?job_id=${job.id}`)}>
+                  <Eye className="w-3 h-3 mr-1" /> Review
+                </Button>
+                <Button variant="primary" size="sm" className="h-7 text-[11px] px-2" onClick={() => navigate(`/takeoff/convert?job_id=${job.id}`)}>
+                  <ArrowRight className="w-3 h-3 mr-1" /> Convert
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Add Modal - Exact SiteTeamPage Form Structure */}
       {isAddOpen && (
         <EntityEditModal
           isOpen={true}
           onClose={() => setIsAddOpen(false)}
-          onSave={handleSubmit}
-          title="New Drawing Takeoff Job"
-          saving={saving}
         >
-          <div className="space-y-4">
-            <FormField label="Job Name" required>
-              <Input
-                value={form.job_name}
-                onChange={e => setForm(prev => ({ ...prev, job_name: e.target.value }))}
-                placeholder="e.g. Ground Floor Slab Beam Takeoff"
-              />
-            </FormField>
-            <FormField label="Drawing Reference / Ref No" required>
-              <Input
-                value={form.drawing_ref}
-                onChange={e => setForm(prev => ({ ...prev, drawing_ref: e.target.value }))}
-                placeholder="e.g. DWG-STR-S01"
-              />
-            </FormField>
-            <FormField label="Project">
-              <select
-                value={form.project_id}
-                onChange={e => setForm(prev => ({ ...prev, project_id: e.target.value }))}
-                className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-              >
-                <option value="">Select Project</option>
-                {projects.map(p => (
-                  <option key={p.id} value={p.id}>{p.project_name || p.name}</option>
-                ))}
-              </select>
-            </FormField>
-          </div>
+          <EntityEditModal.Header
+            icon={FileSpreadsheet}
+            title="New Drawing Takeoff Job"
+            subtitle="Configure job parameters to extract quantities from architectural/structural drawings."
+            onClose={() => setIsAddOpen(false)}
+          />
+          <form id="takeoff-job-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <EntityEditModal.Body>
+              <EntityEditModal.Section title="Job Identification & Drawing Mapping">
+                <EntityEditModal.Grid>
+                  <FormField label="Takeoff Job Name" required>
+                    <Input
+                      value={form.job_name}
+                      onChange={e => setForm(prev => ({ ...prev, job_name: e.target.value }))}
+                      placeholder="e.g. Ground Floor Slab Beam Takeoff"
+                    />
+                  </FormField>
+
+                  <FormField label="Drawing Reference / Ref No" required>
+                    <Input
+                      value={form.drawing_ref}
+                      onChange={e => setForm(prev => ({ ...prev, drawing_ref: e.target.value }))}
+                      placeholder="e.g. DWG-STR-S01"
+                    />
+                  </FormField>
+
+                  <FormField label="Assigned Project" className="md:col-span-2">
+                    <Select
+                      options={[
+                        { value: '', label: 'Select Project' },
+                        ...projects.map(p => ({ value: String(p.id), label: `${p.project_code || 'PRJ'} - ${p.project_name || p.name}` }))
+                      ]}
+                      value={form.project_id}
+                      onChange={(val) => setForm(prev => ({ ...prev, project_id: val }))}
+                    />
+                  </FormField>
+
+                  <FormField label="Job Scope & Technical Description" className="md:col-span-2">
+                    <Textarea
+                      rows={3}
+                      value={form.description}
+                      onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Notes on drawing revision, scope of structural measurements, or special takeoff conditions..."
+                    />
+                  </FormField>
+                </EntityEditModal.Grid>
+              </EntityEditModal.Section>
+            </EntityEditModal.Body>
+
+            <EntityEditModal.Footer
+              formId="takeoff-job-form"
+              submitLabel="Create Takeoff Job"
+              onCancel={() => setIsAddOpen(false)}
+              isSubmitting={saving}
+            />
+          </form>
         </EntityEditModal>
       )}
     </PageContainer>

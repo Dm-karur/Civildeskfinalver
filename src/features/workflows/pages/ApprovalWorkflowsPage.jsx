@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { GitMerge, Plus, Edit, Trash2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { GitMerge, Plus, Edit, Trash2, RefreshCw, ShieldCheck, Layers, Clock } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
@@ -29,7 +29,9 @@ const MODULE_OPTIONS = [
 export function ApprovalWorkflowsPage() {
   const [workflows, setWorkflows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [search, setSearch] = useState('');
+  const [selectedModule, setSelectedModule] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const [page, setPage] = useState(1);
   const perPage = 10;
 
@@ -87,7 +89,7 @@ export function ApprovalWorkflowsPage() {
       trigger_condition: item.trigger_condition || '',
       approver_roles: item.approver_roles || 'Project Manager',
       steps_count: String(item.steps_count || '1'),
-      is_active: item.is_active ? '1' : '0',
+      is_active: item.is_active !== 0 ? '1' : '0',
       description: item.description || ''
     });
     setEditingItem(item);
@@ -95,6 +97,10 @@ export function ApprovalWorkflowsPage() {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (!form.workflow_name.trim()) {
+      toast.error('Workflow name is required.');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -105,11 +111,11 @@ export function ApprovalWorkflowsPage() {
 
       if (editingItem) {
         await approvalWorkflowsApi.update(editingItem.id, payload);
-        toast.success('Approval workflow updated.');
+        toast.success('Approval workflow scheme updated.');
         setEditingItem(null);
       } else {
         await approvalWorkflowsApi.create(payload);
-        toast.success('New approval workflow configured.');
+        toast.success('New approval workflow scheme configured.');
         setIsAddOpen(false);
       }
       fetchWorkflows();
@@ -126,7 +132,7 @@ export function ApprovalWorkflowsPage() {
     setSaving(true);
     try {
       await approvalWorkflowsApi.remove(deletingItem.id);
-      toast.success('Approval workflow deleted.');
+      toast.success('Approval workflow scheme deleted.');
       setDeletingItem(null);
       fetchWorkflows();
     } catch (err) {
@@ -137,123 +143,240 @@ export function ApprovalWorkflowsPage() {
     }
   };
 
-  const filteredWorkflows = workflows.filter(w => {
-    const q = searchQuery.toLowerCase();
-    const name = String(w.workflow_name || w.name || '').toLowerCase();
-    const mod = String(w.module_code || w.module || '').toLowerCase();
-    return name.includes(q) || mod.includes(q);
-  });
+  const filteredWorkflows = useMemo(() => {
+    return workflows.filter(w => {
+      const q = search.toLowerCase();
+      const name = String(w.workflow_name || w.name || '').toLowerCase();
+      const mod = String(w.module_code || w.module || '').toLowerCase();
+      const roles = String(w.approver_roles || '').toLowerCase();
+      const matchesSearch = name.includes(q) || mod.includes(q) || roles.includes(q);
+
+      const matchesModule = selectedModule === 'all' || mod === selectedModule.toLowerCase();
+      const matchesStatus = selectedStatus === 'all' || (selectedStatus === 'active' ? w.is_active !== 0 : w.is_active === 0);
+
+      return matchesSearch && matchesModule && matchesStatus;
+    });
+  }, [workflows, search, selectedModule, selectedStatus]);
 
   const totalPages = Math.ceil(filteredWorkflows.length / perPage) || 1;
-  const paginatedWorkflows = filteredWorkflows.slice((page - 1) * perPage, page * perPage);
+  const pagedWorkflows = useMemo(() => {
+    const start = (page - 1) * perPage;
+    return filteredWorkflows.slice(start, start + perPage);
+  }, [filteredWorkflows, page, perPage]);
+
+  // KPI Calculations
+  const activeCount = useMemo(() => workflows.filter(w => w.is_active !== 0).length, [workflows]);
+  const inactiveCount = useMemo(() => workflows.filter(w => w.is_active === 0).length, [workflows]);
 
   return (
-    <PageContainer>
+    <PageContainer className="space-y-4 font-sans text-xs pb-10">
       <PageHeader
         title="Approval Workflow Schemes"
         subtitle="Configure multi-tier document approval chains, role thresholds, and governance matrices"
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Client Portal', href: '#' },
+          { label: 'Approval Workflow Schemes' }
+        ]}
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={fetchWorkflows} className="gap-2">
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <Button variant="primary" onClick={handleOpenAdd} className="gap-2 bg-[#0056C9] hover:bg-blue-700">
-              <Plus className="w-4 h-4" />
-              Add Approval Workflow
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchWorkflows}
+            className="text-xs h-8 gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* KPI Stats Bar - Standard Site Team Layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
-          title="Active Workflow Schemes"
-          value={workflows.filter(w => w.is_active !== 0).length}
-          icon={GitMerge}
-          variant="primary"
-        />
-        <KpiCard
-          title="Configured Modules"
-          value={MODULE_OPTIONS.length}
-          icon={ShieldCheck}
-          variant="success"
-        />
-        <KpiCard
-          title="Total Workflows"
+          label="Total Workflow Schemes"
           value={workflows.length}
-          icon={GitMerge}
-          variant="neutral"
+          status="info"
+          icon={<GitMerge className="w-4 h-4 text-sky-500" />}
+        />
+        <KpiCard
+          label="Active Schemes"
+          value={activeCount}
+          status="success"
+          icon={<ShieldCheck className="w-4 h-4 text-emerald-500" />}
+        />
+        <KpiCard
+          label="Configured Modules"
+          value={MODULE_OPTIONS.length}
+          status="warning"
+          icon={<Layers className="w-4 h-4 text-amber-500" />}
+        />
+        <KpiCard
+          label="Inactive Schemes"
+          value={inactiveCount}
+          status="neutral"
+          icon={<Clock className="w-4 h-4 text-slate-500" />}
         />
       </div>
 
-      <DataTableContainer
-        toolbar={
-          <div className="flex items-center gap-4">
-            <div className="w-72">
-              <SearchField
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Search workflows..."
-              />
-            </div>
+      {/* Filter and Action Bar - Matched with Site Team Assignment */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-surface border border-border rounded-lg p-2.5 sm:p-3 shadow-xs">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          {/* Module Selector */}
+          <div className="w-full sm:w-56">
+            <Select
+              options={[
+                { value: 'all', label: 'All Target Modules' },
+                ...MODULE_OPTIONS
+              ]}
+              value={selectedModule}
+              onChange={(val) => {
+                setSelectedModule(val);
+                setPage(1);
+              }}
+              className="text-xs h-8"
+            />
           </div>
-        }
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                <th className="py-3 px-4">Workflow Name</th>
-                <th className="py-3 px-4">Module</th>
-                <th className="py-3 px-4">Approval Steps</th>
-                <th className="py-3 px-4">Approver Roles</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+
+          {/* Search Input */}
+          <div className="w-full sm:w-52">
+            <SearchField
+              placeholder="Search workflow name, approvers..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+
+          {/* Status Filter */}
+          <div className="w-full sm:w-36">
+            <Select
+              options={[
+                { value: 'all', label: 'All Statuses' },
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+              ]}
+              value={selectedStatus}
+              onChange={(val) => {
+                setSelectedStatus(val);
+                setPage(1);
+              }}
+              className="text-xs h-8"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchWorkflows}
+            className="text-xs h-8 gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
+            onClick={handleOpenAdd}
+            className="text-xs h-8 shadow-xs"
+          >
+            Add Approval Workflow
+          </Button>
+        </div>
+      </div>
+
+      {/* Desktop & Tablet Table (Hidden on small screens) */}
+      <div className="hidden sm:block">
+        <DataTableContainer
+          pagination={
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={filteredWorkflows.length}
+              itemsPerPage={perPage}
+              onPageChange={setPage}
+              onItemsPerPageChange={() => {}}
+            />
+          }
+        >
+          <table className="w-full text-left text-[12px] table-auto">
+            <thead className="bg-surface-muted text-text-secondary text-[11px] uppercase font-semibold border-b border-border tracking-wider">
+              <tr>
+                <th className="px-3 py-2 w-10 text-center">#</th>
+                <th className="px-3 py-2">Workflow Scheme Name</th>
+                <th className="px-3 py-2">Target Module</th>
+                <th className="px-3 py-2 text-center w-28">Approval Steps</th>
+                <th className="px-3 py-2">Approver Roles</th>
+                <th className="px-3 py-2 text-center w-28">Status</th>
+                <th className="px-3 py-2 text-right w-24">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+            <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-amber-500" />
+                  <td colSpan="7" className="text-center py-8 text-text-muted text-[12px]">
                     Loading approval workflows from backend...
                   </td>
                 </tr>
-              ) : paginatedWorkflows.length === 0 ? (
+              ) : pagedWorkflows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-500">
-                    No approval workflow schemes found in database.
+                  <td colSpan="7" className="text-center py-8 text-text-muted text-[12px]">
+                    No approval workflow schemes found matching filters.
                   </td>
                 </tr>
               ) : (
-                paginatedWorkflows.map(item => (
-                  <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
-                      {item.workflow_name || item.name}
-                      {item.description && <p className="text-xs text-slate-500 font-normal">{item.description}</p>}
+                pagedWorkflows.map((item, idx) => (
+                  <tr key={item.id || idx} className="hover:bg-surface-muted/50 transition-colors">
+                    <td className="px-3 py-2 text-center text-text-muted text-[11px]">
+                      {(page - 1) * perPage + idx + 1}
                     </td>
-                    <td className="py-3 px-4 font-mono text-xs text-amber-600 dark:text-amber-400">
-                      {item.module_code || item.module}
+                    <td className="px-3 py-2">
+                      <div className="font-bold text-text-primary text-[12px]">
+                        {item.workflow_name || item.name}
+                      </div>
+                      {item.description && (
+                        <div className="text-[10px] text-text-muted truncate max-w-xs">{item.description}</div>
+                      )}
                     </td>
-                    <td className="py-3 px-4 text-slate-700 dark:text-slate-300">
+                    <td className="px-3 py-2 font-mono text-[11px] font-semibold text-primary">
+                      {MODULE_OPTIONS.find(m => m.value === (item.module_code || item.module))?.label || item.module_code || item.module}
+                    </td>
+                    <td className="px-3 py-2 text-center text-text-primary font-semibold">
                       {item.steps_count || 1} Step(s)
                     </td>
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-400 text-xs">
+                    <td className="px-3 py-2 text-text-secondary text-[11px]">
                       {item.approver_roles || 'Project Manager'}
                     </td>
-                    <td className="py-3 px-4">
-                      <Badge variant={item.is_active === 0 ? 'neutral' : 'success'}>
-                        {item.is_active === 0 ? 'Inactive' : 'Active'}
+                    <td className="px-3 py-2 text-center">
+                      <Badge
+                        variant={item.is_active !== 0 ? 'success' : 'neutral'}
+                        className="text-[8px] px-1.5 py-0.5"
+                      >
+                        {item.is_active !== 0 ? 'Active' : 'Inactive'}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(item)}>
-                          <Edit className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                    <td className="px-3 py-2 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px] px-2"
+                          onClick={() => handleOpenEdit(item)}
+                        >
+                          <Edit className="w-3 h-3 mr-1" /> Edit
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setDeletingItem(item)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px] px-2 text-rose-600 border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                          onClick={() => setDeletingItem(item)}
+                        >
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
                     </td>
@@ -262,81 +385,142 @@ export function ApprovalWorkflowsPage() {
               )}
             </tbody>
           </table>
-        </div>
+        </DataTableContainer>
+      </div>
 
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          totalEntries={filteredWorkflows.length}
-          perPage={perPage}
-        />
-      </DataTableContainer>
+      {/* Mobile Card Layout (Visible only on small screens) */}
+      <div className="sm:hidden space-y-3">
+        {loading ? (
+          <div className="text-center py-6 text-text-muted text-xs bg-surface border border-border rounded-lg">
+            Loading approval workflows...
+          </div>
+        ) : pagedWorkflows.length === 0 ? (
+          <div className="text-center py-6 text-text-muted text-xs bg-surface border border-border rounded-lg">
+            No approval workflows found.
+          </div>
+        ) : (
+          pagedWorkflows.map((item) => (
+            <div key={item.id} className="bg-surface border border-border rounded-lg p-3 space-y-2.5 shadow-xs">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h4 className="font-bold text-text-primary text-xs">{item.workflow_name || item.name}</h4>
+                  <span className="font-mono text-[10px] text-primary font-bold">{item.module_code || item.module}</span>
+                </div>
+                <Badge
+                  variant={item.is_active !== 0 ? 'success' : 'neutral'}
+                  className="text-[8px] px-1.5 py-0.5"
+                >
+                  {item.is_active !== 0 ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
 
-      {/* Edit Modal */}
+              <div className="text-xs pt-1 border-t border-border/60">
+                <span className="text-[10px] uppercase font-bold text-text-muted block">Approvers ({item.steps_count || 1} Steps)</span>
+                <span className="font-medium text-text-primary text-[11px] truncate block">{item.approver_roles || 'Project Manager'}</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/60 text-xs">
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => handleOpenEdit(item)}>
+                  <Edit className="w-3 h-3 mr-1" /> Edit
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-rose-600" onClick={() => setDeletingItem(item)}>
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Add / Edit Modal - Exact SiteTeamPage Form Structure */}
       {(isAddOpen || editingItem) && (
         <EntityEditModal
           isOpen={true}
           onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
-          onSave={handleSubmit}
-          title={editingItem ? 'Edit Approval Workflow' : 'Add Approval Workflow'}
-          saving={saving}
         >
-          <div className="space-y-4">
-            <FormField label="Workflow Name" required>
-              <Input
-                value={form.workflow_name}
-                onChange={e => setForm(prev => ({ ...prev, workflow_name: e.target.value }))}
-                placeholder="e.g. High Value PO Approval Scheme"
-              />
-            </FormField>
+          <EntityEditModal.Header
+            icon={GitMerge}
+            title={editingItem ? 'Edit Approval Workflow Scheme' : 'Configure New Approval Workflow'}
+            subtitle="Define multi-tier approval chains, threshold rules, and approver roles."
+            onClose={() => { setIsAddOpen(false); setEditingItem(null); }}
+          />
+          <form id="approval-workflow-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <EntityEditModal.Body>
+              <EntityEditModal.Section title="Workflow Identification & Target Module">
+                <EntityEditModal.Grid>
+                  <FormField label="Workflow Scheme Name" required>
+                    <Input
+                      value={form.workflow_name}
+                      onChange={e => setForm(prev => ({ ...prev, workflow_name: e.target.value }))}
+                      placeholder="e.g. High Value PO Approval Scheme"
+                    />
+                  </FormField>
 
-            <FormField label="Target Module" required>
-              <Select
-                value={form.module_code}
-                onChange={e => setForm(prev => ({ ...prev, module_code: e.target.value }))}
-              >
-                {MODULE_OPTIONS.map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </Select>
-            </FormField>
+                  <FormField label="Target Module" required>
+                    <Select
+                      options={MODULE_OPTIONS}
+                      value={form.module_code}
+                      onChange={(val) => setForm(prev => ({ ...prev, module_code: val }))}
+                    />
+                  </FormField>
 
-            <FormField label="Approver Roles (Comma separated)" required>
-              <Input
-                value={form.approver_roles}
-                onChange={e => setForm(prev => ({ ...prev, approver_roles: e.target.value }))}
-                placeholder="Site Engineer, Project Manager, Finance Head"
-              />
-            </FormField>
+                  <FormField label="Approver Roles (Comma-separated)" required className="md:col-span-2">
+                    <Input
+                      value={form.approver_roles}
+                      onChange={e => setForm(prev => ({ ...prev, approver_roles: e.target.value }))}
+                      placeholder="e.g. Site Engineer, Project Manager, Finance Head"
+                    />
+                  </FormField>
 
-            <FormField label="Number of Steps">
-              <Input
-                type="number"
-                value={form.steps_count}
-                onChange={e => setForm(prev => ({ ...prev, steps_count: e.target.value }))}
-                placeholder="2"
-              />
-            </FormField>
+                  <FormField label="Number of Steps">
+                    <Input
+                      type="number"
+                      value={form.steps_count}
+                      onChange={e => setForm(prev => ({ ...prev, steps_count: e.target.value }))}
+                      placeholder="2"
+                    />
+                  </FormField>
 
-            <FormField label="Description">
-              <Textarea
-                value={form.description}
-                onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Trigger conditions & escalation rules"
-              />
-            </FormField>
-          </div>
+                  <FormField label="Scheme Status">
+                    <Select
+                      options={[
+                        { value: '1', label: 'Active' },
+                        { value: '0', label: 'Inactive' },
+                      ]}
+                      value={form.is_active}
+                      onChange={(val) => setForm(prev => ({ ...prev, is_active: val }))}
+                    />
+                  </FormField>
+
+                  <FormField label="Description & Governance Rules" className="md:col-span-2">
+                    <Textarea
+                      rows={3}
+                      value={form.description}
+                      onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Describe trigger conditions, financial threshold limits, or escalation policies..."
+                    />
+                  </FormField>
+                </EntityEditModal.Grid>
+              </EntityEditModal.Section>
+            </EntityEditModal.Body>
+
+            <EntityEditModal.Footer
+              formId="approval-workflow-form"
+              submitLabel={editingItem ? 'Update Scheme' : 'Save Scheme'}
+              onCancel={() => { setIsAddOpen(false); setEditingItem(null); }}
+              isSubmitting={saving}
+            />
+          </form>
         </EntityEditModal>
       )}
 
-      {/* Delete Dialog */}
+      {/* Delete Confirmation */}
       {deletingItem && (
         <ConfirmDialog
           isOpen={true}
-          title="Delete Approval Workflow"
-          message={`Are you sure you want to delete workflow "${deletingItem.workflow_name || deletingItem.name}"?`}
-          confirmLabel="Delete"
+          title="Delete Approval Workflow Scheme"
+          message={`Are you sure you want to delete workflow scheme "${deletingItem.workflow_name || deletingItem.name}"?`}
+          confirmLabel="Delete Scheme"
           onConfirm={handleDelete}
           onCancel={() => setDeletingItem(null)}
           loading={saving}

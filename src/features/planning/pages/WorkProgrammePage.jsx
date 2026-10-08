@@ -19,6 +19,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
+import { projectsApi, planningApi } from '../../../api/apiservice';
 const EMPTY_FORM = {
   project_id: '',
   stage_code: '',
@@ -141,7 +142,6 @@ export function WorkProgrammePage() {
     e.preventDefault();
     const errs = {};
     if (!form.stage_name.trim()) errs.stage_name = 'Stage title is required';
-    if (!form.stage_code.trim()) errs.stage_code = 'Stage code is required';
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -614,14 +614,6 @@ export function WorkProgrammePage() {
                     options={projects.map(p => ({ value: String(p.id), label: `${p.project_code} - ${p.project_name}` }))}
                     value={form.project_id}
                     onChange={(v) => handleFormChange('project_id', v)}
-                  />
-                </FormField>
-
-                <FormField label="Stage Code" required error={errors.stage_code}>
-                  <Input
-                    value={form.stage_code}
-                    onChange={(e) => handleFormChange('stage_code', e.target.value)}
-                    placeholder="e.g. STG-01"
                   />
                 </FormField>
 

@@ -9,6 +9,7 @@ import { Input } from '../../../components/ui/Input';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { FormField } from '../../../components/composite/FormField';
 import { Select } from '../../../components/ui/Select';
+import { Toggle } from '../../../components/ui/Toggle';
 import { Badge } from '../../../components/ui/Badge';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
@@ -301,17 +302,11 @@ export function EquipmentMasterPage() {
                 </FormField>
 
                 <div className="md:col-span-2 pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      className="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
-                      checked={form.is_active}
-                      onChange={(e) => handleFormChange('is_active', e.target.checked)}
-                    />
-                    <span className="text-sm text-text-primary font-medium group-hover:text-primary transition-colors">
-                      Active
-                    </span>
-                  </label>
+                  <Toggle
+                    label="Active"
+                    checked={form.is_active}
+                    onChange={(e) => handleFormChange('is_active', e.target.checked)}
+                  />
                 </div>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>

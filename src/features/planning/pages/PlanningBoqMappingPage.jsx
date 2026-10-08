@@ -18,7 +18,7 @@ import { FormField } from '../../../components/composite/FormField';
 import { EntityEditModal } from '../../../components/composite/EntityEditModal';
 import { ConfirmDialog } from '../../../components/composite/ConfirmDialog';
 import { toast } from '../../../components/composite/Toast';
-import { projectsApi, boqApi } from '../../../api/apiservice';
+import { projectsApi, boqApi, planningApi } from '../../../api/apiservice';
 
 
 

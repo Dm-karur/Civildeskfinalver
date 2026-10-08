@@ -224,6 +224,8 @@ export const router = createBrowserRouter([
           // ─── 1. Projects ─────────────────────────────────
           { path: 'projects', element: R('project.view', ProjectsListPage) },
           { path: 'projects/new', element: R('project.create', ProjectCreatePage) },
+          { path: 'projects/:id/edit', element: R('project.update', ProjectCreatePage) },
+          { path: 'projects/edit/:id', element: R('project.update', ProjectCreatePage) },
           { path: 'projects/clients', element: R('project.view', ProjectClientsPage) },
           { path: 'projects/team', element: R('project.view', ProjectTeamPage) },
           { path: 'projects/overview', element: R('project.view', ProjectOverviewPage) },
@@ -414,7 +416,7 @@ export const router = createBrowserRouter([
           { path: 'client-portal/users', element: R('user.view', UsersListPage) },
           { path: 'client-portal/access', element: R('user.view', UsersListPage) },
           { path: 'client-portal/projects', element: R('project.view', ProjectsListPage) },
-          { path: 'client-portal/documents', element: R('project.view', ProjectsListPage) },
+          { path: 'client-portal/documents', element: R('project.view', ProjectDocumentsPage) },
           { path: 'client-portal/approvals', element: <ApprovalWorkflowsPage /> },
           { path: 'client-portal/communications', element: R('client.view', ClientsListPage) },
 

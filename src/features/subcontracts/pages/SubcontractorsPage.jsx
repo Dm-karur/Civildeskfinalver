@@ -535,13 +535,6 @@ export function SubcontractorsPage() {
           <EntityEditModal.Body>
             <EntityEditModal.Section title="Firm Information & Trade Specialty">
               <EntityEditModal.Grid>
-                <FormField label="Contractor Code" required>
-                  <Input
-                    value={form.contractor_code}
-                    onChange={(e) => handleFormChange('contractor_code', e.target.value)}
-                    placeholder="SUB-2026-005"
-                  />
-                </FormField>
 
                 <FormField label="Trade Specialization">
                   <Input

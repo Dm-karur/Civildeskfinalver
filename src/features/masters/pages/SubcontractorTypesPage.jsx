@@ -10,6 +10,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
+import { Toggle } from '../../../components/ui/Toggle';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Textarea } from '../../../components/ui/Textarea';
 import { FormField } from '../../../components/composite/FormField';
@@ -837,19 +838,11 @@ export function SubcontractorTypesPage() {
                 </FormField>
 
                 <div className="sm:col-span-2 pt-2 border-t border-border mt-2 space-y-3">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      className="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
-                      checked={templateForm.is_active}
-                      onChange={(e) => handleTemplateFormChange('is_active', e.target.checked)}
-                    />
-                    <span className="text-sm text-text-primary font-medium group-hover:text-primary transition-colors">
-                      Active (Available in daily entry quick options)
-                    </span>
-                  </label>
-
-
+                  <Toggle
+                    label="Active (Available in daily entry quick options)"
+                    checked={templateForm.is_active}
+                    onChange={(e) => handleTemplateFormChange('is_active', e.target.checked)}
+                  />
                 </div>
               </EntityEditModal.Grid>
             </EntityEditModal.Section>

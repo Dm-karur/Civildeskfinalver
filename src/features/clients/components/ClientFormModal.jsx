@@ -225,7 +225,6 @@ export function ClientFormModal({ client, existingClients = [], isOpen, onClose,
 
   const validateForm = () => {
     const newErrors = {};
-    newErrors.client_code = validateField('client_code', formData.client_code);
     newErrors.client_name = validateField('client_name', formData.client_name);
     for (const field of ['client_type_id', 'gst_registration_type_id', 'client_source_id', 'client_status_id']) {
       if (!formData[field]) newErrors[field] = 'This selection is required.';
@@ -294,16 +293,6 @@ export function ClientFormModal({ client, existingClients = [], isOpen, onClose,
         <EntityEditModal.Body>
           <EntityEditModal.Section title="General & Business Identifiers">
             <EntityEditModal.Grid>
-              <FormField label="Client Code" required error={errors.client_code} helperText="Auto-generated code">
-                <Input 
-                  name="client_code"
-                  value={formData.client_code}
-                  disabled
-                  readOnly
-                  placeholder="Auto-generated"
-                  className="bg-surface-muted cursor-not-allowed font-mono font-semibold text-text-secondary select-none"
-                />
-              </FormField>
               <FormField label="Client Name" required error={errors.client_name}>
                 <Input 
                   name="client_name"

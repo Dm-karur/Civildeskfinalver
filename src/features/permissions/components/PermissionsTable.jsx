@@ -19,6 +19,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
+import { Toggle } from '../../../components/ui/Toggle';
 import { DataTableContainer } from '../../../components/composite/DataTableContainer';
 import { rolesApi, permissionsApi } from '../../../api/apiservice';
 import { toast } from '../../../components/composite/Toast';
@@ -268,11 +269,10 @@ export function PermissionsTable({ selectedRole, onSaveSuccess }) {
                             isChecked ? 'bg-primary/5' : 'hover:bg-surface-muted/40'
                           }`}
                         >
-                          <input 
-                            type="checkbox"
+                          <Toggle 
                             checked={isChecked}
                             onChange={() => {}} // Handled by TD click
-                            className="w-3.5 h-3.5 rounded-xs text-primary accent-primary cursor-pointer align-middle"
+                            className="scale-75"
                           />
                         </td>
                       );
@@ -283,11 +283,10 @@ export function PermissionsTable({ selectedRole, onSaveSuccess }) {
                       onClick={() => toggleModuleRow(module)}
                       className="px-2 py-1.5 text-center cursor-pointer hover:bg-surface-muted/40"
                     >
-                      <input 
-                        type="checkbox"
+                      <Toggle 
                         checked={isAllRowChecked}
                         onChange={() => {}}
-                        className="w-3.5 h-3.5 rounded-xs text-primary accent-primary cursor-pointer align-middle"
+                        className="scale-75"
                       />
                     </td>
                   </tr>

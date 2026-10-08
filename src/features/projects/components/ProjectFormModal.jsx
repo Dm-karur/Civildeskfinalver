@@ -96,7 +96,7 @@ export function ProjectFormModal({ isOpen, project = null, onClose, onSaveSucces
 
   const validate = () => {
     const next = {};
-    for (const field of ['project_code', 'project_name', 'client_id', 'project_type_id', 'project_status_id', 'billing_method_id', 'priority_id']) {
+    for (const field of ['project_name', 'client_id', 'project_type_id', 'project_status_id', 'billing_method_id', 'priority_id']) {
       if (!String(form[field] ?? '').trim()) next[field] = 'This field is required.';
     }
     if (form.expected_completion_date && form.planned_start_date && form.expected_completion_date < form.planned_start_date) {
@@ -158,15 +158,7 @@ export function ProjectFormModal({ isOpen, project = null, onClose, onSaveSucces
         <EntityEditModal.Body>
           <EntityEditModal.Section title="Project identity">
             <EntityEditModal.Grid>
-              <FormField label="Project Code" required error={errors.project_code}>
-                <Input
-                  value={form.project_code}
-                  readOnly
-                  className="bg-surface-muted/60 cursor-not-allowed font-mono font-semibold text-primary select-all"
-                  placeholder={`PRJ-${new Date().getFullYear()}-001`}
-                />
-              </FormField>
-              <FormField label="Project Name" required error={errors.project_name}><Input value={form.project_name} onChange={(e) => change('project_name', e.target.value)} /></FormField>
+              <FormField label="Project Name" required error={errors.project_name} className="md:col-span-2"><Input value={form.project_name} onChange={(e) => change('project_name', e.target.value)} placeholder="e.g. Metro Commercial Tower Block A" /></FormField>
               <FormField label="Client" required error={errors.client_id}><Select value={form.client_id} onChange={(value) => change('client_id', value)} options={options(clients, ['client_name', 'name'])} placeholder="Select client" /></FormField>
               <FormField label="Branch" error={errors.branch_id}><Select value={form.branch_id} onChange={(value) => change('branch_id', value)} options={options(branches, ['branch_name', 'name'])} placeholder="Select branch" /></FormField>
               <FormField label="Project Type" required error={errors.project_type_id}><Select value={form.project_type_id} onChange={(value) => change('project_type_id', value)} options={options(masters.project_types, ['name', 'project_type_name'])} placeholder="Select project type" /></FormField>

@@ -45,8 +45,19 @@ export function PlannedVsCompletedPage() {
     try {
       const projId = selectedProjectId !== 'all' ? selectedProjectId : '1';
       const res = await planningApi.plannedVsCompleted(projId);
-      const list = res?.data?.planned_vs_completed ?? res?.planned_vs_completed ?? res?.data ?? (Array.isArray(res) ? res : []);
-      setItems(Array.isArray(list) ? list : []);
+      const rawData = res?.data ?? res;
+      const list = Array.isArray(rawData?.planned_vs_completed)
+        ? rawData.planned_vs_completed
+        : Array.isArray(rawData?.activities)
+        ? rawData.activities
+        : Array.isArray(rawData?.items)
+        ? rawData.items
+        : Array.isArray(rawData?.records)
+        ? rawData.records
+        : Array.isArray(rawData)
+        ? rawData
+        : [];
+      setItems(list);
     } catch (err) {
       console.warn('Backend planning/planned-vs-completed API fetch error:', err);
       setItems([]);

@@ -19,6 +19,7 @@ import { PageContainer } from '../../../components/layout/PageContainer';
 import { FormField } from '../../../components/composite/FormField';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
+import { Toggle } from '../../../components/ui/Toggle';
 import { Textarea } from '../../../components/ui/Textarea';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
@@ -465,19 +466,13 @@ export function SiteEditPage() {
             </FormField>
 
             <div className="flex flex-col justify-center pt-2 md:pt-6">
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={form.is_primary}
-                  onChange={(e) => handleChange('is_primary', e.target.checked)}
-                  disabled={saving}
-                  className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-                />
-                <span className="text-xs font-medium text-text-primary">
-                  Designate as Primary Project Site
-                </span>
-              </label>
-              <p className="text-[11px] text-text-secondary mt-1 ml-7">
+              <Toggle
+                label="Designate as Primary Project Site"
+                checked={form.is_primary}
+                onChange={(e) => handleChange('is_primary', e.target.checked)}
+                disabled={saving}
+              />
+              <p className="text-[11px] text-text-secondary mt-1 ml-11">
                 Designates this site as the main physical hub or primary location for the project.
               </p>
             </div>

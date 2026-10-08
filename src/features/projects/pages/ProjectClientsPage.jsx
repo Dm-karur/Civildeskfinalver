@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Building2, IndianRupee, FileText, Briefcase, Layers, Eye, Edit, Search, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/PageHeader';
 import { PageContainer } from '../../../components/layout/PageContainer';
@@ -10,9 +11,9 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { projectsApi, clientsApi } from '../../../api/apiservice';
-import { ProjectFormModal } from '../components/ProjectFormModal';
 
 export function ProjectClientsPage() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +23,6 @@ export function ProjectClientsPage() {
   const [page, setPage] = useState(1);
   const perPage = 10;
   const [selectedProject, setSelectedProject] = useState(null);
-  const [editingProject, setEditingProject] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -270,7 +270,7 @@ export function ProjectClientsPage() {
                               size="sm"
                               className="h-6 w-6 p-0"
                               title="Edit Commercials"
-                              onClick={() => setEditingProject(project)}
+                              onClick={() => navigate(`/projects/${project.id}/edit`)}
                             >
                               <Edit className="w-3.5 h-3.5 text-text-secondary hover:text-primary" />
                             </Button>
@@ -348,7 +348,7 @@ export function ProjectClientsPage() {
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0"
-                        onClick={() => setEditingProject(project)}
+                        onClick={() => navigate(`/projects/${project.id}/edit`)}
                       >
                         <Edit className="w-3.5 h-3.5 text-text-secondary" />
                       </Button>
@@ -449,18 +449,6 @@ export function ProjectClientsPage() {
         </div>
       )}
 
-      {/* Edit Project Modal */}
-      {editingProject && (
-        <ProjectFormModal
-          isOpen={Boolean(editingProject)}
-          project={editingProject}
-          onClose={() => setEditingProject(null)}
-          onSaveSuccess={() => {
-            setEditingProject(null);
-            setRefreshKey(k => k + 1);
-          }}
-        />
-      )}
     </PageContainer>
   );
 }
