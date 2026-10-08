@@ -320,9 +320,13 @@ export function TakeoffReviewPage() {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setMapItem(item); setIsMapOpen(true); }}><LinkIcon className="w-3 h-3 mr-1" /> Map</Button>
-                        <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => handleApprove(item.id)}><CheckCircle2 className="w-3 h-3 mr-1" /> Approve</Button>
-                        <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-rose-600 border-rose-200 hover:bg-rose-50" onClick={() => handleReject(item.id)}><XCircle className="w-3 h-3 mr-1" /> Reject</Button>
+                        <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setMapItem(item); setIsMapOpen(true); }}><LinkIcon className="w-3 h-3 mr-1" /> {item.boq_item_id ? 'Remap' : 'Map'}</Button>
+                        {String(item.status).toLowerCase() !== 'approved' && (
+                          <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => handleApprove(item.id)}><CheckCircle2 className="w-3 h-3 mr-1" /> Approve</Button>
+                        )}
+                        {String(item.status).toLowerCase() !== 'rejected' && (
+                          <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-rose-600 border-rose-200 hover:bg-rose-50" onClick={() => handleReject(item.id)}><XCircle className="w-3 h-3 mr-1" /> Reject</Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -357,9 +361,13 @@ export function TakeoffReviewPage() {
                 </div>
               </div>
               <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/60 text-xs">
-                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-blue-600" onClick={() => { setMapItem(item); setIsMapOpen(true); }}><LinkIcon className="w-3 h-3 mr-1" /> Map</Button>
-                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-emerald-600" onClick={() => handleApprove(item.id)}><CheckCircle2 className="w-3 h-3 mr-1" /> Approve</Button>
-                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-rose-600" onClick={() => handleReject(item.id)}><XCircle className="w-3 h-3 mr-1" /> Reject</Button>
+                <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-blue-600" onClick={() => { setMapItem(item); setIsMapOpen(true); }}><LinkIcon className="w-3 h-3 mr-1" /> {item.boq_item_id ? 'Remap' : 'Map'}</Button>
+                {String(item.status).toLowerCase() !== 'approved' && (
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-emerald-600" onClick={() => handleApprove(item.id)}><CheckCircle2 className="w-3 h-3 mr-1" /> Approve</Button>
+                )}
+                {String(item.status).toLowerCase() !== 'rejected' && (
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-rose-600" onClick={() => handleReject(item.id)}><XCircle className="w-3 h-3 mr-1" /> Reject</Button>
+                )}
               </div>
             </div>
           ))
@@ -451,3 +459,4 @@ export function TakeoffReviewPage() {
 }
 
 export default TakeoffReviewPage;
+
