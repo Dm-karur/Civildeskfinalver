@@ -74,8 +74,28 @@ export function PlanningActivitiesPage() {
     setLoading(true);
     try {
       const res = await planningApi.activities.list();
-      const list = res?.data?.activities ?? res?.activities ?? res?.data ?? (Array.isArray(res) ? res : []);
-      setActivities(Array.isArray(list) ? list : []);
+      const rawList = res?.data?.activities ?? res?.activities ?? res?.data?.data ?? res?.data ?? (Array.isArray(res) ? res : []);
+      const list = Array.isArray(rawList) ? rawList : [];
+      setActivities(list.map((item, idx) => ({
+        id: item.id || ('act-' + idx),
+        project_id: item.project_id,
+        project_code: item.project_code || '',
+        project_name: item.project_name || '',
+        activity_code: item.activity_code || item.code || '',
+        name: item.name || item.activity_name || item.title || '',
+        phase_id: item.phase_id || item.phase || 'substructure',
+        phase_name: item.phase_name || PHASES.find(p => p.id === (item.phase_id || item.phase))?.name || 'Substructure',
+        zone_name: item.zone_name || item.zone || '',
+        start_date: item.start_date || item.planned_start_date || '',
+        end_date: item.end_date || item.planned_end_date || '',
+        duration_days: item.duration_days ?? item.duration ?? 0,
+        progress_pct: item.progress_pct ?? item.progress_percentage ?? item.progress ?? 0,
+        is_critical: Boolean(item.is_critical || item.is_critical_path),
+        predecessor: item.predecessor || item.predecessors || '',
+        assigned_to: item.assigned_to || item.assigned_user_name || item.incharge || '',
+        status: item.status || item.status_name || 'Not Started',
+        raw: item,
+      })));
     } catch (err) {
       console.warn('Backend planning/activities API fetch error:', err);
       setActivities([]);
@@ -171,50 +191,60 @@ export function PlanningActivitiesPage() {
       const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
       const phaseObj = PHASES.find(p => p.id === form.phase_id);
 
-      const newAct = {
-        id: editingAct?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        activity_code: form.activity_code,
-        name: form.name,
+      const payload = {
+        project_id: Number(form.project_id || projects[0]?.id || 1),
+        project_code: selectedProj?.project_code || '',
+        project_name: selectedProj?.project_name || '',
+        activity_code: form.activity_code.trim(),
+        name: form.name.trim(),
+        activity_name: form.name.trim(),
         phase_id: form.phase_id,
         phase_name: phaseObj?.name || 'Substructure',
-        zone_name: form.zone_name || 'General Site',
-        start_date: form.start_date,
-        end_date: form.end_date,
+        zone_name: form.zone_name?.trim() || '',
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
         duration_days: Number(form.duration_days || 30),
         progress_pct: Number(form.progress_pct || 0),
         is_critical: Boolean(form.is_critical),
-        predecessor: form.predecessor || 'None',
-        assigned_to: form.assigned_to,
-        status: form.status,
+        predecessor: form.predecessor?.trim() || 'None',
+        assigned_to: form.assigned_to?.trim() || '',
+        status: form.status || 'Not Started',
       };
 
       if (editingAct?.id) {
-        setActivities(prev => prev.map(a => a.id === editingAct.id ? newAct : a));
+        await planningApi.activities.update(editingAct.id, payload);
         toast.success('Activity updated successfully.');
       } else {
-        setActivities(prev => [newAct, ...prev]);
-        toast.success('WBS Activity added.');
+        await planningApi.activities.create(payload);
+        toast.success('WBS Activity added successfully.');
       }
 
       setIsAddOpen(false);
       setEditingAct(null);
-    } catch {
-      toast.error('Failed to save Activity.');
+      await fetchActivities();
+    } catch (err) {
+      console.error('Failed to save Activity to database:', err);
+      setErrors(err?.errors || {});
+      const errMsg = err?.message || err?.data?.message || 'Failed to save Activity to database.';
+      toast.error(errMsg);
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteAct?.id) return;
-    setActivities(prev => prev.filter(a => a.id !== deleteAct.id));
-    toast.success('Activity deleted.');
-    setDeleteAct(null);
+    try {
+      await planningApi.activities.remove(deleteAct.id);
+      toast.success('Activity deleted.');
+      await fetchActivities();
+    } catch (err) {
+      console.error('Failed to delete activity:', err);
+      toast.error(err?.message || 'Failed to delete activity.');
+    } finally {
+      setDeleteAct(null);
+    }
   };
-
   // Filtered List
   const filtered = useMemo(() => {
     return activities.filter(act => {
