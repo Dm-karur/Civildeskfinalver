@@ -62,8 +62,28 @@ export function WorkProgrammePage() {
     setLoading(true);
     try {
       const res = await planningApi.workProgramme.list();
-      const list = res?.data?.work_programmes ?? res?.work_programmes ?? res?.data ?? (Array.isArray(res) ? res : []);
-      setPackages(Array.isArray(list) ? list : []);
+      const rawList = res?.data?.work_programmes ?? res?.work_programmes ?? res?.data?.data ?? res?.data ?? (Array.isArray(res) ? res : []);
+      const list = Array.isArray(rawList) ? rawList : [];
+      setPackages(list.map((item, idx) => ({
+        id: item.id || ('pkg-' + idx),
+        project_id: item.project_id,
+        project_code: item.project_code || '',
+        project_name: item.project_name || '',
+        stage_code: item.stage_code || item.code || '',
+        stage_name: item.stage_name || item.name || item.title || '',
+        baseline_start: item.baseline_start || item.start_date || '',
+        baseline_end: item.baseline_end || item.end_date || '',
+        baseline_duration: Number(item.baseline_duration ?? item.duration ?? 90),
+        actual_start: item.actual_start || item.baseline_start || '',
+        actual_end: item.actual_end || item.baseline_end || '',
+        planned_progress_pct: Number(item.planned_progress_pct ?? item.planned_progress ?? 0),
+        actual_progress_pct: Number(item.actual_progress_pct ?? item.actual_progress ?? item.progress_pct ?? 0),
+        schedule_variance_days: Number(item.schedule_variance_days ?? item.variance_days ?? 0),
+        status: item.status || item.status_name || 'Not Started',
+        milestones: item.milestones || item.description || '',
+        mitigation_notes: item.mitigation_notes || item.notes || '',
+        raw: item,
+      })));
     } catch (err) {
       console.warn('Backend /api/planning/work-programme fetch error:', err);
       setPackages([]);
@@ -152,51 +172,61 @@ export function WorkProgrammePage() {
     try {
       const selectedProj = projects.find(p => String(p.id) === String(form.project_id));
 
-      const newPkg = {
-        id: editingPkg?.id || Date.now(),
-        project_id: Number(form.project_id || 1),
-        project_code: selectedProj?.project_code || 'PRJ-2026-001',
-        project_name: selectedProj?.project_name || 'Civil Project',
-        stage_code: form.stage_code,
-        stage_name: form.stage_name,
-        baseline_start: form.baseline_start,
-        baseline_end: form.baseline_end,
+      const payload = {
+        project_id: Number(form.project_id || projects[0]?.id || 1),
+        project_code: selectedProj?.project_code || '',
+        project_name: selectedProj?.project_name || '',
+        stage_code: form.stage_code.trim(),
+        stage_name: form.stage_name.trim(),
+        name: form.stage_name.trim(),
+        title: form.stage_name.trim(),
+        baseline_start: form.baseline_start || null,
+        baseline_end: form.baseline_end || null,
         baseline_duration: Number(form.baseline_duration || 90),
-        actual_start: form.actual_start || form.baseline_start,
-        actual_end: form.actual_end || form.baseline_end,
+        actual_start: form.actual_start || form.baseline_start || null,
+        actual_end: form.actual_end || form.baseline_end || null,
         planned_progress_pct: Number(form.planned_progress_pct || 0),
         actual_progress_pct: Number(form.actual_progress_pct || 0),
         schedule_variance_days: Number(form.schedule_variance_days || 0),
-        status: form.status,
-        milestones: form.milestones,
-        mitigation_notes: form.mitigation_notes,
+        status: form.status || 'Not Started',
+        milestones: form.milestones?.trim() || '',
+        mitigation_notes: form.mitigation_notes?.trim() || '',
       };
 
       if (editingPkg?.id) {
-        setPackages(prev => prev.map(p => p.id === editingPkg.id ? newPkg : p));
+        await planningApi.workProgramme.update(editingPkg.id, payload);
         toast.success('Work Programme stage updated.');
       } else {
-        setPackages(prev => [newPkg, ...prev]);
-        toast.success('Work Programme stage added.');
+        await planningApi.workProgramme.create(payload);
+        toast.success('Work Programme stage added successfully.');
       }
 
       setIsAddOpen(false);
       setEditingPkg(null);
-    } catch {
-      toast.error('Failed to save Work Programme.');
+      await fetchPackages();
+    } catch (err) {
+      console.error('Failed to save Work Programme to database:', err);
+      setErrors(err?.errors || {});
+      const errMsg = err?.message || err?.data?.message || 'Failed to save Work Programme to database.';
+      toast.error(errMsg);
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deletePkg?.id) return;
-    setPackages(prev => prev.filter(p => p.id !== deletePkg.id));
-    toast.success('Programme stage deleted.');
-    setDeletePkg(null);
+    try {
+      await planningApi.workProgramme.remove(deletePkg.id);
+      toast.success('Programme stage deleted.');
+      await fetchPackages();
+    } catch (err) {
+      console.error('Failed to delete work programme stage:', err);
+      toast.error(err?.message || 'Failed to delete programme stage.');
+    } finally {
+      setDeletePkg(null);
+    }
   };
-
-  // Filtered List
   const filtered = useMemo(() => {
     return packages.filter(pkg => {
       if (selectedProjectId !== 'all' && String(pkg.project_id) !== String(selectedProjectId)) return false;
